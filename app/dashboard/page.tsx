@@ -39,6 +39,7 @@ import {
   Database,
   Loader2,
 } from "lucide-react"
+import { callRootScanAPI } from '@/lib/api-helpers'
 
 // Enhanced chain configuration
 const AVAILABLE_CHAINS = [
@@ -260,25 +261,31 @@ export default function RootScanPortfolio() {
   // Enhanced fetch function with rate limiting and response storage
   const fetchWithRateLimit = async (url: string, options: RequestInit, responseKey: string) => {
     return rateLimitManager.addRequest(async () => {
-      const response = await fetch(url, options)
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      try {
+        // Extract endpoint and parameters from URL and options
+        const endpoint = url.replace('https://api.rootscan.io/v1/', '');
+        const params = options.body ? JSON.parse(options.body.toString()) : {};
+        
+        // Use our API helper function
+        const data = await callRootScanAPI(endpoint, params);
+
+        // Store API response for viewing
+        setApiResponses((prev: any) => ({
+          ...prev,
+          [responseKey]: {
+            url,
+            method: options.method,
+            body: options.body,
+            response: data,
+            timestamp: new Date().toISOString(),
+          },
+        }))
+
+        return data;
+      } catch (error) {
+        console.error(`Error in fetchWithRateLimit (${responseKey}):`, error);
+        throw error;
       }
-      const data = await response.json()
-
-      // Store API response for viewing
-      setApiResponses((prev: any) => ({
-        ...prev,
-        [responseKey]: {
-          url,
-          method: options.method,
-          body: options.body,
-          response: data,
-          timestamp: new Date().toISOString(),
-        },
-      }))
-
-      return data
     })
   }
 

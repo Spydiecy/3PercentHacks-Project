@@ -44,6 +44,7 @@ import {
   AreaChart,
   Area,
 } from "recharts"
+import { callRootScanAPI } from '@/lib/api-helpers'
 
 interface Message {
   role: "user" | "system"
@@ -139,82 +140,13 @@ export default function AiChatPage() {
 
   // RootScan API Functions
   const fetchRootScanAPI = async (type: string, params: any) => {
-    const baseUrl = "https://api.rootscan.io/v1"
-    let url = ""
-    let body: any = {}
-
-    switch (type) {
-      case "address_details":
-        url = `${baseUrl}/address`
-        body = { address: params.address || getDisplayAddress() }
-        break
-      case "token_balances":
-        url = `${baseUrl}/address-token-balances`
-        body = { address: params.address || getDisplayAddress() }
-        break
-      case "nft_balances":
-        url = `${baseUrl}/address-nft-balances`
-        body = { address: params.address || getDisplayAddress(), page: 0 }
-        break
-      case "native_transfers":
-        url = `${baseUrl}/native-transfers`
-        body = { address: params.address || getDisplayAddress() }
-        break
-      case "evm_transfers":
-        url = `${baseUrl}/evm-transfers`
-        body = { address: params.address || getDisplayAddress() }
-        break
-      case "evm_transactions":
-        url = `${baseUrl}/evm-transactions`
-        body = { address: params.address || getDisplayAddress(), perPage: 100 }
-        break
-      case "evm_transaction_details":
-        url = `${baseUrl}/evm-transaction`
-        body = { hash: params.txHash }
-        break
-      case "extrinsics":
-        url = `${baseUrl}/extrinsics`
-        body = { address: params.address || getDisplayAddress() }
-        break
-      case "extrinsic_details":
-        url = `${baseUrl}/extrinsic`
-        body = { hash: params.extrinsicHash }
-        break
-      case "blocks":
-        url = `${baseUrl}/blocks`
-        body = {}
-        break
-      case "block_details":
-        url = `${baseUrl}/block`
-        body = { blockNumber: Number.parseInt(params.blockNumber) }
-        break
-      case "events":
-        url = `${baseUrl}/events`
-        body = { blockNumber: Number.parseInt(params.blockNumber) }
-        break
-      case "event_details":
-        url = `${baseUrl}/event`
-        body = { eventId: params.eventId }
-        break
-      default:
-        throw new Error(`Unknown API type: ${type}`)
+    try {
+      const response = await callRootScanAPI(type, params)
+      return response
+    } catch (error) {
+      console.error(`Error fetching RootScan API (${type}):`, error)
+      throw error
     }
-
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        accept: "application/json",
-        "content-type": "application/json",
-        "x-api-key": apiKey,
-      },
-      body: JSON.stringify(body),
-    })
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-    }
-
-    return response.json()
   }
 
   // Swap API Functions
@@ -1529,6 +1461,74 @@ function TransfersDisplay({ data, title, getDisplayAddress }: { data: any; title
 
 function SwapResultDisplay({ swapData }: { swapData: any }) {
   return (
+    <Card className="w-full bg-black/40 border-white/20 backdrop-blur-sm">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-white flex items-center gap-2">
+          <ArrowUpDown className="h-5 w-5" />
+          Swap Created Successfully
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-black/60 p-4 rounded-lg border border-white/10">
+              <h4 className="font-semibold text-green-400 mb-2">Transaction ID</h4>
+              <p className="font-mono text-sm text-gray-300">{swapData.id}</p>
+            </div>
+            <div className="bg-black/60 p-4 rounded-lg border border-white/10">
+              <h4 className="font-semibold text-green-400 mb-2">Pay-in Address</h4>
+              <div className="flex items-center gap-2">
+                <p className="font-mono text-sm text-gray-300">{swapData.payinAddress}</p>
+                <Button size="sm" variant="ghost" onClick={() => navigator.clipboard.writeText(swapData.payinAddress)}>
+                  <Copy className="h-3 w-3" />
+                </Button>
+              </div>
+            </div>
+            <div className="bg-black/60 p-4 rounded-lg border border-white/10">
+              <h4 className="font-semibold text-green-400 mb-2">Amount to Send</h4>
+              <p className="text-gray-300">
+                {swapData.directedAmount} {swapData.fromCurrency.toUpperCase()}
+              </p>
+            </div>
+            <div className="bg-black/60 p-4 rounded-lg border border-white/10">
+              <h4 className="font-semibold text-green-400 mb-2">Amount to Receive</h4>
+              <p className="text-gray-300">
+                {swapData.amount} {swapData.toCurrency.toUpperCase()}
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
+            <p className="text-green-400 text-sm">
+              ✅ Swap created successfully! Send {swapData.directedAmount} {swapData.fromCurrency.toUpperCase()} to the
+              pay-in address above to complete the exchange.
+            </p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function GenericDataDisplay({ data, title }: { data: any; title?: string }) {
+  return (
+    <Card className="w-full bg-black/40 border-white/20 backdrop-blur-sm">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-white flex items-center gap-2">
+          <BarChart3 className="h-5 w-5" />
+          {title || "Data Response"}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="bg-black/60 p-4 rounded-lg border border-white/10">
+          <pre className="text-xs text-gray-300 overflow-x-auto whitespace-pre-wrap max-h-96">
+            {JSON.stringify(data, null, 2)}
+          </pre>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
     <Card className="w-full bg-black/40 border-white/20 backdrop-blur-sm">
       <CardHeader className="pb-2">
         <CardTitle className="text-white flex items-center gap-2">

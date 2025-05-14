@@ -1,1008 +1,909 @@
 "use client"
 
-import type React from "react"
-
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { ArrowUpDown, Wallet, RefreshCw, X, Database, Download, AlertCircle, Search, Clock, Copy } from "lucide-react"
+import { ArrowDown, Settings, Clock, Zap, Info, ChevronDown, Check, ExternalLink, Copy, RefreshCw } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
-// Real-world token data with proper images and details
-const TOKENS = [
-  {
-    symbol: "btc",
-    name: "Bitcoin",
-    image: "https://media.istockphoto.com/id/1033874896/vector/blockchain-bitcoin-icon.jpg?s=612x612&w=0&k=20&c=yzGKzb1A0moFQFxSoMw1hXHaWKqOzdcJ1ShFWRyNaGQ=",
-    color: "from-orange-500 to-yellow-500",
-    network: "Bitcoin",
-    decimals: 8,
-  },
-  {
-    symbol: "eth",
-    name: "Ethereum",
-    image: "https://logowik.com/content/uploads/images/t_ethereum-eth7803.logowik.com.webp",
-    color: "from-blue-500 to-purple-500",
-    network: "Ethereum",
-    decimals: 18,
-  },
-  {
-    symbol: "xrp",
-    name: "XRP",
-    image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcStEx8l1lrrq1h7ap3moMYOl-dmeNzfi3HTOw&s",
-    color: "from-blue-600 to-cyan-500",
-    network: "XRP Ledger",
-    decimals: 6,
-  },
-  {
-    symbol: "root",
-    name: "Root Network",
-    image: "https://pbs.twimg.com/profile_images/1658639949246386176/6T1Tapl__400x400.jpg",
-    color: "from-green-500 to-teal-500",
-    network: "Root Network",
-    decimals: 6,
-  },
-  {
-    symbol: "usdt",
-    name: "Tether USD",
-    image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS2cQbJSNv4fI-SWqstYLsPgh8LrkNycKw6xA&s",
-    color: "from-green-600 to-green-400",
-    network: "Multiple",
-    decimals: 6,
-  },
-  {
-    symbol: "bnb",
-    name: "BNB",
-    image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQP9cUvoCvmCXO4pNHvnREHBCKW30U-BVxKfg&s",
-    color: "from-yellow-500 to-orange-500",
-    network: "BSC",
-    decimals: 18,
-  },
-  {
-    symbol: "ada",
-    name: "Cardano",
-    image: "https://cdn.freelogovectors.net/wp-content/uploads/2023/03/ada-logo-freelogovectors.net_.png",
-    color: "from-blue-600 to-indigo-500",
-    network: "Cardano",
-    decimals: 6,
-  },
-  {
-    symbol: "sol",
-    name: "Solana",
-    image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTsIsJL3zRgUrkD3yE3lD7LK0wZWSiRyY1GVg&s",
-    color: "from-purple-600 to-pink-500",
-    network: "Solana",
-    decimals: 9,
-  },
-]
-
-interface SwapTransaction {
-  payinAddress: string
-  payoutAddress: string
-  payinExtraId?: string
-  fromCurrency: string
-  toCurrency: string
-  id: string
-  amount: number
-  directedAmount: number
-  payinExtraIdName?: string
+// Token interface for API response
+interface Token {
+  symbol: string
+  name: string
+  address: string
+  decimals: number
+  logoUrl?: string
+  hasLogo?: boolean
 }
 
-interface TransactionStatus {
-  status: string
-  payinAddress: string
-  payoutAddress: string
-  fromCurrency: string
-  toCurrency: string
-  id: string
-  updatedAt: string
-  expectedSendAmount: number
-  expectedReceiveAmount: number
-  createdAt: string
-  isPartner: boolean
+interface SolanaSwapResult {
+  success: boolean
+  action: string
+  timestamp: string
+  chainId: string
+  code: string
+  data: any
+  msg: string
 }
 
-interface MinAmountResponse {
-  minAmount: number
+interface ExecuteResult {
+  success: boolean
+  transactionId: string
+  explorerUrl: string
+  tokenInfo: {
+    fromToken: { symbol: string; decimals: number; price: string }
+    toToken: { symbol: string; decimals: number; price: string }
+  }
+  swapDetails: {
+    fromAmount: string
+    fromToken: string
+    toToken: string
+    slippage: string
+  }
+  instructionsUsed: number
+  lookupTablesUsed: number
 }
 
-export default function SwapPage() {
-  const [fromToken, setFromToken] = useState(TOKENS[2])
-  const [toToken, setToToken] = useState(TOKENS[3])
-  const [amount, setAmount] = useState("")
-  const [recipientAddress, setRecipientAddress] = useState("")
-  const [minAmount, setMinAmount] = useState<number | null>(null)
-  const [swapTransaction, setSwapTransaction] = useState<SwapTransaction | null>(null)
-  const [transactionStatus, setTransactionStatus] = useState<TransactionStatus | null>(null)
-  const [apiResponses, setApiResponses] = useState<any>({})
-  const [transactionHistory, setTransactionHistory] = useState<TransactionStatus[]>([])
+export default function SolanaSwapPage() {
+  // State for tokens
+  const [availableTokens, setAvailableTokens] = useState<Token[]>([])
+  const [loadingTokens, setLoadingTokens] = useState(true)
+  const [tokensError, setTokensError] = useState<string | null>(null)
 
-  // UI States
+  // Add these new state variables after the existing state declarations
+  const [isRequestInProgress, setIsRequestInProgress] = useState(false)
+  const [lastRequestTime, setLastRequestTime] = useState(0)
+  const [retryCount, setRetryCount] = useState(0)
+
+  // Default tokens (fallback)
+  const defaultTokens: Token[] = [
+    { symbol: "SOL", name: "Solana", address: "11111111111111111111111111111111", decimals: 9 },
+    { symbol: "USDC", name: "USD Coin", address: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", decimals: 6 },
+  ]
+
+  const [fromToken, setFromToken] = useState<Token>(defaultTokens[0])
+  const [toToken, setToToken] = useState<Token>(defaultTokens[1])
+  const [fromAmount, setFromAmount] = useState("0.1")
+  const [toAmount, setToAmount] = useState("")
+  const [slippage, setSlippage] = useState("0.5")
+  const [swapResult, setSwapResult] = useState<SolanaSwapResult | null>(null)
+  const [quoteResult, setQuoteResult] = useState<any>(null)
+  const [executeResult, setExecuteResult] = useState<ExecuteResult | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [quoting, setQuoting] = useState(false)
+  const [executing, setExecuting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [showFromTokens, setShowFromTokens] = useState(false)
   const [showToTokens, setShowToTokens] = useState(false)
-  const [activeModal, setActiveModal] = useState<null | string>(null)
-  const [loading, setLoading] = useState(false)
-  const [loadingMinAmount, setLoadingMinAmount] = useState(false)
-  const [loadingStatus, setLoadingStatus] = useState(false)
-  const [swapStep, setSwapStep] = useState<"input" | "confirm" | "payment" | "tracking">("input")
 
-  // Search states
-  const [fromSearch, setFromSearch] = useState("")
-  const [toSearch, setToSearch] = useState("")
+  // Demo Solana wallet address
+  const userWalletAddress = "DemHwXRcTyc76MuRwXwyhDdVpYLwoDz1T2rVpzaajMsR"
 
-  const apiKey =
-    process.env.NEXT_PUBLIC_CHANGENOW_API_KEY 
+  // Replace the fetchSupportedTokens function with this improved version:
+  const fetchSupportedTokens = async (isRetry = false) => {
+    // Prevent multiple simultaneous requests
+    if (isRequestInProgress) {
+      console.log("Request already in progress, skipping...")
+      return
+    }
 
-  const fetchMinAmount = async (from: string, to: string) => {
-    setLoadingMinAmount(true)
+    // Rate limiting: minimum 2 seconds between requests
+    const now = Date.now()
+    const timeSinceLastRequest = now - lastRequestTime
+    const minDelay = 2000 // 2 seconds
+
+    if (timeSinceLastRequest < minDelay && !isRetry) {
+      console.log("Rate limiting: waiting before next request...")
+      setTimeout(() => fetchSupportedTokens(isRetry), minDelay - timeSinceLastRequest)
+      return
+    }
+
+    setIsRequestInProgress(true)
+    setLoadingTokens(true)
+    setTokensError(null)
+    setLastRequestTime(now)
+
     try {
-      const response = await fetch(`https://api.changenow.io/v1/min-amount/${from}_${to}?api_key=${apiKey}`, {
+      // Add exponential backoff delay for retries
+      if (isRetry && retryCount > 0) {
+        const delay = Math.min(1000 * Math.pow(2, retryCount - 1), 10000) // Max 10 seconds
+        console.log(`Retry attempt ${retryCount}, waiting ${delay}ms...`)
+        await new Promise((resolve) => setTimeout(resolve, delay))
+      }
+
+      console.log("Fetching supported tokens from OKX API...")
+
+      const response = await fetch("/api/dex-tokens?chainIndex=501", {
         method: "GET",
         headers: {
-          accept: "application/json",
+          "Content-Type": "application/json",
         },
       })
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-      }
-
-      const data: MinAmountResponse = await response.json()
-      console.log("my min Amount reponse is::::",data);
-      
-      setApiResponses((prev:any) => ({
-        ...prev,
-        [`minAmount_${from}_${to}`]: {
-          url: `https://api.changenow.io/v1/min-amount/${from}_${to}?api_key=${apiKey}`,
-          method: "GET",
-          response: data,
-          timestamp: new Date().toISOString(),
-        },
-      }))
-
-      setMinAmount(data.minAmount)
-    } catch (error) {
-      console.error("Error fetching min amount:", error)
-      setMinAmount(null)
-    } finally {
-      setLoadingMinAmount(false)
-    }
-  }
-
-  const createSwapTransaction = async () => {
-    if (!amount || !recipientAddress) return
-
-    setLoading(true)
-    try {
-      const response = await fetch(`https://api.changenow.io/v1/transactions/${apiKey}`, {
-        method: "POST",
-        headers: {
-          accept: "application/json",
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({
-          from: fromToken.symbol,
-          to: toToken.symbol,
-          amount: amount,
-          address: recipientAddress,
-          flow: "standard",
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-      }
-
-      const data: SwapTransaction = await response.json()
-      console.log("my data is:::::: from list all transactions",data);
-      
-      setApiResponses((prev:any) => ({
-        ...prev,
-        swapTransaction: {
-          url: "https://api.changenow.io/v1/transactions",
-          method: "POST",
-          body: {
-            from: fromToken.symbol,
-            to: toToken.symbol,
-            amount: amount,
-            address: recipientAddress,
-            flow: "standard",
-          },
-          response: data,
-          timestamp: new Date().toISOString(),
-        },
-      }))
-
-      setSwapTransaction(data)
-    window.open(`https://changenow.io/pro/exchange/txs/${data.id}`, "_blank");
-;
-
-      setSwapStep("confirm")
-    } catch (error) {
-      console.error("Error creating swap transaction:", error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const fetchTransactionStatus = async (transactionId: string) => {
-    setLoadingStatus(true)
-    try {
-      const response = await fetch(`https://api.changenow.io/v1/transactions/${transactionId}/${apiKey}`, {
-        method: "GET",
-        headers: {
-          accept: "application/json",
-        },
-      })
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-      }
-
-      const data: TransactionStatus = await response.json()
-      console.log("my trnasaction status data is:::",data);
-      
-      setApiResponses((prev:any) => ({
-        ...prev,
-        [`transactionStatus_${transactionId}`]: {
-          url: `https://api.changenow.io/v1/transactions/${transactionId}/${apiKey}`,
-          method: "GET",
-          response: data,
-          timestamp: new Date().toISOString(),
-        },
-      }))
-
-      setTransactionStatus(data)
-
-      // Add to transaction history if not already present
-      setTransactionHistory((prev) => {
-        const exists = prev.find((tx) => tx.id === data.id)
-        if (!exists) {
-          return [data, ...prev]
+        if (response.status === 429) {
+          throw new Error("Rate limit exceeded. Please wait a moment before trying again.")
         }
-        return prev.map((tx) => (tx.id === data.id ? data : tx))
-      })
-    } catch (error) {
-      console.error("Error fetching transaction status:", error)
-    } finally {
-      setLoadingStatus(false)
-    }
-  }
+        throw new Error(`API request failed: ${response.status} ${response.statusText}`)
+      }
 
-  const connectMetaMask = async () => {
-    try {
-      if (typeof window.ethereum !== "undefined") {
-        const accounts = await window.ethereum.request({
-          method: "eth_requestAccounts",
-        })
-        setRecipientAddress(accounts[0])
+      const data = await response.json()
+
+      if (data.success && data.tokens && data.tokens.length > 0) {
+        setAvailableTokens(data.tokens)
+        setRetryCount(0) // Reset retry count on success
+
+        // Update default selections if they exist in the fetched tokens
+        const solToken = data.tokens.find((token: Token) => token.symbol === "SOL")
+        const usdcToken = data.tokens.find((token: Token) => token.symbol === "USDC")
+
+        if (solToken && fromToken.symbol === "SOL") setFromToken(solToken)
+        if (usdcToken && toToken.symbol === "USDC") setToToken(usdcToken)
+
+        console.log(`Successfully loaded ${data.tokens.length} supported tokens from OKX`)
+        setTokensError(null)
       } else {
-        alert("MetaMask is not installed. Please install MetaMask to continue.")
+        throw new Error(data.error || "No tokens received from API")
       }
-    } catch (error) {
-      console.error("Error connecting MetaMask:", error)
+    } catch (error: any) {
+      console.error("Error fetching tokens:", error)
+      setRetryCount((prev) => prev + 1)
+
+      let errorMessage = error.message
+      if (error.message.includes("Rate limit") || error.message.includes("429")) {
+        errorMessage = "Too many requests. Please wait a moment before retrying."
+      } else if (error.message.includes("fetch")) {
+        errorMessage = "Network error. Please check your connection and try again."
+      }
+
+      setTokensError(errorMessage)
+
+      // Use default tokens as fallback only if this isn't a retry
+      if (!isRetry) {
+        console.log("Using default tokens as fallback...")
+        setAvailableTokens(defaultTokens)
+      }
+    } finally {
+      setIsRequestInProgress(false)
+      setLoadingTokens(false)
     }
   }
 
-  const sendPayment = async () => {
-    if (!swapTransaction) return
+  // Replace the useEffect with this improved version:
+  useEffect(() => {
+    // Add a small delay on initial load to prevent immediate API calls
+    const initialDelay = setTimeout(() => {
+      fetchSupportedTokens(false)
+    }, 500) // 500ms delay on initial load
 
-    try {
-      if (typeof window.ethereum !== "undefined") {
-        // Convert amount to wei for Ethereum transactions
-        const valueInWei = "0x" + (Number.parseFloat(amount) * Math.pow(10, fromToken.decimals)).toString(16)
+    return () => clearTimeout(initialDelay)
+  }, []) // Remove any dependencies to prevent multiple calls
 
-        const transactionParameters = {
-          to: swapTransaction.payinAddress,
-          value: valueInWei,
-          gas: "0x5208", // 21000 gas limit
-        }
-
-        const txHash = await window.ethereum.request({
-          method: "eth_sendTransaction",
-          params: [transactionParameters],
-        })
-
-        console.log("Payment sent:", txHash)
-        setSwapStep("tracking")
-
-        // Start tracking the transaction
-        if (swapTransaction.id) {
-          fetchTransactionStatus(swapTransaction.id)
-        }
-      }
-    } catch (error) {
-      console.error("Error sending payment:", error)
-    }
-  }
-
-  const swapTokens = () => {
-    const temp = fromToken
+  const handleSwapTokens = () => {
+    const tempToken = fromToken
     setFromToken(toToken)
-    setToToken(temp)
-    setAmount("")
-    setMinAmount(null)
+    setToToken(tempToken)
+    setFromAmount(toAmount)
+    setToAmount(fromAmount)
+    // Clear previous results
+    setSwapResult(null)
+    setQuoteResult(null)
+    setExecuteResult(null)
+  }
+
+  const formatAmount = (amount: string, decimals: number): string => {
+    const num = Number.parseFloat(amount || "0")
+    return Math.floor(num * Math.pow(10, decimals)).toString()
+  }
+
+  const formatDisplayAmount = (amount: string, decimals: number): string => {
+    const num = Number.parseFloat(amount || "0")
+    return (num / Math.pow(10, decimals)).toFixed(6)
   }
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
   }
 
-  const handleExport = () => {
-    const data = {
-      swapTransaction,
-      transactionStatus,
-      transactionHistory,
-      fromToken,
-      toToken,
-      amount,
-      recipientAddress,
-      minAmount,
-      apiResponses,
-      exportDate: new Date().toISOString(),
+  // Get quote first
+  const handleGetQuote = async () => {
+    if (!fromAmount || Number.parseFloat(fromAmount) <= 0) {
+      setError("Please enter a valid amount")
+      return
     }
 
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `swap-data-${new Date().toISOString().split("T")[0]}.json`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-  }
+    setQuoting(true)
+    setError(null)
+    setQuoteResult(null)
 
-  useEffect(() => {
-    if (fromToken && toToken && fromToken.symbol !== toToken.symbol) {
-      fetchMinAmount(fromToken.symbol, toToken.symbol)
-    }
-  }, [fromToken, toToken])
+    try {
+      const formattedAmount = formatAmount(fromAmount, fromToken.decimals)
 
-  // Auto-refresh transaction status
-  useEffect(() => {
-    if (swapStep === "tracking" && swapTransaction?.id) {
+      const params = {
+        action: "quote",
+        chainId: "501", // Solana
+        fromTokenAddress: fromToken.address,
+        toTokenAddress: toToken.address,
+        amount: formattedAmount,
+        slippage: slippage,
+        userWalletAddress: userWalletAddress,
+      }
 
-        fetchTransactionStatus(swapTransaction.id)
+      console.log("Quote params:", params)
 
+      const res = await fetch("/api/dex-swap", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(params),
+      })
 
-    
-    }
-  }, [swapStep, swapTransaction?.id])
+      const data = await res.json()
+      console.log("Quote response:", data)
 
-  const filteredFromTokens = TOKENS.filter(
-    (token) =>
-      token.name.toLowerCase().includes(fromSearch.toLowerCase()) ||
-      token.symbol.toLowerCase().includes(fromSearch.toLowerCase()),
-  )
-
-  const filteredToTokens = TOKENS.filter(
-    (token) =>
-      token.name.toLowerCase().includes(toSearch.toLowerCase()) ||
-      token.symbol.toLowerCase().includes(toSearch.toLowerCase()),
-  )
-
-  const isAmountValid = minAmount && Number.parseFloat(amount) >= minAmount
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "waiting":
-        return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
-      case "confirming":
-        return "bg-blue-500/20 text-blue-400 border-blue-500/30"
-      case "exchanging":
-        return "bg-purple-500/20 text-purple-400 border-purple-500/30"
-      case "sending":
-        return "bg-orange-500/20 text-orange-400 border-orange-500/30"
-      case "finished":
-        return "bg-green-500/20 text-green-400 border-green-500/30"
-      case "failed":
-        return "bg-red-500/20 text-red-400 border-red-500/30"
-      default:
-        return "bg-gray-500/20 text-gray-400 border-gray-500/30"
+      if (data.error) {
+        setError(data.error)
+      } else if (data.success && data.data && data.data.length > 0) {
+        setQuoteResult(data)
+        // Update estimated receive amount
+        const estimatedAmount = formatDisplayAmount(data.data[0].toTokenAmount, toToken.decimals)
+        setToAmount(estimatedAmount)
+      } else {
+        setError(data.msg || "Failed to get quote")
+      }
+    } catch (e: any) {
+      setError(e.message || "Network error occurred")
+    } finally {
+      setQuoting(false)
     }
   }
 
-  return (
-    <div className="space-y-10 p-6">
-      <div className="relative z-10 space-y-8">
-        {/* Header */}
-        <div className="flex justify-between items-start mb-8">
-          <div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-white to-white/80 text-transparent bg-clip-text mb-2">
-              Swap
-            </h1>
-            <p className="text-white/60">Exchange cryptocurrencies instantly</p>
-          </div>
+  // Get swap instructions
+  const handleGetSwapInstructions = async () => {
+    if (!fromAmount || Number.parseFloat(fromAmount) <= 0) {
+      setError("Please enter a valid amount")
+      return
+    }
 
-          <div className="flex items-center gap-4">
-            <Button
-              onClick={() => setActiveModal("api-responses")}
-              variant="outline"
-              className="border-white/20 hover:bg-white/10 text-white gap-2"
-            >
-              <Database className="h-4 w-4" />
-              API Responses
-            </Button>
-            <Button
-              onClick={() => setActiveModal("transaction-history")}
-              variant="outline"
-              className="border-white/20 hover:bg-white/10 text-white gap-2"
-            >
-              <Clock className="h-4 w-4" />
-              History
-            </Button>
-            <Button
-              onClick={handleExport}
-              variant="outline"
-              className="border-white/20 hover:bg-white/10 text-white gap-2"
-            >
-              <Download className="h-4 w-4" />
-              Export
-            </Button>
-          </div>
-        </div>
+    setLoading(true)
+    setError(null)
+    setSwapResult(null)
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Swap Interface */}
-          <div className="lg:col-span-2">
-            <Card className="bg-black/20 border-white/10 hover:border-white/20 transition-all hover:shadow-xl backdrop-blur-sm">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2">
-                  <ArrowUpDown className="h-5 w-5" />
-                  Swap Tokens
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* From Token */}
-                <div className="space-y-2">
-                  <label className="text-white/80 text-sm font-medium">From</label>
-                  <div className="relative">
-                    <div
-                      className="flex items-center gap-3 p-4 bg-black/40 rounded-lg border border-white/10 cursor-pointer hover:border-white/20 transition-colors"
-                      onClick={() => setShowFromTokens(true)}
-                    >
-                      <img
-                        src={fromToken.image || "/placeholder.svg"}
-                        alt={fromToken.name}
-                        className="w-8 h-8 rounded-full"
-                        onError={(e) => {
-                          e.currentTarget.src = "/placeholder.svg?height=32&width=32"
-                        }}
-                      />
-                      <div className="flex-1">
-                        <p className="text-white font-semibold">{fromToken.name}</p>
-                        <p className="text-white/60 text-sm">{fromToken.symbol.toUpperCase()}</p>
-                      </div>
-                    </div>
-                    <Input
-                      type="number"
-                      placeholder="0.0"
-                      value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
-                      className="mt-2 bg-black/40 border-white/10 text-white text-lg placeholder:text-white/40"
-                    />
-                    {minAmount && (
-                      <p className="text-xs text-white/60 mt-1">
-                        Minimum: {minAmount} {fromToken.symbol.toUpperCase()}
-                      </p>
-                    )}
-                    {amount && minAmount && !isAmountValid && (
-                      <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
-                        <AlertCircle className="h-3 w-3" />
-                        Amount below minimum
-                      </p>
-                    )}
-                  </div>
-                </div>
+    try {
+      const formattedAmount = formatAmount(fromAmount, fromToken.decimals)
 
-                {/* Swap Button */}
-                <div className="flex justify-center">
-                  <Button
-                    onClick={swapTokens}
-                    variant="outline"
-                    size="sm"
-                    className="rounded-full border-white/20 hover:bg-white/10 text-white"
-                  >
-                    <ArrowUpDown className="h-4 w-4" />
-                  </Button>
-                </div>
+      const params = {
+        action: "instructions",
+        chainId: "501", // Solana
+        fromTokenAddress: fromToken.address,
+        toTokenAddress: toToken.address,
+        amount: formattedAmount,
+        slippage: slippage,
+        userWalletAddress: userWalletAddress,
+        feePercent: "1",
+        priceTolerance: "0",
+        autoSlippage: "false",
+        pathNum: "3",
+      }
 
-                {/* To Token */}
-                <div className="space-y-2">
-                  <label className="text-white/80 text-sm font-medium">To</label>
-                  <div className="relative">
-                    <div
-                      className="flex items-center gap-3 p-4 bg-black/40 rounded-lg border border-white/10 cursor-pointer hover:border-white/20 transition-colors"
-                      onClick={() => setShowToTokens(true)}
-                    >
-                      <img
-                        src={toToken.image || "/placeholder.svg"}
-                        alt={toToken.name}
-                        className="w-8 h-8 rounded-full"
-                        onError={(e) => {
-                          e.currentTarget.src = "/placeholder.svg?height=32&width=32"
-                        }}
-                      />
-                      <div className="flex-1">
-                        <p className="text-white font-semibold">{toToken.name}</p>
-                        <p className="text-white/60 text-sm">{toToken.symbol.toUpperCase()}</p>
-                      </div>
-                    </div>
-                    <Input
-                      type="text"
-                      placeholder="0.0"
-                      value={swapTransaction?.amount || ""}
-                      readOnly
-                      className="mt-2 bg-black/40 border-white/10 text-white text-lg placeholder:text-white/40"
-                    />
-                  </div>
-                </div>
+      console.log("Swap instruction params:", params)
 
-                {/* Recipient Address */}
-                <div className="space-y-2">
-                  <label className="text-white/80 text-sm font-medium">Recipient Address</label>
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Enter recipient address"
-                      value={recipientAddress}
-                      onChange={(e) => setRecipientAddress(e.target.value)}
-                      className="bg-black/40 border-white/10 text-white placeholder:text-white/40"
-                    />
-                    <Button onClick={connectMetaMask} variant="outline" className="border-white/20 hover:bg-white/10 text-white">
-                      <Wallet className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
+      const res = await fetch("/api/dex-swap", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(params),
+      })
 
-                {/* Action Buttons */}
-                {swapStep === "input" && (
-                  <Button
-                    onClick={createSwapTransaction}
-                    disabled={!amount || !recipientAddress || !isAmountValid || loading}
-                    className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white border-0"
-                  >
-                    {loading ? (
-                      <>
-                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                        Creating Swap...
-                      </>
-                    ) : (
-                      "Create Swap"
-                    )}
-                  </Button>
-                )}
+      const data = await res.json()
+      console.log("Swap instructions response:", data)
 
-                {swapStep === "confirm" && swapTransaction && (
-                  <div className="space-y-4">
-                    <div className="bg-black/40 p-4 rounded-lg border border-white/10">
-                      <h3 className="text-white font-semibold mb-2">Swap Details</h3>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-white/60">Transaction ID:</span>
-                          <span className="text-white font-mono">{swapTransaction.id}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-white/60">Pay-in Address:</span>
-                          <div className="flex items-center gap-2">
-                            <span className="text-white font-mono">{swapTransaction.payinAddress.slice(0, 10)}...</span>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => copyToClipboard(swapTransaction.payinAddress)}
-                            >
-                              <Copy className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-white/60">Amount to Send:</span>
-                          <span className="text-white">
-                            {amount} {fromToken.symbol.toUpperCase()}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-white/60">Amount to Receive:</span>
-                          <span className="text-white">
-                            {swapTransaction.amount} {toToken.symbol.toUpperCase()}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    <Button
-                      onClick={sendPayment}
-                      className="w-full bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 text-white"
-                    >
-                      <Wallet className="h-4 w-4 mr-2" />
-                      Send Payment via MetaMask
-                    </Button>
-                    <Button
-                      onClick={() => setSwapStep("input")}
-                      variant="outline"
-                      className="w-full border-white/20 hover:bg-white/10 text-white"
-                    >
-                      Back to Edit
-                    </Button>
-                  </div>
-                )}
+      if (data.error) {
+        setError(data.error)
+      } else if (data.success && data.data) {
+        setSwapResult(data)
+        // Update estimated receive amount if available
+        if (data.data.toTokenAmount) {
+          const estimatedAmount = formatDisplayAmount(data.data.toTokenAmount, toToken.decimals)
+          setToAmount(estimatedAmount)
+        }
+      } else {
+        setError(data.msg || "Failed to get swap instructions")
+      }
+    } catch (e: any) {
+      setError(e.message || "Network error occurred")
+    } finally {
+      setLoading(false)
+    }
+  }
 
-                {swapStep === "tracking" && (
-                  <div className="space-y-4">
-                    <div className="text-center">
-                      <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Clock className="h-8 w-8 text-white" />
-                      </div>
-                      <h3 className="text-white font-semibold text-lg">Payment Sent!</h3>
-                      <p className="text-white/60 text-sm">Your swap is being processed. Track the status below.</p>
-                    </div>
+  // Execute swap
+  const handleExecuteSwap = async () => {
+    if (!fromAmount || Number.parseFloat(fromAmount) <= 0) {
+      setError("Please enter a valid amount")
+      return
+    }
 
-                    {transactionStatus && (
-                      <div className="bg-black/40 p-4 rounded-lg border border-white/10">
-                        <div className="flex items-center justify-between mb-3">
-                          <h4 className="text-white font-semibold">Transaction Status</h4>
-                          <Badge className={getStatusColor(transactionStatus.status)}>
-                            {transactionStatus.status.toUpperCase()}
-                          </Badge>
-                        </div>
-                        <div className="space-y-2 text-sm">
-                          <div className="flex justify-between">
-                            <span className="text-white/60">Expected Send:</span>
-                            <span className="text-white">
-                              {transactionStatus.expectedSendAmount} {transactionStatus.fromCurrency.toUpperCase()}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-white/60">Expected Receive:</span>
-                            <span className="text-white">
-                              {transactionStatus.expectedReceiveAmount} {transactionStatus.toCurrency.toUpperCase()}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-white/60">Last Updated:</span>
-                            <span className="text-white">{new Date(transactionStatus.updatedAt).toLocaleString()}</span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
+    setExecuting(true)
+    setError(null)
+    setExecuteResult(null)
 
-                    <div className="flex gap-2">
-                      <Button
-                        onClick={() => swapTransaction && fetchTransactionStatus(swapTransaction.id)}
-                        disabled={loadingStatus}
-                        variant="outline"
-                        className="flex-1 border-white/20 hover:bg-white/10 text-white"
-                      >
-                        {loadingStatus ? <RefreshCw className="h-4 w-4 animate-spin" /> : "Refresh Status"}
-                      </Button>
-                      <Button
-                        onClick={() => {
-                          setSwapStep("input")
-                          setSwapTransaction(null)
-                          setTransactionStatus(null)
-                          setAmount("")
-                          setRecipientAddress("")
-                        }}
-                        className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
-                      >
-                        New Swap
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+    try {
+      const formattedAmount = formatAmount(fromAmount, fromToken.decimals)
 
-          {/* Stats Panel */}
-          <div className="space-y-6">
-            <Card className="bg-black/20 border-white/10">
-              <CardHeader>
-                <CardTitle className="text-white text-sm">Swap Information</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-white/60 text-sm">Min Amount:</span>
-                    <span className="text-white text-sm">
-                      {loadingMinAmount ? (
-                        <RefreshCw className="h-3 w-3 animate-spin" />
-                      ) : minAmount ? (
-                        `${minAmount} ${fromToken.symbol.toUpperCase()}`
-                      ) : (
-                        "Loading..."
-                      )}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-white/60 text-sm">Exchange Rate:</span>
-                    <span className="text-white text-sm">
-                      {swapTransaction && amount
-                        ? `1 ${fromToken.symbol.toUpperCase()} = ${(swapTransaction.amount / Number.parseFloat(amount)).toFixed(6)} ${toToken.symbol.toUpperCase()}`
-                        : "Enter amount"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-white/60 text-sm">Network Fee:</span>
-                    <span className="text-white text-sm">Included</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-white/60 text-sm">Processing Time:</span>
-                    <span className="text-white text-sm">5-30 min</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+      const params = {
+        action: "execute",
+        chainId: "501", // Solana
+        fromTokenAddress: fromToken.address,
+        toTokenAddress: toToken.address,
+        amount: formattedAmount,
+        slippage: slippage,
+        userWalletAddress: userWalletAddress,
+        feePercent: "1",
+        priceTolerance: "0",
+        autoSlippage: "false",
+        pathNum: "3",
+      }
 
-            {/* Current Transaction Status */}
-            {transactionStatus && (
-              <Card className="bg-black/20 border-white/10">
-                <CardHeader>
-                  <CardTitle className="text-white text-sm">Current Transaction</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-white/60 text-sm">Status:</span>
-                      <Badge className={getStatusColor(transactionStatus.status)}>
-                        {transactionStatus.status.toUpperCase()}
-                      </Badge>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-white/60 text-sm">ID:</span>
-                      <span className="text-white text-sm font-mono">{transactionStatus.id}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-white/60 text-sm">Progress:</span>
-                      <span className="text-white text-sm">
-                        {transactionStatus.status === "waiting" && "0%"}
-                        {transactionStatus.status === "confirming" && "25%"}
-                        {transactionStatus.status === "exchanging" && "50%"}
-                        {transactionStatus.status === "sending" && "75%"}
-                        {transactionStatus.status === "finished" && "100%"}
-                      </span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        </div>
+      console.log("Execute swap params:", params)
 
-        {/* Token Selection Modals */}
-        {showFromTokens && (
-          <TokenSelectionModal
-            title="Select From Token"
-            tokens={filteredFromTokens}
-            searchValue={fromSearch}
-            onSearchChange={setFromSearch}
-            onSelect={(token) => {
-              setFromToken(token)
-              setShowFromTokens(false)
-              setFromSearch("")
-            }}
-            onClose={() => {
-              setShowFromTokens(false)
-              setFromSearch("")
-            }}
-          />
-        )}
+      const res = await fetch("/api/dex-swap", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(params),
+      })
 
-        {showToTokens && (
-          <TokenSelectionModal
-            title="Select To Token"
-            tokens={filteredToTokens}
-            searchValue={toSearch}
-            onSearchChange={setToSearch}
-            onSelect={(token) => {
-              setToToken(token)
-              setShowToTokens(false)
-              setToSearch("")
-            }}
-            onClose={() => {
-              setShowToTokens(false)
-              setToSearch("")
-            }}
-          />
-        )}
+      const data = await res.json()
+      console.log("Execute swap response:", data)
 
-        {/* Transaction History Modal */}
-        {activeModal === "transaction-history" && (
-          <Modal onClose={() => setActiveModal(null)} title="Transaction History">
-            <div className="space-y-4">
-              {transactionHistory.length > 0 ? (
-                transactionHistory.map((tx) => (
-                  <div key={tx.id} className="bg-black/40 p-4 rounded-lg border border-white/10">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <span className="text-white font-mono text-sm">{tx.id}</span>
-                        <Badge className={getStatusColor(tx.status)}>{tx.status.toUpperCase()}</Badge>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => fetchTransactionStatus(tx.id)}
-                        className="border-white/20 hover:bg-white/10 text-white"
-                      >
-                        <RefreshCw className="h-3 w-3" />
-                      </Button>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <p className="text-white/60">From:</p>
-                        <p className="text-white">
-                          {tx.expectedSendAmount} {tx.fromCurrency.toUpperCase()}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-white/60">To:</p>
-                        <p className="text-white">
-                          {tx.expectedReceiveAmount} {tx.toCurrency.toUpperCase()}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-white/60">Created:</p>
-                        <p className="text-white">{new Date(tx.createdAt).toLocaleDateString()}</p>
-                      </div>
-                      <div>
-                        <p className="text-white/60">Updated:</p>
-                        <p className="text-white">{new Date(tx.updatedAt).toLocaleDateString()}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-12">
-                  <Clock className="h-12 w-12 mx-auto mb-4 text-white/40" />
-                  <p className="text-white/60">No transaction history yet. Create your first swap!</p>
-                </div>
-              )}
+      if (data.error) {
+        setError(data.error)
+      } else if (data.success) {
+        setExecuteResult(data)
+      } else {
+        setError(data.msg || "Failed to execute swap")
+      }
+    } catch (e: any) {
+      setError(e.message || "Network error occurred")
+    } finally {
+      setExecuting(false)
+    }
+  }
+
+  // Replace the retry button onClick with this improved handler:
+  const handleRetryTokens = () => {
+    setRetryCount(0) // Reset retry count for manual retry
+    fetchSupportedTokens(true)
+  }
+
+  const TokenSelector = ({
+    tokens,
+    selectedToken,
+    onSelect,
+    show,
+    onToggle,
+  }: {
+    tokens: Token[]
+    selectedToken: Token
+    onSelect: (token: Token) => void
+    show: boolean
+    onToggle: () => void
+  }) => (
+    <div className="relative">
+      <Button
+        className="bg-white/10 hover:bg-white/20 text-white gap-2 font-medium border-none h-9"
+        variant="outline"
+        onClick={onToggle}
+      >
+        <TokenIcon token={selectedToken} />
+        {selectedToken.symbol}
+        <ChevronDown className="h-4 w-4" />
+      </Button>
+
+      {show && (
+        <div className="absolute top-full mt-2 right-0 bg-black/90 border border-white/20 rounded-lg p-2 min-w-[250px] z-50 backdrop-blur-sm max-h-80 overflow-y-auto">
+          {loadingTokens ? (
+            <div className="text-center py-6 text-white/60">
+              <RefreshCw className="h-5 w-5 animate-spin mx-auto mb-3" />
+              <div className="text-sm">Loading tokens...</div>
+              <div className="text-xs text-white/40 mt-1">
+                {isRequestInProgress ? "Fetching from OKX API..." : "Please wait..."}
+              </div>
             </div>
-          </Modal>
-        )}
-
-        {/* API Responses Modal */}
-        {activeModal === "api-responses" && (
-          <Modal onClose={() => setActiveModal(null)} title="API Response Models">
-            <div className="space-y-4 max-h-[70vh] overflow-y-auto">
-              {Object.entries(apiResponses).length > 0 ? (
-                Object.entries(apiResponses).map(([key, response]: [string, any]) => (
-                  <div key={key} className="bg-gray-800/50 p-4 rounded-lg border border-cyan-500/30">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-semibold text-cyan-400 flex items-center gap-2">
-                        <Database className="h-4 w-4" />
-                        {key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, " ")}
-                      </h3>
-                      <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/30">{response.method}</Badge>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                      <div>
-                        <p className="text-sm text-gray-400">Endpoint:</p>
-                        <p className="text-xs font-mono text-cyan-300 break-all">{response.url}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-400">Timestamp:</p>
-                        <p className="text-xs text-gray-300">{new Date(response.timestamp).toLocaleString()}</p>
-                      </div>
-                    </div>
-                    {response.body && (
-                      <div className="mb-4">
-                        <p className="text-sm text-gray-400 mb-2">Request Body:</p>
-                        <div className="bg-black/80 p-3 rounded border border-white/20 max-h-32 overflow-y-auto">
-                          <pre className="text-xs text-green-300 whitespace-pre-wrap">
-                            {JSON.stringify(response.body, null, 2)}
-                          </pre>
-                        </div>
-                      </div>
-                    )}
-                    <div>
-                      <p className="text-sm text-gray-400 mb-2">Response:</p>
-                      <div className="bg-black/80 p-3 rounded border border-white/20 max-h-60 overflow-y-auto">
-                        <pre className="text-xs text-gray-300 whitespace-pre-wrap">
-                          {JSON.stringify(response.response, null, 2)}
-                        </pre>
-                      </div>
+          ) : (
+            <div className="space-y-1">
+              {tokens.map((token) => (
+                <button
+                  key={token.address}
+                  className="w-full flex items-center gap-3 p-2 hover:bg-white/10 rounded text-left text-white transition-colors"
+                  onClick={() => {
+                    onSelect(token)
+                    onToggle()
+                    // Clear results when token changes
+                    setSwapResult(null)
+                    setQuoteResult(null)
+                    setExecuteResult(null)
+                    setToAmount("")
+                  }}
+                >
+                  <TokenIcon token={token} />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium">{token.symbol}</div>
+                    <div className="text-xs text-white/60 truncate">{token.name}</div>
+                    <div className="text-xs text-white/40 font-mono truncate">
+                      {token.address.slice(0, 8)}...{token.address.slice(-6)}
                     </div>
                   </div>
-                ))
-              ) : (
-                <div className="text-center py-12">
-                  <Database className="h-12 w-12 mx-auto mb-4 text-white/40" />
-                  <p className="text-white/60">No API responses recorded yet. Perform a swap to see API data.</p>
-                </div>
-              )}
+                  {selectedToken.address === token.address && (
+                    <Check className="h-4 w-4 text-green-400 flex-shrink-0" />
+                  )}
+                </button>
+              ))}
             </div>
-          </Modal>
-        )}
-      </div>
+          )}
+
+          {tokensError && (
+            <div className="text-center py-4 border-t border-white/10 mt-2">
+              <div className="text-red-400 text-xs mb-3">{tokensError}</div>
+              <div className="flex gap-2 justify-center">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-white/20 hover:bg-white/10 text-white text-xs"
+                  onClick={handleRetryTokens}
+                  disabled={isRequestInProgress}
+                >
+                  <RefreshCw className={`h-3 w-3 mr-1 ${isRequestInProgress ? "animate-spin" : ""}`} />
+                  {isRequestInProgress ? "Retrying..." : "Retry"}
+                </Button>
+                {retryCount > 0 && <div className="text-xs text-white/40 self-center">Attempt {retryCount}</div>}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
-}
 
-function TokenSelectionModal({
-  title,
-  tokens,
-  searchValue,
-  onSearchChange,
-  onSelect,
-  onClose,
-}: {
-  title: string
-  tokens: any[]
-  searchValue: string
-  onSearchChange: (value: string) => void
-  onSelect: (token: any) => void
-  onClose: () => void
-}) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-      <div className="bg-black/90 rounded-xl shadow-2xl border border-white/10 relative max-w-md w-full mx-4 max-h-[80vh] overflow-hidden">
-        <div className="flex items-center justify-between p-6 border-b border-white/10">
-          <h2 className="text-xl font-bold text-white">{title}</h2>
-          <button
-            onClick={onClose}
-            className="text-white/60 hover:text-white text-xl p-2 hover:bg-white/10 rounded-full transition-colors"
-          >
-            <X className="h-5 w-5" />
-          </button>
+    <div className="max-w-md mx-auto">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 via-blue-400 to-purple-600 text-transparent bg-clip-text mb-1">
+            Solana Swap
+          </h1>
+          <p className="text-white/60">
+            {loadingTokens
+              ? "Loading supported tokens..."
+              : `Trade tokens on Solana with best rates • ${availableTokens.length} tokens available`}
+          </p>
         </div>
-        <div className="p-4">
-          <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/60" />
-            <Input
-              placeholder="Search tokens..."
-              value={searchValue}
-              onChange={(e) => onSearchChange(e.target.value)}
-              className="pl-10 bg-black/40 border-white/10 text-white"
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            className="rounded-full border-white/20 hover:bg-white/10 text-white"
+            onClick={handleRetryTokens}
+            disabled={loadingTokens || isRequestInProgress}
+          >
+            <RefreshCw className={`h-4 w-4 ${loadingTokens ? "animate-spin" : ""}`} />
+          </Button>
+          <Button variant="outline" size="icon" className="rounded-full border-white/20 hover:bg-white/10 text-white">
+            <Clock className="h-5 w-5" />
+          </Button>
+          <Button variant="outline" size="icon" className="rounded-full border-white/20 hover:bg-white/10 text-white">
+            <Settings className="h-5 w-5" />
+          </Button>
+        </div>
+      </div>
+
+      <div className="backdrop-blur-sm bg-black/20 border border-white/10 rounded-xl overflow-hidden hover:border-white/20 transition-all hover:shadow-xl">
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-sm text-white/60">From</span>
+            <div className="px-3 py-1 bg-gradient-to-r from-purple-500/20 to-blue-500/20 rounded-full border border-purple-500/30">
+              <span className="text-xs text-purple-300 font-medium">Solana</span>
+            </div>
+          </div>
+          <div className="flex justify-between items-center mb-2">
+            <input
+              type="text"
+              value={fromAmount}
+              onChange={(e) => {
+                setFromAmount(e.target.value)
+                setSwapResult(null)
+                setQuoteResult(null)
+                setExecuteResult(null)
+                setToAmount("")
+              }}
+              className="text-2xl font-medium bg-transparent outline-none w-[60%] text-white"
+              placeholder="0.0"
+            />
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-white/20 hover:bg-white/10 text-white text-xs h-7"
+                onClick={() => {
+                  setFromAmount("1.0")
+                  setSwapResult(null)
+                  setQuoteResult(null)
+                  setExecuteResult(null)
+                  setToAmount("")
+                }}
+              >
+                MAX
+              </Button>
+              <TokenSelector
+                tokens={availableTokens}
+                selectedToken={fromToken}
+                onSelect={setFromToken}
+                show={showFromTokens}
+                onToggle={() => setShowFromTokens(!showFromTokens)}
+              />
+            </div>
+          </div>
+          <div className="text-sm text-white/60 mt-1">
+            Balance: 12.45 {fromToken.symbol} • ${fromToken.symbol === "SOL" ? "97.35" : "1.00"}
+          </div>
+        </div>
+
+        <div className="flex justify-center -mt-2 -mb-2 z-10 relative">
+          <Button
+            onClick={handleSwapTokens}
+            size="icon"
+            className="rounded-full h-10 w-10 shadow-md bg-gradient-to-r from-purple-500/20 to-blue-500/20 hover:from-purple-500/30 hover:to-blue-500/30 border border-white/20 hover:border-white/30"
+          >
+            <ArrowDown className="h-5 w-5 text-white" />
+          </Button>
+        </div>
+
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-sm text-white/60">To</span>
+            <div className="px-3 py-1 bg-gradient-to-r from-purple-500/20 to-blue-500/20 rounded-full border border-purple-500/30">
+              <span className="text-xs text-purple-300 font-medium">Solana</span>
+            </div>
+          </div>
+          <div className="flex justify-between items-center mb-2">
+            <input
+              type="text"
+              value={toAmount}
+              className="text-2xl font-medium bg-transparent outline-none w-[60%] text-white"
+              placeholder="0.0"
+              readOnly
+            />
+            <TokenSelector
+              tokens={availableTokens}
+              selectedToken={toToken}
+              onSelect={setToToken}
+              show={showToTokens}
+              onToggle={() => setShowToTokens(!showToTokens)}
             />
           </div>
-          <div className="space-y-2 max-h-96 overflow-y-auto">
-            {tokens.map((token, index) => (
-              <div
-                key={index}
-                className="flex items-center gap-3 p-3 bg-black/40 rounded-lg border border-white/10 cursor-pointer hover:border-white/20 transition-colors"
-                onClick={() => onSelect(token)}
-              >
-                <img
-                  src={token.image || "/placeholder.svg"}
-                  alt={token.name}
-                  className="w-10 h-10 rounded-full"
-                  onError={(e) => {
-                    e.currentTarget.src = "/placeholder.svg?height=40&width=40"
-                  }}
-                />
-                <div className="flex-1">
-                  <p className="text-white font-semibold">{token.name}</p>
-                  <p className="text-white/60 text-sm">
-                    {token.symbol.toUpperCase()} • {token.network}
-                  </p>
+          <div className="text-sm text-white/60 mt-1">
+            Balance: 350.21 {toToken.symbol} • ${toToken.symbol === "USDC" ? "350.21" : "1.00"}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-6 space-y-4">
+        <div className="backdrop-blur-sm bg-black/20 border border-white/10 rounded-xl p-5 hover:border-white/20 transition-all hover:shadow-xl">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-sm text-white/80 font-medium">Transaction Settings</span>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1">
+                <span className="text-sm text-white/60">Slippage Tolerance</span>
+                <button className="text-white/40 hover:text-white/60">
+                  <Info className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              <div className="flex items-center gap-1.5">
+                {["0.1", "0.5", "1.0", "3.0"].map((value) => (
+                  <Button
+                    key={value}
+                    variant="outline"
+                    size="sm"
+                    className={`h-7 px-2.5 py-1 border-white/20 text-white text-xs ${
+                      slippage === value ? "bg-purple-500/20 border-purple-500/40" : "hover:bg-white/10"
+                    }`}
+                    onClick={() => setSlippage(value)}
+                  >
+                    {value}%
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-white/60">Network</span>
+              <span className="text-sm text-white/80 font-medium">Solana Mainnet</span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-white/60">DEX Aggregator</span>
+              <span className="text-sm text-white/80 font-medium">OKX</span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-white/60">Supported Tokens</span>
+              <span className="text-sm text-white/80 font-medium">{availableTokens.length} tokens</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-3 mt-6">
+        <Button
+          className="py-6 text-sm gap-2 bg-gradient-to-r from-purple-500/20 to-blue-500/20 hover:from-purple-500/30 hover:to-blue-500/30 border border-purple-500/30 hover:border-purple-500/50 text-white shadow-lg backdrop-blur-sm"
+          size="lg"
+          onClick={handleGetQuote}
+          disabled={quoting || !fromAmount || Number.parseFloat(fromAmount) <= 0}
+        >
+          <Info className="h-4 w-4" />
+          {quoting ? "Getting..." : "Quote"}
+        </Button>
+
+       
+
+        <Button
+          className="py-6 text-sm gap-2 bg-gradient-to-r from-green-500/20 to-emerald-500/20 hover:from-green-500/30 hover:to-emerald-500/30 border border-green-500/30 hover:border-green-500/50 text-white shadow-lg backdrop-blur-sm"
+          size="lg"
+          onClick={handleExecuteSwap}
+          disabled={executing || !fromAmount || Number.parseFloat(fromAmount) <= 0}
+        >
+          <Zap className="h-4 w-4" />
+          {executing ? "Executing..." : "Execute"}
+        </Button>
+      </div>
+
+      {error && (
+        <Card className="mt-4 bg-red-900/20 border-red-500/30">
+          <CardContent className="p-4">
+            <div className="text-red-400 text-sm">
+              <strong>Error:</strong> {error}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {quoteResult && !error && (
+        <Card className="mt-4 bg-gradient-to-r from-purple-900/20 to-blue-900/20 border-purple-500/30">
+          <CardHeader>
+            <CardTitle className="text-white text-lg flex items-center gap-2">
+              <Info className="h-5 w-5" />
+              Swap Quote
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {quoteResult.data.map((quote: any, index: number) => (
+              <div key={index} className="space-y-3">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-white/60">You Pay:</span>
+                    <div className="text-white font-medium">
+                      {formatDisplayAmount(quote.fromTokenAmount, fromToken.decimals)} {fromToken.symbol}
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-white/60">You Receive:</span>
+                    <div className="text-white font-medium">
+                      {formatDisplayAmount(quote.toTokenAmount, toToken.decimals)} {toToken.symbol}
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-white/60">Rate:</span>
+                    <div className="text-white font-medium">
+                      1 {fromToken.symbol} = {(Number(quote.toTokenAmount) / Number(quote.fromTokenAmount)).toFixed(4)}{" "}
+                      {toToken.symbol}
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-white/60">Price Impact:</span>
+                    <div className="text-green-400 font-medium">{"< 0.1%"}</div>
+                  </div>
                 </div>
               </div>
             ))}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {swapResult && !error && (
+        <Card className="mt-4 bg-gradient-to-r from-blue-900/20 to-cyan-900/20 border-blue-500/30">
+          <CardHeader>
+            <CardTitle className="text-white text-lg flex items-center gap-2">
+              <Zap className="h-5 w-5" />
+              Swap Instructions Ready
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-white/60">You Pay:</span>
+                  <div className="text-white font-medium">
+                    {formatDisplayAmount(swapResult.data.fromTokenAmount, fromToken.decimals)} {fromToken.symbol}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-white/60">You Receive:</span>
+                  <div className="text-white font-medium">
+                    {formatDisplayAmount(swapResult.data.toTokenAmount, toToken.decimals)} {toToken.symbol}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-white/60">Minimum Received:</span>
+                  <div className="text-white font-medium">
+                    {formatDisplayAmount(swapResult.data.minimumReceived, toToken.decimals)} {toToken.symbol}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-white/60">Instructions:</span>
+                  <div className="text-white font-medium">{swapResult.data.instructionLists.length} steps</div>
+                </div>
+              </div>
+
+              <div className="bg-white/5 rounded-lg p-3">
+                <div className="text-white/80 font-medium mb-2">Solana Transaction Details</div>
+                <div className="text-sm space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-white/60">Instructions:</span>
+                    <span className="text-white">{swapResult.data.instructionLists.length}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-white/60">Lookup Tables:</span>
+                    <span className="text-white">{swapResult.data.addressLookupTableAccount.length}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-white/60">From Token Price:</span>
+                    <span className="text-white">${swapResult.data.fromToken.tokenUnitPrice}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-white/60">To Token Price:</span>
+                    <span className="text-white">${swapResult.data.toToken.tokenUnitPrice}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {executeResult && !error && (
+        <Card className="mt-4 bg-gradient-to-r from-green-900/20 to-emerald-900/20 border-green-500/30">
+          <CardHeader>
+            <CardTitle className="text-white text-lg flex items-center gap-2">
+              <Zap className="h-5 w-5 text-green-400" />
+              Swap Executed Successfully!
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-white/60">Swapped:</span>
+                  <div className="text-white font-medium">
+                    {formatDisplayAmount(
+                      executeResult.swapDetails.fromAmount,
+                      executeResult.tokenInfo.fromToken.decimals,
+                    )}{" "}
+                    {executeResult.swapDetails.fromToken}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-white/60">For:</span>
+                  <div className="text-white font-medium">{executeResult.swapDetails.toToken}</div>
+                </div>
+                <div>
+                  <span className="text-white/60">Instructions Used:</span>
+                  <div className="text-white font-medium">{executeResult.instructionsUsed}</div>
+                </div>
+                <div>
+                  <span className="text-white/60">Lookup Tables:</span>
+                  <div className="text-white font-medium">{executeResult.lookupTablesUsed}</div>
+                </div>
+              </div>
+
+              <div className="bg-white/5 rounded-lg p-3">
+                <div className="text-white/80 font-medium mb-2">Transaction Details</div>
+                <div className="text-sm space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-white/60">Transaction ID:</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-white font-mono text-xs">
+                        {executeResult.transactionId.slice(0, 8)}...{executeResult.transactionId.slice(-8)}
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 w-6 p-0 hover:bg-white/10"
+                        onClick={() => copyToClipboard(executeResult.transactionId)}
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="flex justify-center">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-green-500/30 hover:bg-green-500/10 text-green-400 gap-2"
+                      onClick={() => window.open(executeResult.explorerUrl, "_blank")}
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      View on Solscan
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3">
+                <div className="text-green-400 font-medium mb-2 flex items-center gap-2">
+                  <Check className="h-4 w-4" />
+                  Transaction Confirmed
+                </div>
+                <div className="text-sm text-green-200">
+                  Your swap has been successfully executed on Solana. The transaction has been confirmed and is now
+                  visible on the blockchain.
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="mt-5 text-center">
+        <p className="text-xs text-white/40">
+          Powered by OKX DEX Aggregator on Solana. Best rates across all Solana DEXs.
+        </p>
       </div>
     </div>
   )
 }
 
-function Modal({ children, onClose, title }: { children: React.ReactNode; onClose: () => void; title: string }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-      <div className="bg-black/90 rounded-xl shadow-2xl border border-white/10 relative max-w-6xl w-full mx-4 max-h-[90vh] overflow-hidden">
-        <div className="flex items-center justify-between p-6 border-b border-white/10">
-          <h2 className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 text-transparent bg-clip-text">
-            {title}
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-white/60 hover:text-white text-xl p-2 hover:bg-white/10 rounded-full transition-colors"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">{children}</div>
+function TokenIcon({ token }: { token: Token }) {
+  // If token has a logo URL, use it
+  if (token.logoUrl && token.hasLogo) {
+    return (
+      <div className="w-5 h-5 rounded-full overflow-hidden bg-white/10 flex items-center justify-center">
+        <img
+          src={token.logoUrl || "/placeholder.svg"}
+          alt={token.symbol}
+          className="w-full h-full object-cover"
+          onError={(e) => {
+            // Fallback to gradient if image fails to load
+            const target = e.target as HTMLImageElement
+            target.style.display = "none"
+            target.parentElement!.innerHTML = `<div class="w-5 h-5 rounded-full ${getTokenGradient(token.symbol)} flex items-center justify-center text-white text-xs font-bold">${token.symbol.slice(0, 2)}</div>`
+          }}
+        />
       </div>
+    )
+  }
+
+  // Fallback to gradient background with token symbol
+  return (
+    <div
+      className={`w-5 h-5 rounded-full ${getTokenGradient(token.symbol)} flex items-center justify-center text-white text-xs font-bold`}
+    >
+      {token.symbol.slice(0, 2)}
     </div>
   )
+}
+
+function getTokenGradient(symbol: string): string {
+  const colors: Record<string, string> = {
+    SOL: "bg-gradient-to-r from-purple-500 to-blue-500",
+    USDC: "bg-blue-500",
+    USDT: "bg-green-500",
+    RAY: "bg-gradient-to-r from-blue-400 to-purple-500",
+    SRM: "bg-gradient-to-r from-cyan-400 to-blue-500",
+    ORCA: "bg-gradient-to-r from-pink-400 to-purple-500",
+    MNGO: "bg-gradient-to-r from-yellow-400 to-orange-500",
+    STEP: "bg-gradient-to-r from-green-400 to-blue-500",
+    COPE: "bg-gradient-to-r from-red-400 to-pink-500",
+    FIDA: "bg-gradient-to-r from-indigo-400 to-purple-500",
+  }
+  return colors[symbol] || "bg-gradient-to-r from-gray-500 to-gray-600"
 }

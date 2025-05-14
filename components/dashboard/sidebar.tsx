@@ -9,14 +9,9 @@ import {
   ArrowLeftRight, 
   Settings, 
   Home,
-  ArrowLeft,
-  History,
-  Search,
-  Wallet,
-  TestTube
+  ArrowLeft
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { useEffect } from "react"
 
 interface DashboardSidebarProps {
   open: boolean
@@ -25,13 +20,7 @@ interface DashboardSidebarProps {
 
 export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
   const pathname = usePathname()
-  // useEffect
-    useEffect(() => {
-      
-    setOpen(false)
-      
-    }, [])
-    
+  
   const routes = [
     {
       label: "Home",
@@ -44,25 +33,25 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
       href: "/dashboard/ai-chat"
     },
     {
-      label: "My Transactions",
-      icon: History,
-      href: "/dashboard/evm/my-transactions"
-    },
-    {
-      label: "Explorer",
-      icon: Search,
-      href: "/dashboard/evm/explorer"
-    },
-    {
       label: "Swap",
       icon: ArrowLeftRight,
       href: "/dashboard/swap"
     },
-    {
-      label: "Wallet",
-      icon: Wallet,
-      href: "/dashboard/futureverse-demo"
+      {
+      label: "Cross Chain Swap Info",
+      icon: ArrowLeftRight,
+      href: "/dashboard/cross-chain"
     },
+    {
+      label: "Portfolio",
+      icon: BarChart2,
+      href: "/dashboard/portfolio"
+    },
+    {
+      label: "Settings",
+      icon: Settings,
+      href: "/dashboard/settings"
+    }
   ]
 
   return (

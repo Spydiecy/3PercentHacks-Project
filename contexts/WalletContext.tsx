@@ -1,18 +1,14 @@
 "use client"
 
 import React, { createContext, useContext, useState, useEffect } from 'react'
-import { FutureverseAuthClient } from '@futureverse/auth-react/auth'
-import { FutureverseAuthProvider, useAuth } from '@futureverse/auth-react'
 
 interface WalletContextType {
   wallet: any | null
   connecting: boolean
   connected: boolean
   publicKey: string | null
-  userSession: any | null
   connectWallet: () => Promise<void>
   disconnectWallet: () => Promise<void>
-  getDisplayAddress: () => string
 }
 
 const WalletContext = createContext<WalletContextType>({
@@ -20,96 +16,97 @@ const WalletContext = createContext<WalletContextType>({
   connecting: false,
   connected: false,
   publicKey: null,
-  userSession: null,
   connectWallet: async () => {},
-  disconnectWallet: async () => {},
-  getDisplayAddress: () => "0x718E2030e82B945b9E39546278a7a30221fC2650"
+  disconnectWallet: async () => {}
 })
 
 export const useWallet = () => useContext(WalletContext)
 
-// Create auth client
-const authClient = new FutureverseAuthClient({
-  clientId: process.env.NEXT_PUBLIC_FUTUREVERSE_CLIENT_ID || '2qC_LOMj3oHhri4XpJL2X',
-  environment: 'development',
-  redirectUri: typeof window !== 'undefined' ? `${window.location.origin}/dashboard/` : 'https://astra-trn.vercel.app/dashboard/',
-  responseType: 'code'
-})
-
-// Inner provider that uses the useAuth hook
-const WalletProviderInner: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [wallet, setWallet] = useState<any | null>(null)
   const [connecting, setConnecting] = useState(false)
   const [connected, setConnected] = useState(false)
   const [publicKey, setPublicKey] = useState<string | null>(null)
-  
-  // Get auth hooks from Futureverse
-  const { signIn, signOut, userSession } = useAuth()
 
   useEffect(() => {
-    // Check if user is already authenticated
-    if (userSession) {
-      setConnected(true)
-      // Try to get EOA address if available
-      setPublicKey(userSession.eoa || userSession.futurepass || null)
-      console.log("User session found:", userSession)
-    } else {
-      setConnected(false)
-      setPublicKey(null)
+    const checkForPhantom = async () => {
+      try {
+        // Check if window is defined (browser environment)
+        if (typeof window !== 'undefined') {
+          // Check if Phantom is installed
+          const phantom = window.solana
+          
+          if (phantom) {
+            setWallet(phantom)
+            
+            // Check if already connected
+            if (phantom.isConnected) {
+              const key = phantom.publicKey?.toString()
+              setConnected(true)
+              setPublicKey(key || null)
+            }
+            
+            // Handle connection change events
+            phantom.on('connect', () => {
+              const key = phantom.publicKey?.toString()
+              setConnected(true)
+              setPublicKey(key || null)
+              setConnecting(false)
+            })
+            
+            phantom.on('disconnect', () => {
+              setConnected(false)
+              setPublicKey(null)
+            })
+          }
+        }
+      } catch (error) {
+        console.error("Error checking for Phantom wallet:", error)
+      }
     }
-  }, [userSession])
+    
+    // Only run in browser
+    if (typeof window !== 'undefined') {
+      checkForPhantom()
+    }
+    
+    return () => {
+      // Clean up listeners if needed
+      if (wallet) {
+        wallet.off('connect')
+        wallet.off('disconnect')
+      }
+    }
+  }, [])
 
   const connectWallet = async () => {
     try {
+      if (!wallet) {
+        window.open('https://phantom.app/', '_blank')
+        return
+      }
+      
       setConnecting(true)
       
-      // Use Futureverse Auth sign in with default options
-      await signIn({})
+      // Phantom wallet connection
+      await wallet.connect()
       
-      console.log("Futureverse Auth sign in initiated")
     } catch (error) {
-      console.error("Error connecting wallet:", error)
-      // For development, you might want to show a more user-friendly error
-      alert("Failed to connect wallet. Please try again.")
-    } finally {
+      console.error("Error connecting to wallet:", error)
       setConnecting(false)
     }
   }
 
   const disconnectWallet = async () => {
     try {
-      if (signOut) {
-        await signOut()
+      if (wallet) {
+        await wallet.disconnect()
+        setConnected(false)
+        setPublicKey(null)
       }
-      setConnected(false)
-      setPublicKey(null)
-      setWallet(null)
-      console.log("Wallet disconnected")
     } catch (error) {
       console.error("Error disconnecting wallet:", error)
     }
-  }
-
-  // Utility function to get the address to display/use for API calls
-  const getDisplayAddress = (): string => {
-    // Use connected wallet address if available, otherwise use dummy address for demo
-    const DUMMY_ADDRESS = "0x718E2030e82B945b9E39546278a7a30221fC2650"
-    
-    if (connected && publicKey) {
-      return publicKey
-    }
-    
-    // If userSession has EOA or futurepass, use that
-    if (userSession?.eoa) {
-      return userSession.eoa
-    }
-    
-    if (userSession?.futurepass) {
-      return userSession.futurepass
-    }
-    
-    // Fallback to dummy address for demo purposes
-    return DUMMY_ADDRESS
   }
 
   return (
@@ -119,24 +116,11 @@ const WalletProviderInner: React.FC<{ children: React.ReactNode }> = ({ children
         connecting,
         connected,
         publicKey,
-        userSession,
         connectWallet,
-        disconnectWallet,
-        getDisplayAddress
+        disconnectWallet
       }}
     >
       {children}
     </WalletContext.Provider>
-  )
-}
-
-// Main provider that wraps with FutureverseAuthProvider
-export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  return (
-    <FutureverseAuthProvider authClient={authClient}>
-      <WalletProviderInner>
-        {children}
-      </WalletProviderInner>
-    </FutureverseAuthProvider>
   )
 }

@@ -1,14 +1,7 @@
-"use client"
-
-import { useState, useEffect } from "react"
-import { usePathname } from "next/navigation"
-import { DashboardSidebar } from "@/components/dashboard/sidebar"
-import { ConnectWalletButton } from "@/components/ui/connect-wallet-button"
-import { cn } from "@/lib/utils"
-import { WalletProvider } from "@/contexts/WalletContext"
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/ui/theme-provider";
+import { WalletProvider } from "@/contexts/WalletContext";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -21,30 +14,31 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const queryClient = new QueryClient()
+export const metadata: Metadata = {
+  title: "Astra - AI-powered DeFi Trading on Solana",
+  description: "Astra is an intelligent trading assistant that harnesses the power of artificial intelligence and Solana's high-performance blockchain to transform your DeFi experience.",
+};
 
 export default function RootLayout({
   children,
-}: {
-  children: React.ReactNode
-}) {
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
     <html lang="en" suppressHydrationWarning className="scroll-smooth">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <QueryClientProvider client={queryClient}>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange
-          >
-            <WalletProvider>
-              {children}
-            </WalletProvider>
-          </ThemeProvider>
-        </QueryClientProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <WalletProvider>
+            {children}
+          </WalletProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

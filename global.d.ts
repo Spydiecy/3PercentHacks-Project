@@ -1,2 +1,2 @@
-// Import the TRN TypeScript declarations
-/// <reference path="../types/trn.d.ts" />
+// Import the Solana TypeScript declarations
+/// <reference path="../types/solana.d.ts" />
