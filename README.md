@@ -11,7 +11,6 @@ https://astra-ashen-six.vercel.app/
 
 Astra is an intelligent trading assistant that harnesses the power of artificial intelligence and Solana's high-performance blockchain to transform the DeFi experience. As your personal trading copilot, Astra elevates your trading strategy by simplifying complex operations, identifying prime opportunities, and executing transactions with unparalleled efficiency.
 
-Built for the **OKX Solana Accelerate Hackathon 2024**, Astra represents the next generation of DeFi trading platforms, combining cutting-edge AI with seamless blockchain integration.
 
 ## 🚀 Core Features
 
@@ -124,8 +123,6 @@ Maintain optimal asset allocation through intelligent automated adjustments base
 4. **Chat with AI**: Ask questions and get personalized trading insights
 5. **Monitor Markets**: Track real-time price movements and market trends
 
-## 🏆 Hackathon Achievement
-Astra was developed as part of the prestigious OKX Solana Accelerate Hackathon, showcasing innovative solutions in the DeFi space. The project demonstrates the potential of combining AI technology with high-performance blockchain infrastructure to create next-generation trading experiences.
 
 ## 👨‍💻 Developer
 
@@ -143,7 +140,6 @@ Passionate about building the future of decentralized finance through innovative
 - **Solana Foundation** for their revolutionary blockchain infrastructure and developer tools
 - **OKX DEX Team** for their comprehensive trading API ecosystem and liquidity solutions
 - **Phantom Wallet** for their excellent wallet infrastructure and developer support
-- **OKX Solana Accelerate Hackathon** organizers and mentors for their vision and support
 - **Solana Developer Community** for continuous innovation and collaboration
 
 ## 📄 License
