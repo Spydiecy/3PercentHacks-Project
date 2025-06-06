@@ -43,8 +43,8 @@ export default function SwapPage() {
         </div>
       </div>
 
-      <div className="backdrop-blur-sm bg-black/20 border border-white/10 rounded-xl overflow-hidden hover:border-white/20 transition-all">
-        <div className="p-5">
+      <div className="backdrop-blur-sm bg-black/20 border border-white/10 rounded-xl overflow-hidden hover:border-white/20 transition-all hover:shadow-xl">
+        <div className="p-6">
           <div className="flex justify-between items-center mb-2">
             <span className="text-sm text-white/60">From</span>
             <span className="text-sm text-white/60">
@@ -88,13 +88,13 @@ export default function SwapPage() {
           <Button 
             onClick={handleSwapTokens}
             size="icon" 
-            className="rounded-full h-10 w-10 shadow-md bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 border-none"
+            className="rounded-full h-10 w-10 shadow-md bg-white/10 hover:bg-white/15 border border-white/20 hover:border-white/30"
           >
             <ArrowDown className="h-5 w-5 text-white" />
           </Button>
         </div>
         
-        <div className="p-5">
+        <div className="p-6">
           <div className="flex justify-between items-center mb-2">
             <span className="text-sm text-white/60">To</span>
             <span className="text-sm text-white/60">
@@ -126,9 +126,9 @@ export default function SwapPage() {
         </div>
       </div>
       
-      <div className="mt-5 space-y-3">
-        <div className="backdrop-blur-sm bg-black/20 border border-white/10 rounded-xl p-4 hover:border-white/20 transition-all">
-          <div className="flex items-center justify-between mb-3">
+      <div className="mt-6 space-y-4">
+        <div className="backdrop-blur-sm bg-black/20 border border-white/10 rounded-xl p-5 hover:border-white/20 transition-all hover:shadow-xl">
+          <div className="flex items-center justify-between mb-4">
             <span className="text-sm text-white/80 font-medium">Transaction Settings</span>
           </div>
           
@@ -200,7 +200,7 @@ export default function SwapPage() {
       </div>
       
       <Button 
-        className="w-full mt-6 py-6 text-lg gap-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 border-none text-white" 
+        className="w-full mt-6 py-6 text-lg gap-2 bg-white/10 hover:bg-white/15 border border-white/10 hover:border-white/20 text-white shadow-lg backdrop-blur-sm" 
         size="lg"
       >
         <Zap className="h-5 w-5" />

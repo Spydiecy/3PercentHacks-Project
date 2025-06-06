@@ -7,13 +7,16 @@ export default function PortfolioPage() {
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Portfolio</h1>
+        <div>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-white to-white/80 text-transparent bg-clip-text mb-1">Portfolio</h1>
+          <p className="text-white/60">Track and manage your assets</p>
+        </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="gap-2">
+          <Button variant="outline" size="sm" className="gap-2 border-white/20 hover:bg-white/10 text-white">
             <Calendar className="h-4 w-4" />
             Last 30 Days
           </Button>
-          <Button variant="outline" size="sm" className="gap-2">
+          <Button variant="outline" size="sm" className="gap-2 border-white/20 hover:bg-white/10 text-white">
             <Download className="h-4 w-4" />
             Export
           </Button>
@@ -47,28 +50,28 @@ export default function PortfolioPage() {
         />
       </div>
 
-      <div className="bg-card rounded-xl border border-border p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold">Portfolio Breakdown</h2>
-          <Button variant="outline" size="sm">Filter</Button>
+      <div className="backdrop-blur-sm bg-black/20 border border-white/10 rounded-xl p-6 hover:border-white/20 transition-all hover:shadow-xl">
+        <div className="flex justify-between items-center mb-8">
+          <h2 className="text-xl font-bold bg-gradient-to-r from-white to-white/80 text-transparent bg-clip-text">Portfolio Breakdown</h2>
+          <Button variant="outline" size="sm" className="border-white/20 hover:bg-white/10 text-white">Filter</Button>
         </div>
         
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-border">
-                <th className="text-left pb-3">Asset</th>
-                <th className="text-right pb-3">Price</th>
-                <th className="text-right pb-3">Holdings</th>
-                <th className="text-right pb-3">Value</th>
-                <th className="text-right pb-3">24h</th>
-                <th className="text-right pb-3">7d</th>
-                <th className="text-right pb-3"></th>
+              <tr className="border-b border-white/10">
+                <th className="text-left pb-3 text-white/60">Asset</th>
+                <th className="text-right pb-3 text-white/60">Price</th>
+                <th className="text-right pb-3 text-white/60">Holdings</th>
+                <th className="text-right pb-3 text-white/60">Value</th>
+                <th className="text-right pb-3 text-white/60">24h</th>
+                <th className="text-right pb-3 text-white/60">7d</th>
+                <th className="text-right pb-3 text-white/60"></th>
               </tr>
             </thead>
             <tbody>
               {assets.map((asset) => (
-                <tr key={asset.id} className="border-b border-border hover:bg-accent/50">
+                <tr key={asset.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                   <td className="py-4">
                     <div className="flex items-center gap-3">
                       <div className={`w-8 h-8 rounded-full ${asset.bgColor}`}></div>
@@ -98,10 +101,10 @@ export default function PortfolioPage() {
                   </td>
                   <td className="text-right py-4">
                     <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-white/60 hover:text-white hover:bg-white/5">
                         <ArrowUp className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-white/60 hover:text-white hover:bg-white/5">
                         <ArrowDown className="h-4 w-4" />
                       </Button>
                     </div>
@@ -113,9 +116,9 @@ export default function PortfolioPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-card rounded-xl border border-border p-6">
-          <h2 className="text-xl font-bold mb-6">Portfolio Distribution</h2>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
+        <div className="backdrop-blur-sm bg-black/20 border border-white/10 rounded-xl p-6 hover:border-white/20 transition-all hover:shadow-xl">
+          <h2 className="text-xl font-bold bg-gradient-to-r from-white to-white/80 text-transparent bg-clip-text mb-6">Portfolio Distribution</h2>
           <div className="flex items-center justify-center h-64">
             <div className="w-full h-full flex items-center justify-center">
               <div className="relative w-48 h-48">
@@ -128,10 +131,9 @@ export default function PortfolioPage() {
                       opacity: 0.8 
                     }}
                   ></div>
-                ))}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="bg-background w-24 h-24 rounded-full flex items-center justify-center">
-                    <p className="text-xl font-bold">{assets.length}</p>
+                ))}                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="bg-black/40 w-24 h-24 rounded-full flex items-center justify-center backdrop-blur-sm border border-white/10">
+                    <p className="text-xl font-bold text-white">{assets.length}</p>
                   </div>
                 </div>
               </div>
@@ -141,28 +143,28 @@ export default function PortfolioPage() {
             {assets.map((asset) => (
               <div key={asset.id} className="flex items-center gap-2">
                 <div className={`w-3 h-3 rounded-full ${asset.bgColor}`}></div>
-                <span className="text-sm">{asset.symbol} ({asset.percentage}%)</span>
+                <span className="text-sm text-white/80">{asset.symbol} ({asset.percentage}%)</span>
               </div>
             ))}
           </div>
         </div>
-
-        <div className="bg-card rounded-xl border border-border p-6">
-          <h2 className="text-xl font-bold mb-6">Performance</h2>
+        
+        <div className="backdrop-blur-sm bg-black/20 border border-white/10 rounded-xl p-6 hover:border-white/20 transition-all hover:shadow-xl">
+          <h2 className="text-xl font-bold bg-gradient-to-r from-white to-white/80 text-transparent bg-clip-text mb-6">Performance</h2>
           <div className="h-64 flex items-center justify-center">
             <div className="w-full h-full flex flex-col items-center justify-center">
-              <TrendingUp className="h-12 w-12 text-primary mb-4" />
-              <p className="text-center">Portfolio performance chart will be displayed here</p>
-              <p className="text-sm text-muted-foreground text-center mt-2">Showing historical data and AI-powered predictions</p>
+              <TrendingUp className="h-12 w-12 text-white/80 mb-4" />
+              <p className="text-center text-white/90">Portfolio performance chart will be displayed here</p>
+              <p className="text-sm text-white/60 text-center mt-2">Showing historical data and AI-powered predictions</p>
             </div>
           </div>
           <div className="flex gap-2 mt-4">
-            <Button variant="outline" size="sm">1D</Button>
-            <Button variant="outline" size="sm">1W</Button>
-            <Button variant="outline" size="sm">1M</Button>
-            <Button variant="outline" size="sm">3M</Button>
-            <Button variant="outline" size="sm">1Y</Button>
-            <Button variant="outline" size="sm">All</Button>
+            <Button variant="outline" size="sm" className="border-white/20 hover:bg-white/10 text-white">1D</Button>
+            <Button variant="outline" size="sm" className="border-white/20 bg-white/10 text-white">1W</Button>
+            <Button variant="outline" size="sm" className="border-white/20 hover:bg-white/10 text-white">1M</Button>
+            <Button variant="outline" size="sm" className="border-white/20 hover:bg-white/10 text-white">3M</Button>
+            <Button variant="outline" size="sm" className="border-white/20 hover:bg-white/10 text-white">1Y</Button>
+            <Button variant="outline" size="sm" className="border-white/20 hover:bg-white/10 text-white">All</Button>
           </div>
         </div>
       </div>
@@ -179,11 +181,11 @@ interface PortfolioCardProps {
 
 function PortfolioCard({ title, value, change, trend }: PortfolioCardProps) {
   return (
-    <div className="bg-card rounded-xl border border-border p-6">
-      <p className="text-sm text-muted-foreground">{title}</p>
-      <p className="text-2xl font-bold mt-1">{value}</p>
+    <div className="backdrop-blur-sm bg-black/20 border border-white/10 rounded-xl p-6 hover:border-white/20 transition-all hover:shadow-xl">
+      <p className="text-sm text-white/60">{title}</p>
+      <p className="text-2xl font-bold mt-1 text-white">{value}</p>
       <div className="flex items-center mt-1">
-        <span className={`text-xs ${trend === "up" ? "text-green-500" : "text-red-500"}`}>
+        <span className={`text-xs ${trend === "up" ? "text-emerald-400" : "text-rose-400"}`}>
           {change}
         </span>
       </div>
@@ -202,7 +204,7 @@ const assets = [
     change24h: "+3.2%",
     change7d: "+15.7%",
     percentage: 33.5,
-    bgColor: "bg-gradient-to-r from-purple-500 to-blue-500"
+    bgColor: "bg-white/30"
   },
   {
     id: "2",
@@ -214,7 +216,7 @@ const assets = [
     change24h: "+0.01%",
     change7d: "+0.02%",
     percentage: 26.3,
-    bgColor: "bg-blue-500"
+    bgColor: "bg-white/25"
   },
   {
     id: "3",
@@ -226,7 +228,7 @@ const assets = [
     change24h: "+12.4%",
     change7d: "-8.3%",
     percentage: 4.2,
-    bgColor: "bg-yellow-500"
+    bgColor: "bg-white/20"
   },
   {
     id: "4",
@@ -238,7 +240,7 @@ const assets = [
     change24h: "+1.2%",
     change7d: "+4.5%",
     percentage: 23.8,
-    bgColor: "bg-purple-700"
+    bgColor: "bg-white/15"
   },
   {
     id: "5",
@@ -250,7 +252,7 @@ const assets = [
     change24h: "-2.3%",
     change7d: "+21.6%",
     percentage: 8.8,
-    bgColor: "bg-orange-500"
+    bgColor: "bg-white/10"
   },
   {
     id: "6",
@@ -262,6 +264,6 @@ const assets = [
     change24h: "+0.01%",
     change7d: "-0.01%",
     percentage: 3.4,
-    bgColor: "bg-green-500"
+    bgColor: "bg-white/5"
   }
 ]
