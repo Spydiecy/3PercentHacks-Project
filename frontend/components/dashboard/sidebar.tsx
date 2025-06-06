@@ -7,9 +7,9 @@ import {
   BarChart2, 
   MessageSquare, 
   ArrowLeftRight, 
-  Wallet, 
   Settings, 
-  Home
+  Home,
+  ArrowLeft
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -41,11 +41,6 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
       label: "Portfolio",
       icon: BarChart2,
       href: "/dashboard/portfolio"
-    },
-    {
-      label: "Wallet",
-      icon: Wallet,
-      href: "/dashboard/wallet"
     },
     {
       label: "Settings",
@@ -106,21 +101,21 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
         </div>
         
         <div className="p-4 border-t border-white/10">
-          <div className={cn(
+          <Link href="/" className={cn(
             "flex items-center px-3 py-3 text-sm text-white/60 rounded-lg transition-all duration-200 hover:bg-white/5 cursor-pointer group relative", 
             !open && "justify-center"
           )}>
             <div className="h-8 w-8 rounded-full bg-gradient-to-br from-white/20 to-white/5 flex items-center justify-center shadow-inner">
-              <span className="text-xs font-medium text-white/90">AS</span>
+              <ArrowLeft className="h-4 w-4 text-white/90" />
             </div>
-            {open && <span className="ml-3">Account</span>}
+            {open && <span className="ml-3">Back to Home</span>}
             
             {!open && (
               <div className="absolute left-full ml-2 rounded-md px-2 py-1 bg-black/80 text-xs text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                Account
+                Back to Home
               </div>
             )}
-          </div>
+          </Link>
         </div>
       </div>
     </div>

@@ -1,7 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { ArrowRight, Zap, LineChart, MessageCircle, ArrowLeftRight, Sparkles, TrendingUp, CreditCard } from "lucide-react"
+import { ArrowRight, Zap, LineChart, MessageCircle, ArrowLeftRight, Sparkles, TrendingUp, CreditCard, Settings } from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
 
@@ -263,10 +263,10 @@ const quickActions = [
     gradientTo: "#EF4444"
   },
   {
-    id: "transfer",
-    label: "Transfer",
-    icon: Zap,
-    href: "/dashboard/wallet",
+    id: "settings",
+    label: "Settings",
+    icon: Settings,
+    href: "/dashboard/settings",
     gradientFrom: "#10B981",
     gradientTo: "#059669"
   }
