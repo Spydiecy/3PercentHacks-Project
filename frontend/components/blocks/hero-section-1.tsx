@@ -6,6 +6,7 @@ import { ArrowRight, ChevronRight, Menu, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AnimatedGroup } from '@/components/ui/animated-group'
 import { cn } from '@/lib/utils'
+import { TestimonialsSection } from "@/components/blocks/testimonials-with-marquee"
 
 const transitionVariants = {
     item: {
@@ -518,95 +519,99 @@ export function HeroSection() {
                     </div>
                 </section>
                 
-                <section className="bg-background pb-16 pt-16 md:pb-32">
-                    <div className="group relative m-auto max-w-5xl px-6">
-                        <div className="absolute inset-0 z-10 flex scale-95 items-center justify-center opacity-0 duration-500 group-hover:scale-100 group-hover:opacity-100">
-                            <Link
-                                href="/"
-                                className="block text-sm duration-150 hover:opacity-75">
-                                <span> Meet Our Customers</span>
-
-                                <ChevronRight className="ml-1 inline-block size-3" />
-                            </Link>
+                {/* Testimonials Section */}
+                <TestimonialsSection
+                  title="Trusted by traders worldwide"
+                  description="Join thousands of traders who are already building the future with our AI-powered DeFi platform"
+                  testimonials={[
+                    {
+                      author: {
+                        name: "Emma Thompson",
+                        handle: "@emmaai",
+                        avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&crop=face"
+                      },
+                      text: "Using Astra has transformed how we handle DeFi trading. The speed and accuracy of the AI recommendations are unprecedented.",
+                      href: "https://twitter.com/emmaai"
+                    },
+                    {
+                      author: {
+                        name: "David Park",
+                        handle: "@davidtech",
+                        avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face"
+                      },
+                      text: "The multi-DEX integration is flawless. I've reduced my transaction costs by 60% since implementing Astra for my trades.",
+                      href: "https://twitter.com/davidtech"
+                    },
+                    {
+                      author: {
+                        name: "Sofia Rodriguez",
+                        handle: "@sofiaml",
+                        avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop&crop=face"
+                      },
+                      text: "Finally, a trading tool that actually understands market context! The accuracy in sentiment analysis is impressive."
+                    }
+                  ]}
+                />
+                
+                {/* Footer */}
+                <footer className="bg-background border-t py-12 md:py-16">
+                    <div className="mx-auto max-w-7xl px-6">
+                        <div className="grid gap-8 md:grid-cols-4">
+                            <div className="md:col-span-2">
+                                <Logo className="mb-4" />
+                                <p className="mb-4 max-w-xs text-muted-foreground">
+                                    Your AI-powered copilot for DeFi trading on Solana. Enhancing trading efficiency through advanced algorithms.
+                                </p>
+                                <div className="flex space-x-4">
+                                    <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide">
+                                            <path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"/>
+                                        </svg>
+                                    </a>
+                                    <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide">
+                                            <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/>
+                                            <rect width="4" height="12" x="2" y="9"/>
+                                            <circle cx="4" cy="4" r="2"/>
+                                        </svg>
+                                    </a>
+                                    <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide">
+                                            <path d="M12 2H2v10h10V2Z"/>
+                                            <path d="M22 12H12v10h10V12Z"/>
+                                            <path d="M22 2h-8v8h8V2Z"/>
+                                        </svg>
+                                    </a>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <h3 className="mb-3 text-sm font-semibold">Platform</h3>
+                                <ul className="space-y-2 text-sm">
+                                    <li><a href="#features" className="text-muted-foreground hover:text-foreground transition-colors">Features</a></li>
+                                    <li><a href="#pricing" className="text-muted-foreground hover:text-foreground transition-colors">Pricing</a></li>
+                                    <li><a href="#about" className="text-muted-foreground hover:text-foreground transition-colors">About</a></li>
+                                    <li><a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Documentation</a></li>
+                                </ul>
+                            </div>
+                            
+                            <div>
+                                <h3 className="mb-3 text-sm font-semibold">Legal</h3>
+                                <ul className="space-y-2 text-sm">
+                                    <li><a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Privacy Policy</a></li>
+                                    <li><a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Terms of Service</a></li>
+                                    <li><a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Cookie Policy</a></li>
+                                </ul>
+                            </div>
                         </div>
-                        <div className="group-hover:blur-xs mx-auto mt-12 grid max-w-2xl grid-cols-4 gap-x-12 gap-y-8 transition-all duration-500 group-hover:opacity-50 sm:gap-x-16 sm:gap-y-14">
-                            <div className="flex">
-                                <img
-                                    className="mx-auto h-5 w-fit dark:invert"
-                                    src="https://html.tailus.io/blocks/customers/nvidia.svg"
-                                    alt="Nvidia Logo"
-                                    height="20"
-                                    width="auto"
-                                />
-                            </div>
-
-                            <div className="flex">
-                                <img
-                                    className="mx-auto h-4 w-fit dark:invert"
-                                    src="https://html.tailus.io/blocks/customers/column.svg"
-                                    alt="Column Logo"
-                                    height="16"
-                                    width="auto"
-                                />
-                            </div>
-                            <div className="flex">
-                                <img
-                                    className="mx-auto h-4 w-fit dark:invert"
-                                    src="https://html.tailus.io/blocks/customers/github.svg"
-                                    alt="GitHub Logo"
-                                    height="16"
-                                    width="auto"
-                                />
-                            </div>
-                            <div className="flex">
-                                <img
-                                    className="mx-auto h-5 w-fit dark:invert"
-                                    src="https://html.tailus.io/blocks/customers/nike.svg"
-                                    alt="Nike Logo"
-                                    height="20"
-                                    width="auto"
-                                />
-                            </div>
-                            <div className="flex">
-                                <img
-                                    className="mx-auto h-5 w-fit dark:invert"
-                                    src="https://html.tailus.io/blocks/customers/lemonsqueezy.svg"
-                                    alt="Lemon Squeezy Logo"
-                                    height="20"
-                                    width="auto"
-                                />
-                            </div>
-                            <div className="flex">
-                                <img
-                                    className="mx-auto h-4 w-fit dark:invert"
-                                    src="https://html.tailus.io/blocks/customers/laravel.svg"
-                                    alt="Laravel Logo"
-                                    height="16"
-                                    width="auto"
-                                />
-                            </div>
-                            <div className="flex">
-                                <img
-                                    className="mx-auto h-7 w-fit dark:invert"
-                                    src="https://html.tailus.io/blocks/customers/lilly.svg"
-                                    alt="Lilly Logo"
-                                    height="28"
-                                    width="auto"
-                                />
-                            </div>
-
-                            <div className="flex">
-                                <img
-                                    className="mx-auto h-6 w-fit dark:invert"
-                                    src="https://html.tailus.io/blocks/customers/openai.svg"
-                                    alt="OpenAI Logo"
-                                    height="24"
-                                    width="auto"
-                                />
-                            </div>
+                        
+                        <div className="mt-10 border-t pt-6">
+                            <p className="text-center text-xs text-muted-foreground">
+                                © {new Date().getFullYear()} Astra. All rights reserved. Developed for the OKX Solana Accelerate Hackathon 2025.
+                            </p>
                         </div>
                     </div>
-                </section>
+                </footer>
             </main>
         </>
     )
@@ -700,34 +705,10 @@ const HeroHeader = () => {
 
 const Logo = ({ className }: { className?: string }) => {
     return (
-        <svg
-            viewBox="0 0 78 18"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            className={cn('h-5 w-auto', className)}>
-            <path
-                d="M3 0H5V18H3V0ZM13 0H15V18H13V0ZM18 3V5H0V3H18ZM0 15V13H18V15H0Z"
-                fill="url(#logo-gradient)"
-            />
-            <path
-                d="M27.06 7.054V12.239C27.06 12.5903 27.1393 12.8453 27.298 13.004C27.468 13.1513 27.7513 13.225 28.148 13.225H29.338V14.84H27.808C26.9353 14.84 26.2667 14.636 25.802 14.228C25.3373 13.82 25.105 13.157 25.105 12.239V7.054H24V5.473H25.105V3.144H27.06V5.473H29.338V7.054H27.06ZM30.4782 10.114C30.4782 9.17333 30.7322 8.34033 31.2402 7.615C31.7482 6.88967 32.3942 6.32867 33.1782 5.932C33.9622 5.524 34.8142 5.32 35.7342 5.32C36.9262 5.32 37.9252 5.626 38.7312 6.238C39.5482 6.85 40.0562 7.70133 40.2552 8.793H38.1452C38.0252 8.26167 37.7642 7.836 37.3622 7.513C36.9602 7.17867 36.4182 7.003 35.7362 7.003C34.8162 7.003 34.0662 7.32133 33.4862 7.957C32.9062 8.58133 32.6162 9.43 32.6162 10.503C32.6162 11.5647 32.9062 12.4077 33.4862 13.032C34.0662 13.6563 34.8162 13.969 35.7362 13.969C36.4182 13.969 36.9602 13.7933 37.3622 13.459C37.7756 13.1247 38.0366 12.6753 38.1452 12.121H40.2552C40.0562 13.1357 39.5482 13.9527 38.7312 14.568C37.9142 15.1833 36.9152 15.491 35.7342 15.491C34.8142 15.491 33.9622 15.287 33.1782 14.879C32.3942 14.471 31.7482 13.8987 31.2402 13.165C30.7322 12.4313 30.4782 11.5533 30.4782 10.5795V10.114ZM41.9071 10.114C41.9071 9.17333 42.0998 8.34033 42.4851 7.615C42.8818 6.88967 43.4144 6.32867 44.0831 5.932C44.7631 5.524 45.5111 5.32 46.3271 5.32C47.0638 5.32 47.7041 5.46733 48.2481 5.762C48.8034 6.04533 49.2454 6.40233 49.5741 6.833V5.473H51.5291V14.84H49.5741V13.446C49.2454 13.888 48.7978 14.2563 48.2311 14.551C47.6644 14.8457 47.0184 14.993 46.2931 14.993C45.4884 14.993 44.7518 14.789 44.0831 14.381C43.4144 13.9617 42.8818 13.3837 42.4851 12.647C42.0998 11.899 41.9071 11.0547 41.9071 10.114ZM49.5741 10.148C49.5741 9.502 49.4381 8.941 49.1661 8.465C48.9054 7.989 48.5598 7.62633 48.1291 7.377C47.6984 7.12767 47.2338 7.003 46.7351 7.003C46.2364 7.003 45.7718 7.12767 45.3411 7.377C44.9104 7.615 44.5591 7.972 44.2871 8.448C44.0264 8.91267 43.8961 9.468 43.8961 10.114C43.8961 10.76 44.0264 11.3267 44.2871 11.814C44.5591 12.3013 44.9104 12.6753 45.3411 12.936C45.7831 13.1853 46.2478 13.31 46.7351 13.31C47.2338 13.31 47.6984 13.1853 48.1291 12.936C48.5598 12.6867 48.9054 12.324 49.1661 11.848C49.4381 11.3607 49.5741 10.794 49.5741 10.148ZM59.1156 5.728C59.7046 6.088 60.1066 6.57433 60.3216 7.174H60.3556V5.473H62.3106V14.84H60.3556V9.57C60.3556 8.82467 60.1973 8.25233 59.8806 7.853C59.5639 7.45367 59.0936 7.254 58.4696 7.254C57.8456 7.254 57.3696 7.45367 57.0416 7.853C56.7249 8.25233 56.5666 8.82467 56.5666 9.57V14.84H54.6116V5.473H56.5666V6.68C56.7703 6.26667 57.0699 5.94233 57.4666 5.711C57.8746 5.47967 58.3676 5.354 58.9576 5.32C59.0323 5.32 59.0746 5.32 59.0846 5.32C59.0946 5.32 59.1056 5.32 59.1156 5.32V5.728ZM68.3864 15.491C67.5704 15.491 66.8338 15.287 66.1764 14.879C65.5191 14.4597 65.0034 13.871 64.6294 13.114C64.2554 12.3457 64.0684 11.4673 64.0684 10.478C64.0684 9.48867 64.2554 8.61033 64.6294 7.836C65.0034 7.062 65.5191 6.46767 66.1764 6.053C66.8451 5.626 67.5931 5.422 68.4204 5.422C68.9984 5.422 69.5311 5.51233 70.0184 5.694C70.5171 5.86433 70.9534 6.12633 71.3274 6.476C71.7128 6.82567 72.0181 7.25033 72.2434 7.751C72.4801 8.25167 72.5984 8.82967 72.5984 9.485V10.165H65.4294V10.267C65.4634 10.777 65.5988 11.236 65.8368 11.644C66.0748 12.0407 66.3858 12.3523 66.7714 12.579C67.1684 12.8057 67.6048 12.919 68.0804 12.919C68.6024 12.919 69.0784 12.802 69.5084 12.563C69.9504 12.3127 70.2614 11.9557 70.4424 11.491H72.3974C72.1708 12.443 71.6608 13.2033 70.8774 13.769C70.1068 14.3233 69.1531 14.6123 68.0124 14.652C67.9944 14.6633 67.9374 14.6747 67.8404 14.686C67.7548 14.686 67.6331 14.686 67.4748 14.686C67.3278 14.6973 67.1911 14.7143 67.0668 14.737C66.9538 14.7597 66.8621 14.7823 66.7884 14.805L65.3431 15.491H68.3864Z"
-                fill="currentColor"
-            />
-            <defs>
-                <linearGradient
-                    id="logo-gradient"
-                    x1="10"
-                    y1="0"
-                    x2="10"
-                    y2="20"
-                    gradientUnits="userSpaceOnUse">
-                    <stop stopColor="#9B99FE" />
-                    <stop
-                        offset="1"
-                        stopColor="#2BC8B7"
-                    />
-                </linearGradient>
-            </defs>
-        </svg>
+        <div className={cn('flex items-center gap-2', className)}>
+            <div className="font-bold text-xl bg-gradient-to-b from-white to-gray-400 bg-clip-text text-transparent dark:from-white dark:to-gray-400">
+                ASTRA
+            </div>
+        </div>
     )
 }
