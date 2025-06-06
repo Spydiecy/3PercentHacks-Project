@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Send, Bot, User, Zap, ArrowDown, RefreshCw } from "lucide-react"
+import { Send, Bot, User, Zap, ArrowDown, RefreshCw, Sparkles } from "lucide-react"
 
 export default function AiChatPage() {
   const [messages, setMessages] = useState<Message[]>([
@@ -32,36 +32,45 @@ export default function AiChatPage() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-2rem)]">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-3xl font-bold">AI Assistant</h1>
-        <Button variant="outline" size="sm" className="gap-1">
+    <div className="flex flex-col h-[calc(100vh-6rem)]">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-white to-white/80 text-transparent bg-clip-text mb-1">AI Assistant</h1>
+          <p className="text-white/60">Powered by advanced language models</p>
+        </div>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="gap-1 border-white/20 hover:bg-white/10 text-white"
+        >
           <RefreshCw className="h-4 w-4" /> New Chat
         </Button>
       </div>
 
-      <div className="flex-1 overflow-y-auto bg-card rounded-xl border border-border mb-4 p-4">
+      <div className="flex-1 overflow-y-auto backdrop-blur-sm bg-black/20 border border-white/10 rounded-xl mb-4 p-6 hover:border-white/20 transition-all">
         {messages.map((message, index) => (
           <div 
             key={index}
             className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} mb-4`}
           >
             <div className={`flex max-w-[80%] ${message.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
-              <div className={`rounded-full h-8 w-8 flex items-center justify-center ${
-                message.role === "user" ? "bg-primary ml-2" : "bg-violet-500/80 mr-2"
+              <div className={`rounded-full h-9 w-9 flex items-center justify-center ${
+                message.role === "user" 
+                  ? "bg-gradient-to-r from-blue-500 to-indigo-600 ml-2" 
+                  : "bg-gradient-to-r from-violet-600 to-purple-600 mr-2"
               }`}>
                 {message.role === "user" ? (
-                  <User className="h-4 w-4 text-primary-foreground" />
+                  <User className="h-4 w-4 text-white" />
                 ) : (
-                  <Bot className="h-4 w-4 text-white" />
+                  <Sparkles className="h-4 w-4 text-white" />
                 )}
               </div>
-              <div className={`p-3 rounded-lg ${
+              <div className={`py-3 px-4 rounded-2xl ${
                 message.role === "user" 
-                  ? "bg-primary text-primary-foreground" 
-                  : "bg-accent"
+                  ? "bg-gradient-to-r from-blue-500/20 to-indigo-600/20 border border-blue-500/20" 
+                  : "bg-gradient-to-r from-violet-600/20 to-purple-600/20 border border-violet-600/20"
               }`}>
-                <p>{message.content}</p>
+                <p className="text-white/90">{message.content}</p>
               </div>
             </div>
           </div>
@@ -69,14 +78,14 @@ export default function AiChatPage() {
         {loading && (
           <div className="flex justify-start mb-4">
             <div className="flex flex-row">
-              <div className="rounded-full h-8 w-8 flex items-center justify-center bg-violet-500/80 mr-2">
-                <Bot className="h-4 w-4 text-white" />
+              <div className="rounded-full h-9 w-9 flex items-center justify-center bg-gradient-to-r from-violet-600 to-purple-600 mr-2">
+                <Sparkles className="h-4 w-4 text-white" />
               </div>
-              <div className="p-3 rounded-lg bg-accent">
-                <div className="flex space-x-1">
-                  <div className="h-2 w-2 bg-muted-foreground rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                  <div className="h-2 w-2 bg-muted-foreground rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                  <div className="h-2 w-2 bg-muted-foreground rounded-full animate-bounce"></div>
+              <div className="py-3 px-4 rounded-2xl bg-gradient-to-r from-violet-600/20 to-purple-600/20 border border-violet-600/20">
+                <div className="flex space-x-2">
+                  <div className="h-2 w-2 bg-white/40 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                  <div className="h-2 w-2 bg-white/40 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                  <div className="h-2 w-2 bg-white/40 rounded-full animate-bounce"></div>
                 </div>
               </div>
             </div>
@@ -85,38 +94,45 @@ export default function AiChatPage() {
       </div>
 
       <div className="relative">
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
-          placeholder="Ask Astra AI about DeFi strategies, market analysis, or trading tips..."
-          className="w-full py-3 px-4 bg-card border border-border rounded-lg pr-24 focus:outline-none focus:ring-2 focus:ring-primary/50"
-        />
-        <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex space-x-1">
-          <Button 
-            size="sm" 
-            variant="ghost" 
-            className="h-8 w-8 p-0 rounded-full"
-          >
-            <Zap className="h-4 w-4 text-yellow-500" />
-          </Button>
-          <Button 
-            size="sm" 
-            className="h-8 px-3"
-            onClick={handleSendMessage}
-            disabled={!input.trim()}
-          >
-            <Send className="h-4 w-4" />
-          </Button>
+        <div className="backdrop-blur-md bg-black/30 border border-white/10 rounded-xl overflow-hidden">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
+            placeholder="Ask Astra AI about DeFi strategies, market analysis, or trading tips..."
+            className="w-full py-4 px-4 bg-transparent border-none pr-24 focus:outline-none text-white placeholder:text-white/40"
+          />
+          <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex space-x-2">
+            <Button 
+              size="sm" 
+              variant="ghost" 
+              className="h-8 w-8 p-0 rounded-full text-yellow-400 hover:bg-white/10"
+            >
+              <Zap className="h-4 w-4" />
+            </Button>
+            <Button 
+              size="sm"
+              className="h-8 px-3 bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-500 hover:to-blue-500 border-none text-white"
+              onClick={handleSendMessage}
+              disabled={!input.trim()}
+            >
+              <Send className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
 
-      <div className="mt-3 flex flex-wrap gap-2">
-        <SuggestionButton text="How does Astra's AI trading work?" />
-        <SuggestionButton text="Explain the current SOL market conditions" />
-        <SuggestionButton text="What's the best DeFi strategy for beginners?" />
-        <SuggestionButton text="How to minimize transaction fees?" />
+      <div className="mt-4 flex flex-wrap gap-2">
+        {suggestions.map((suggestion, index) => (
+          <button 
+            key={index}
+            onClick={() => setInput(suggestion)}
+            className="backdrop-blur-sm bg-white/5 text-sm py-2 px-4 rounded-full hover:bg-white/10 transition-colors border border-white/10 text-white"
+          >
+            {suggestion}
+          </button>
+        ))}
       </div>
     </div>
   )
@@ -127,10 +143,9 @@ interface Message {
   content: string
 }
 
-function SuggestionButton({ text }: { text: string }) {
-  return (
-    <button className="bg-accent text-sm py-1 px-3 rounded-full hover:bg-accent/80 transition-colors">
-      {text}
-    </button>
-  )
-}
+const suggestions = [
+  "How does Astra's AI trading work?",
+  "Explain the current SOL market conditions",
+  "What's the best DeFi strategy for beginners?",
+  "How to minimize transaction fees?"
+]
