@@ -47,7 +47,7 @@ export default function AiChatPage() {
         </Button>
       </div>
 
-      <div className="flex-1 overflow-y-auto backdrop-blur-sm bg-black/20 border border-white/10 rounded-xl mb-4 p-6 hover:border-white/20 transition-all">
+      <div className="flex-1 overflow-y-auto backdrop-blur-sm bg-black/20 border border-white/10 rounded-xl mb-4 p-6 hover:border-white/20 transition-all hover:shadow-xl">
         {messages.map((message, index) => (
           <div 
             key={index}
@@ -56,19 +56,19 @@ export default function AiChatPage() {
             <div className={`flex max-w-[80%] ${message.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
               <div className={`rounded-full h-9 w-9 flex items-center justify-center ${
                 message.role === "user" 
-                  ? "bg-gradient-to-r from-blue-500 to-indigo-600 ml-2" 
-                  : "bg-gradient-to-r from-violet-600 to-purple-600 mr-2"
+                  ? "bg-white/10 ml-2 border border-white/10" 
+                  : "bg-white/10 mr-2 border border-white/10"
               }`}>
                 {message.role === "user" ? (
-                  <User className="h-4 w-4 text-white" />
+                  <User className="h-4 w-4 text-white/80" />
                 ) : (
-                  <Sparkles className="h-4 w-4 text-white" />
+                  <Bot className="h-4 w-4 text-white/80" />
                 )}
               </div>
               <div className={`py-3 px-4 rounded-2xl ${
                 message.role === "user" 
-                  ? "bg-gradient-to-r from-blue-500/20 to-indigo-600/20 border border-blue-500/20" 
-                  : "bg-gradient-to-r from-violet-600/20 to-purple-600/20 border border-violet-600/20"
+                  ? "bg-white/5 border border-white/10" 
+                  : "bg-black/30 border border-white/10"
               }`}>
                 <p className="text-white/90">{message.content}</p>
               </div>
@@ -78,10 +78,10 @@ export default function AiChatPage() {
         {loading && (
           <div className="flex justify-start mb-4">
             <div className="flex flex-row">
-              <div className="rounded-full h-9 w-9 flex items-center justify-center bg-gradient-to-r from-violet-600 to-purple-600 mr-2">
-                <Sparkles className="h-4 w-4 text-white" />
+              <div className="rounded-full h-9 w-9 flex items-center justify-center bg-white/10 mr-2 border border-white/10">
+                <Bot className="h-4 w-4 text-white/80" />
               </div>
-              <div className="py-3 px-4 rounded-2xl bg-gradient-to-r from-violet-600/20 to-purple-600/20 border border-violet-600/20">
+              <div className="py-3 px-4 rounded-2xl bg-black/30 border border-white/10">
                 <div className="flex space-x-2">
                   <div className="h-2 w-2 bg-white/40 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
                   <div className="h-2 w-2 bg-white/40 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
@@ -107,13 +107,13 @@ export default function AiChatPage() {
             <Button 
               size="sm" 
               variant="ghost" 
-              className="h-8 w-8 p-0 rounded-full text-yellow-400 hover:bg-white/10"
+              className="h-8 w-8 p-0 rounded-full text-white/60 hover:bg-white/10 hover:text-white/80"
             >
               <Zap className="h-4 w-4" />
             </Button>
             <Button 
               size="sm"
-              className="h-8 px-3 bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-500 hover:to-blue-500 border-none text-white"
+              className="h-8 px-3 bg-white/10 hover:bg-white/15 border border-white/10 text-white hover:border-white/20"
               onClick={handleSendMessage}
               disabled={!input.trim()}
             >
@@ -128,7 +128,7 @@ export default function AiChatPage() {
           <button 
             key={index}
             onClick={() => setInput(suggestion)}
-            className="backdrop-blur-sm bg-white/5 text-sm py-2 px-4 rounded-full hover:bg-white/10 transition-colors border border-white/10 text-white"
+            className="backdrop-blur-sm bg-white/5 text-sm py-2 px-4 rounded-full hover:bg-white/10 transition-colors border border-white/10 text-white/80 hover:text-white hover:border-white/20"
           >
             {suggestion}
           </button>

@@ -16,16 +16,16 @@ export default function DashboardPage() {
           <p className="text-white/60">Your DeFi portfolio is performing well today</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {dashboardCards.map((card) => (
             <div 
               key={card.id}
               className="relative group"
             >
-              <div className="absolute inset-0 bg-gradient-to-r rounded-xl blur-sm opacity-30 group-hover:opacity-40 transition-opacity"
+              <div className="absolute inset-0 bg-gradient-to-r rounded-xl blur-sm opacity-20 group-hover:opacity-30 transition-opacity"
                 style={{ backgroundImage: `linear-gradient(to right, ${card.gradientFrom}, ${card.gradientTo})` }}
               ></div>
-              <div className="relative h-full backdrop-blur-sm bg-black/20 border border-white/10 rounded-xl p-6 overflow-hidden group-hover:border-white/20 transition-all">
+              <div className="relative h-full backdrop-blur-sm bg-black/20 border border-white/10 rounded-xl p-6 overflow-hidden group-hover:border-white/20 transition-all group-hover:shadow-xl">
                 <div className="flex justify-between items-start">
                   <div>
                     <p className="text-sm text-white/60">{card.title}</p>
@@ -40,13 +40,13 @@ export default function DashboardPage() {
                       </span>
                     </div>
                   </div>
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/5 backdrop-blur-sm">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/5 backdrop-blur-sm border border-white/5">
                     <card.icon className="h-5 w-5 text-white/80" />
                   </div>
                 </div>
                 
-                {/* Gradient line at bottom */}
-                <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r"
+                {/* Subtle gradient line at bottom */}
+                <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r opacity-60"
                   style={{ backgroundImage: `linear-gradient(to right, ${card.gradientFrom}, ${card.gradientTo})` }}
                 ></div>
               </div>
@@ -55,28 +55,28 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-10">
         <div className="col-span-2">
-          <div className="backdrop-blur-sm bg-black/20 border border-white/10 rounded-xl p-6 h-full relative overflow-hidden group hover:border-white/20 transition-all">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-white">Recent Transactions</h2>
+          <div className="backdrop-blur-sm bg-black/20 border border-white/10 rounded-xl p-6 h-full relative overflow-hidden group hover:border-white/20 transition-all hover:shadow-xl">
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-xl font-bold bg-gradient-to-r from-white to-white/80 text-transparent bg-clip-text">Recent Transactions</h2>
               <Link href="/dashboard/transactions">
                 <Button variant="ghost" size="sm" className="gap-1 text-white/80 hover:text-white hover:bg-white/10">
                   View All <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
             </div>
-            <div className="space-y-4">
+            <div className="space-y-5">
               {recentTransactions.map((transaction) => (
                 <div 
                   key={transaction.id} 
-                  className="flex justify-between items-center p-3 hover:bg-white/5 rounded-lg transition-colors"
+                  className="flex justify-between items-center p-4 hover:bg-white/5 rounded-lg transition-colors border border-transparent hover:border-white/5"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-full ${
+                  <div className="flex items-center gap-4">
+                    <div className={`p-2.5 rounded-full ${
                       transaction.type === "buy" 
-                        ? "bg-emerald-500/10 text-emerald-500" 
-                        : "bg-rose-500/10 text-rose-500"
+                        ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" 
+                        : "bg-rose-500/10 text-rose-500 border border-rose-500/20"
                     }`}>
                       {transaction.type === "buy" ? "+" : "-"}
                     </div>
@@ -96,9 +96,9 @@ export default function DashboardPage() {
         </div>
 
         <div>
-          <div className="backdrop-blur-sm bg-black/20 border border-white/10 rounded-xl p-6 h-full hover:border-white/20 transition-all">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-white">Quick Actions</h2>
+          <div className="backdrop-blur-sm bg-black/20 border border-white/10 rounded-xl p-6 h-full hover:border-white/20 transition-all hover:shadow-xl">
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-xl font-bold bg-gradient-to-r from-white to-white/80 text-transparent bg-clip-text">Quick Actions</h2>
             </div>
             <div className="grid grid-cols-2 gap-4">
               {quickActions.map((action) => (
@@ -137,9 +137,9 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="backdrop-blur-sm bg-black/20 border border-white/10 rounded-xl p-6 hover:border-white/20 transition-all">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold text-white">Portfolio Overview</h2>
+      <div className="backdrop-blur-sm bg-black/20 border border-white/10 rounded-xl p-6 hover:border-white/20 transition-all hover:shadow-xl">
+        <div className="flex justify-between items-center mb-8">
+          <h2 className="text-xl font-bold bg-gradient-to-r from-white to-white/80 text-transparent bg-clip-text">Portfolio Overview</h2>
           <div className="flex space-x-2">
             <Button variant="outline" size="sm" className="border-white/20 hover:bg-white/10 text-white">1D</Button>
             <Button variant="outline" size="sm" className="border-white/20 bg-white/10 text-white">1W</Button>
@@ -163,19 +163,19 @@ export default function DashboardPage() {
                     d="M0,20 L5,18 L10,22 L15,19 L20,24 L25,22 L30,25 L35,24 L40,26 L45,23 L50,28 L55,26 L60,30 L65,28 L70,32 L75,30 L80,34 L85,32 L90,35 L95,33 L100,38" 
                     fill="none" 
                     stroke="url(#gradient)" 
-                    strokeWidth="0.4"
+                    strokeWidth="0.5"
                   />
                   <defs>
                     <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" stopColor="#8B5CF6" />
-                      <stop offset="100%" stopColor="#3B82F6" />
+                      <stop offset="0%" stopColor="rgba(255, 255, 255, 0.5)" />
+                      <stop offset="100%" stopColor="rgba(255, 255, 255, 0.7)" />
                     </linearGradient>
                   </defs>
                 </svg>
               </div>
               
               {/* Accent point at the end */}
-              <div className="absolute bottom-[38%] right-0 h-2 w-2 rounded-full bg-blue-500"></div>
+              <div className="absolute bottom-[38%] right-0 h-2.5 w-2.5 rounded-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.5)]"></div>
             </div>
             
             <div className="flex justify-between mt-2 text-xs text-white/40">
