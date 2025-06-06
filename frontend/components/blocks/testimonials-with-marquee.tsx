@@ -21,7 +21,7 @@ export function TestimonialsSection({
   className 
 }: TestimonialsSectionProps) {
   return (
-    <section className={cn(
+    <section id="testimonials" className={cn(
       "bg-background text-foreground",
       "py-12 sm:py-24 md:py-32 px-0",
       className
@@ -37,16 +37,25 @@ export function TestimonialsSection({
         </div>
 
         <div className="relative flex w-full flex-col items-center justify-center overflow-hidden">
-          <div className="group flex overflow-hidden p-2 [--gap:1rem] [gap:var(--gap)] flex-row [--duration:40s]">
-            <div className="flex shrink-0 justify-around [gap:var(--gap)] animate-marquee flex-row group-hover:[animation-play-state:paused]">
-              {[...Array(4)].map((_, setIndex) => (
-                testimonials.map((testimonial, i) => (
+          <div className="w-full overflow-hidden">
+            <div className="flex [--gap:1rem] [gap:var(--gap)] [--duration:40s]">
+              <div className="flex shrink-0 justify-around [gap:var(--gap)] animate-marquee flex-row hover:[animation-play-state:paused]">
+                {testimonials.map((testimonial, i) => (
                   <TestimonialCard 
-                    key={`${setIndex}-${i}`}
+                    key={`set1-${i}`}
                     {...testimonial}
                   />
-                ))
-              ))}
+                ))}
+              </div>
+              {/* Duplicate the testimonials for seamless looping */}
+              <div className="flex shrink-0 justify-around [gap:var(--gap)] animate-marquee flex-row hover:[animation-play-state:paused]">
+                {testimonials.map((testimonial, i) => (
+                  <TestimonialCard 
+                    key={`set2-${i}`}
+                    {...testimonial}
+                  />
+                ))}
+              </div>
             </div>
           </div>
 
