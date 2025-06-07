@@ -38,7 +38,7 @@ function createSignature(method: string, request_path: string, params: any) {
 
 function sendGetRequest(request_path: string, params: any): Promise<any> {
   return new Promise((resolve, reject) => {
-    console.log("Get Request function running:::");
+    console.log("Get Request function running:::",params);
 
     // Handle case where params is an array (you only use one object in the array)
     const queryParams = Array.isArray(params) ? params[0] : params;
@@ -64,7 +64,7 @@ function sendGetRequest(request_path: string, params: any): Promise<any> {
       headers: headers
     };
 
-    console.log('My options are:::,......');
+    console.log('My options are::',options);
 
     const req = https.request(options, (res) => {
       let data = '';

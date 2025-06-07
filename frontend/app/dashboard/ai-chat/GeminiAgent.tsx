@@ -19,7 +19,7 @@ When a user query involves:
 - Recent Transaction: return type "recent transaction" with recent trade data.
 - Candlestick data: return type "candlestick" with OHLC data.
 
--if related to Retrieve the total balance of all tokens and DeFi assets under an account. like that return type is return type return type "total_value" with OHLC data.
+-if related to Retrieve the total balance of all tokens and DeFi assets under an account or use says what is the total balance of all the tokens liket that. like that return type is return type return type "total_value" with OHLC data. in this case give token name to "MYS"
 
 --if related to Retrieve the total balance of all tokens and DeFi assets under an account. like that return type is return type "total_token_balance" with OHLC data.
 

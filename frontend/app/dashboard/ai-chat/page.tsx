@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Send, Bot, User, Zap, RefreshCw } from 'lucide-react';
 import { geminiAgent } from "./GeminiAgent";
 import { extractImportantInfoFromData } from "./Gemini2Agent";
+import { useWallet } from "@/contexts/WalletContext";
 
 interface Message {
   role: "user" | "system";
@@ -16,6 +17,7 @@ interface GeminiResponse {
   text?: string;
   type?: string;
   token_name?: string;
+  txHash?:string,
   similar_tokens?: string[];
   [key: string]: any;
 }
@@ -48,7 +50,8 @@ const tokenAddressMap: Record<string, string> = {
   TRON: "TRX", // Tron native token symbol
   SOL: "SOL", // Solana native token symbol
   SUI: "0x2::sui::SUI", // SUI native token ID
-  TON: "TON" // TON native token symbol
+  TON: "TON" ,// TON native token symbol
+   MYS:"3"
 };
 
 const chainIndexMap:Record<string,String> = {
@@ -78,7 +81,8 @@ const chainIndexMap:Record<string,String> = {
   TRON: "195",
   SOL: "501",
   SUI: "784",
-  TON: "607"
+  TON: "607",
+  MYS:"3"
 };
 
 
@@ -87,7 +91,7 @@ function getTokenContractAddress(tokenName: string): string | null {
 }
 
 // Call your local market data API with POST request
-async function callMarketDataApi(type: string, tokenName: string) {
+async function callMarketDataApi(type: string, tokenName: string,address:string,txHash:string) {
   const tokenContractAddress = getTokenContractAddress(tokenName);
   if (!tokenContractAddress) {
     throw new Error(`Token contract address not found for token: ${tokenName}`);
@@ -95,12 +99,19 @@ async function callMarketDataApi(type: string, tokenName: string) {
 
   let path = "";
   let method="POST"
+  let notReq=false;
   switch (type) {
     case "price":
       path = "/api/v5/dex/market/price";
       break;
+    case "trades": 
+      method="GET"
+      path = "/api/v5/dex/market/trades";
+      break;
     case "candlestick": 
-      path = "/api/v5/dex/candlestick";
+    method="GET"
+    notReq=true;
+      path = "/api/v5/dex/market/candles";
       break;
     case "hist_data": 
     method="GET"
@@ -110,7 +121,9 @@ async function callMarketDataApi(type: string, tokenName: string) {
     method="GET"
       path = "/api/v5/dex/balance/total-value";
       break;
+    case "token_balance":
     case "total_token_balance": 
+
       method="GET"
       path = "/api/v5/dex/balance/all-token-balances-by-address";
       break;
@@ -118,17 +131,20 @@ async function callMarketDataApi(type: string, tokenName: string) {
       path = "/api/v5/dex/balance/token-balances-by-address";
       break;
     case "candlestick_history":
-      path = "/api/v5/dex/candlestick";
+      method="GET"
+      notReq=true;
+      path = "/api/v5/dex/market/historical-candles";
       break;
     case "historical_index_price":
-      path = "/api/v5/dex/candlestick";
+      notReq=true;
+      method="GET"
+      path = "/api/v5/dex/index/historical-price";
       break;
-    case "total_value":
-      path = "/api/v5/dex/candlestick";
+     case "token_index_price":
+      notReq=true;
+      path = "/api/dex/index/current-price";
       break;
-    case "token_balance":
-      path = "/api/v5/dex/candlestick";
-      break;
+  
     case "transaction_history":
       method="GET"
       path = "/api/v5/dex/post-transaction/transactions-by-address";
@@ -138,15 +154,17 @@ async function callMarketDataApi(type: string, tokenName: string) {
       path = "/api/v5/dex/post-transaction/transaction-detail-by-txhash";
       break;
     case "total_value":
-      path = "/api/v5/dex/candlestick";
+      path = "/api/v5/dex/balance/total-value";
       break;    
     // Add more cases as needed
     default:
       path = "/api/v5/dex/default";
   }
-
+ 
   try {
-    const body = {
+    let  body;
+     if(notReq==true){
+    body = {
       method: method,
       path,
       data: [
@@ -156,6 +174,21 @@ async function callMarketDataApi(type: string, tokenName: string) {
         },
       ],
     };  
+    }
+    else{
+      body = {
+      method: method,
+      path,
+      data: [
+        {
+          chainIndex: chainIndexMap[tokenName],
+          address:address,
+          tokenContractAddress,
+        },
+      ],
+    }; 
+    }
+     
     console.log("my body is::",body);
     
     const response = await fetch("http://127.0.0.1:3000/api/market_data", {
@@ -185,6 +218,9 @@ const suggestions = [
 ];
 
 export default function AiChatPage() {
+    const {publicKey }:any = useWallet()
+    console.log("Public Key is::::",publicKey);
+    
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "system",
@@ -210,9 +246,11 @@ export default function AiChatPage() {
       // Process the response
       if (geminiResponse.type && geminiResponse.token_name) {
         try {
-          const marketData = await callMarketDataApi(
+          const marketData:any = await callMarketDataApi(
             geminiResponse.type,
-            geminiResponse.token_name
+            geminiResponse.token_name,
+            publicKey,
+            geminiResponse.txhash
           );
 
           // Combine Gemini and market data for important info extraction
