@@ -691,7 +691,7 @@ const HeroHeader = () => {
                                 <Button
                                     asChild
                                     size="sm">
-                                    <Link href="#">
+                                    <Link href="dashboard">
                                         <span>Launch Dashboard</span>
                                     </Link>
                                 </Button>
