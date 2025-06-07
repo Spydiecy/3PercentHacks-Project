@@ -47,6 +47,7 @@ Input:
 
 Output:
 "General information: No important price data found."
+if it is general msg then return the message only not general information written also.
 `;
 
 /**

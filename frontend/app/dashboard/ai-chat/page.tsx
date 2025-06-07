@@ -145,7 +145,9 @@ export default function AiChatPage() {
       } else {
         // Show Gemini response if no actionable data
         const responseText = geminiResponse.text || JSON.stringify(geminiResponse);
-        setMessages((prev) => [...prev, { role: "system", content: responseText }]);
+           const aiMessage: string = await extractImportantInfoFromData(responseText);
+          console.log("my ai messages are::::"+aiMessage);
+        setMessages((prev) => [...prev, { role: "system", content: aiMessage}]);
       }
     } catch (error: any) {
       setMessages((prev) => [
