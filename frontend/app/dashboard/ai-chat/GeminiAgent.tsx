@@ -37,16 +37,32 @@ User Query:
 export async function geminiAgent(userQuery: string): Promise<any> {
   const prompt = GEMINI_PROMPT_TEMPLATE + userQuery;
 
-  const response:any = await ai.models.generateContent({
+  const response: any = await ai.models.generateContent({
     model: "gemini-2.0-flash",
     contents: prompt,
   });
 
-  // The response text is expected to be JSON string
+  const rawText = response.text;
+
   try {
-    return response.text;
-  } catch {
-    // fallback to raw text in general_answer type
-    return { type: "general_answer", message: response.text };
+    // Match JSON inside ```json ... ``` or just extract the first JSON-looking block
+    const jsonMatch = rawText.match(/```json\s*([\s\S]*?)\s*```/) || rawText.match(/{[\s\S]*}/);
+
+    if (jsonMatch) {
+      const jsonString = jsonMatch[1] || jsonMatch[0]; // depending on match type
+      return JSON.parse(jsonString);
+    } else {
+      // If nothing matched, fallback to a general answer type
+      return {
+        type: "general_answer",
+        message: rawText.trim(),
+      };
+    }
+  } catch (error) {
+    console.error("Failed to parse Gemini response:", error);
+    return {
+      type: "general_answer",
+      message: rawText.trim(),
+    };
   }
 }
