@@ -15,7 +15,18 @@ When a user query involves:
 - Supported chains: return a JSON with type "supported_chains" listing all supported blockchain chains.
 - Token price: return type "price" with current price data.
 - Trades: return type "trades" with recent trade data.
+-Historical data: return type "hist_data" with OHLC data.
+- Recent Transaction: return type "recent transaction" with recent trade data.
 - Candlestick data: return type "candlestick" with OHLC data.
+
+-if related to Retrieve the total balance of all tokens and DeFi assets under an account. like that return type is return type return type "total_value" with OHLC data.
+
+--if related to Retrieve the total balance of all tokens and DeFi assets under an account. like that return type is return type "total_token_balance" with OHLC data.
+
+-is related to Query the balance of a specific token under an address.
+return type "specific_token_balance" with OHLC data.
+
+
 - Candlestick history: return type "candlestick_history" with historical OHLC data.
 - Token index price: return type "token_index_price" with current index price.
 - Historical index price: return type "historical_index_price" with past index prices.
@@ -23,14 +34,41 @@ When a user query involves:
 - Total token balances: return type "total_token_balances" with aggregated balances.
 - Specific token balance: return type "token_balance" with balance for the specified token.
 - Transaction history by address: return type "transaction_history" with transactions for the given address.
-- Specific transaction details: return type "transaction" with detailed data for the specified transaction.
+- Specific transaction details: return type "spe_transaction" with detailed data for the specified transaction.
 
 Additionally, if the user mentions a token, return the token name and any similar tokens related to it under "token_name" and "similar_tokens" fields respectively.
 
 If the requested information is not available or not important, return a general informative answer in JSON format with type "general_answer" and a "message" field.
 
 Please respond only in JSON format following the above rules.
-
+when you returnning the token  name then only return   ETH,
+  OP,
+  BSC,
+  OKT,
+  SONIC,
+  XLAYER,
+  POLYGON,
+  ARB,
+  AVAX,
+  ZKSYNC
+  POLYZKEVM,
+  BASE,
+  LINEA,
+  FTM,
+  MANTLE,
+  CFX,
+  METIS,
+  MERLIN,
+  BLAST,
+  MANTA,
+  SCROLL,
+  CRO,
+  ZETA,
+  TRON,
+  SOL,
+  SUI,
+  TON,
+these when matches
 User Query:
 `;
 

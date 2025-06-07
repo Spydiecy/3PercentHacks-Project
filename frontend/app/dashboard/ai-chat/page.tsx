@@ -21,10 +21,65 @@ interface GeminiResponse {
 
 // Map token names to contract addresses
 const tokenAddressMap: Record<string, string> = {
-  ETH: "0x382bb369d343125bfb2117af9c149795c6c65c50",
-  ABC: "0x1234567890abcdef1234567890abcdef12345678",
-  // Add more tokens as needed
+  ETH: "0xc18360217d8f7ab5e7c516566761ea12ce7f9d72", // Native ETH
+  OP: "0x4200000000000000000000000000000000000042", // OP token
+  BSC: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // Native BNB
+  OKT: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // Native OKT
+  SONIC: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // Placeholder
+  XLAYER: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // Placeholder
+  POLYGON: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // Native MATIC
+  ARB: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // Native ETH on Arbitrum
+  AVAX: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // Native AVAX
+  ZKSYNC: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // Native ETH on zkSync
+  POLYZKEVM: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // Native MATIC
+  BASE: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // Native ETH
+  LINEA: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // Native ETH
+  FTM: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // Native FTM
+  MANTLE: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // Native MNT
+  CFX: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // Native CFX
+  METIS: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // Native METIS
+  MERLIN: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // Placeholder
+  BLAST: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // Placeholder
+  MANTA: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // Placeholder
+  SCROLL: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // Native ETH
+  CRO: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // Native CRO
+  ZETA: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // Native ZETA
+  TRON: "TRX", // Tron native token symbol
+  SOL: "SOL", // Solana native token symbol
+  SUI: "0x2::sui::SUI", // SUI native token ID
+  TON: "TON" // TON native token symbol
 };
+
+const chainIndexMap:Record<string,String> = {
+  ETH: "1",
+  OP: "10",
+  BSC: "56",
+  OKT: "66",
+  SONIC: "146",
+  XLAYER: "196",
+  POLYGON: "137",
+  ARB: "42161",
+  AVAX: "43114",
+  ZKSYNC: "324",
+  POLYZKEVM: "1101",
+  BASE: "8453",
+  LINEA: "59144",
+  FTM: "250",
+  MANTLE: "5000",
+  CFX: "1030",
+  METIS: "1088",
+  MERLIN: "4200",
+  BLAST: "81457",
+  MANTA: "169",
+  SCROLL: "534352",
+  CRO: "25",
+  ZETA: "7000",
+  TRON: "195",
+  SOL: "501",
+  SUI: "784",
+  TON: "607"
+};
+
 
 function getTokenContractAddress(tokenName: string): string | null {
   return tokenAddressMap[tokenName] || null;
@@ -38,13 +93,52 @@ async function callMarketDataApi(type: string, tokenName: string) {
   }
 
   let path = "";
+  let method="POST"
   switch (type) {
     case "price":
       path = "/api/v5/dex/market/price";
       break;
-    case "candlestick":
+    case "candlestick": 
       path = "/api/v5/dex/candlestick";
       break;
+    case "hist_data": 
+    method="GET"
+      path = "/api/v5/dex/index/historical-price";
+      break;
+    case "total_value": 
+    method="GET"
+      path = "/api/v5/dex/balance/total-value";
+      break;
+    case "total_token_balance": 
+      method="GET"
+      path = "/api/v5/dex/balance/all-token-balances-by-address";
+      break;
+    case "specific_token_balance":
+      path = "/api/v5/dex/balance/token-balances-by-address";
+      break;
+    case "candlestick_history":
+      path = "/api/v5/dex/candlestick";
+      break;
+    case "historical_index_price":
+      path = "/api/v5/dex/candlestick";
+      break;
+    case "total_value":
+      path = "/api/v5/dex/candlestick";
+      break;
+    case "token_balance":
+      path = "/api/v5/dex/candlestick";
+      break;
+    case "transaction_history":
+      method="GET"
+      path = "/api/v5/dex/post-transaction/transactions-by-address";
+      break;
+    case "spe_transaction":
+      method="GET"
+      path = "/api/v5/dex/post-transaction/transaction-detail-by-txhash";
+      break;
+    case "total_value":
+      path = "/api/v5/dex/candlestick";
+      break;    
     // Add more cases as needed
     default:
       path = "/api/v5/dex/default";
@@ -52,11 +146,11 @@ async function callMarketDataApi(type: string, tokenName: string) {
 
   try {
     const body = {
-      method: "POST",
+      method: method,
       path,
       data: [
         {
-          chainIndex: "66",
+          chainIndex: chainIndexMap[tokenName],
           tokenContractAddress,
         },
       ],
