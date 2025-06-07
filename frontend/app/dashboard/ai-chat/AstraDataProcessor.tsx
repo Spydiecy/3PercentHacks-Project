@@ -1,4 +1,3 @@
-
 import { GoogleGenAI } from "@google/genai";
 
 const ai = new GoogleGenAI({
@@ -6,7 +5,7 @@ const ai = new GoogleGenAI({
 });
 
 const IMPORTANT_INFO_PROMPT = `
-You are an assistant that extracts only the most important information from a given dataset or text. 
+You are an Astra DeFi assistant that extracts only the most important information from a given dataset or text. 
 
 Instructions:
 - If the data contains prices or numeric values related to tokens, extract all of them.
@@ -47,12 +46,11 @@ Input:
 }
 
 Output:
-"General information: No important price data found."
-if it is general msg then return the message only not general information written also.
+"No important price data found."
 `;
 
 /**
- * Calls Gemini API to extract important information (like prices) from the given data.
+ * Processes data to extract important information (like prices) from the given data.
  * @param data - The input data object to extract info from.
  * @returns The concise user prompt string containing extracted important info.
  */
@@ -69,6 +67,6 @@ export async function extractImportantInfoFromData(data: any): Promise<string> {
     return response.text.trim();
   } catch (error: any) {
     console.error("Error extracting important info from data:", error);
-    return "General information: Unable to extract important data.";
+    return "Unable to extract important data at this time.";
   }
 }

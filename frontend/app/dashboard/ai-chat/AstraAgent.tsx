@@ -1,4 +1,3 @@
-// geminiAgent.ts
 "use client";
 
 import { GoogleGenAI } from "@google/genai";
@@ -7,8 +6,8 @@ const ai = new GoogleGenAI({
   apiKey: "AIzaSyCNqDApCumryib67jTVBqssnojqXisg7oM",
 });
 
-const GEMINI_PROMPT_TEMPLATE = `
-You are a blockchain data assistant knowledgeable about supported chains, token prices, trades, candlestick data, historical candlestick data, token index prices, historical index prices, total values, and token balances. You respond in JSON format with clearly defined types for each response.
+const ASTRA_PROMPT_TEMPLATE = `
+You are a blockchain data assistant for Astra DeFi, knowledgeable about supported chains, token prices, trades, candlestick data, historical candlestick data, token index prices, historical index prices, total values, and token balances. You respond in JSON format with clearly defined types for each response.
 
 When a user query involves:
 
@@ -34,11 +33,11 @@ Please respond only in JSON format following the above rules.
 User Query:
 `;
 
-export async function geminiAgent(userQuery: string): Promise<any> {
-  const prompt = GEMINI_PROMPT_TEMPLATE + userQuery;
+export async function astraAgent(userQuery: string): Promise<any> {
+  const prompt = ASTRA_PROMPT_TEMPLATE + userQuery;
 
   const response: any = await ai.models.generateContent({
-    model: "gemini-2.0-flash",
+    model: "gemini-2.0-flash", // We still use the same model but rebranded for Astra
     contents: prompt,
   });
 
@@ -59,7 +58,7 @@ export async function geminiAgent(userQuery: string): Promise<any> {
       };
     }
   } catch (error) {
-    console.error("Failed to parse Gemini response:", error);
+    console.error("Failed to parse Astra response:", error);
     return {
       type: "general_answer",
       message: rawText.trim(),
