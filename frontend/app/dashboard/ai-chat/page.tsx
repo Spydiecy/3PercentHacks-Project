@@ -3,7 +3,8 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Send, Bot, User, Zap, RefreshCw } from 'lucide-react';
-import  {geminiAgent}  from "./GeminiAgent"; // Fixed import path and format
+import { geminiAgent } from "./GeminiAgent";
+import { extractImportantInfoFromData } from "./Gemini2Agent";
 
 interface Message {
   role: "user" | "system";
@@ -20,7 +21,7 @@ interface GeminiResponse {
 
 // Map token names to contract addresses
 const tokenAddressMap: Record<string, string> = {
-  ExampleToken: "0x382bb369d343125bfb2117af9c149795c6c65c50",
+  ETH: "0x382bb369d343125bfb2117af9c149795c6c65c50",
   ABC: "0x1234567890abcdef1234567890abcdef12345678",
   // Add more tokens as needed
 };
@@ -39,7 +40,7 @@ async function callMarketDataApi(type: string, tokenName: string) {
   let path = "";
   switch (type) {
     case "price":
-      path = "/api/v5/dex/balance/total-value";
+      path = "/api/v5/dex/market/price";
       break;
     case "candlestick":
       path = "/api/v5/dex/candlestick";
@@ -51,7 +52,7 @@ async function callMarketDataApi(type: string, tokenName: string) {
 
   try {
     const body = {
-      method: "GET",
+      method: "POST",
       path,
       data: [
         {
@@ -59,19 +60,22 @@ async function callMarketDataApi(type: string, tokenName: string) {
           tokenContractAddress,
         },
       ],
-    };
-
+    };  
+    console.log("my body is::",body);
+    
     const response = await fetch("http://127.0.0.1:3000/api/market_data", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
+    let m=await response.json();
+    console.log("my m fetch is:::",m);
+    
 
     if (!response.ok) {
       throw new Error(`Market data API error: ${response.statusText}`);
     }
-
-    return await response.json();
+    return m;
   } catch (error) {
     console.error("Market data API error:", error);
     throw error;
@@ -106,34 +110,35 @@ export default function AiChatPage() {
     try {
       // Call Gemini API
       const geminiResponse: GeminiResponse = await geminiAgent(input);
-      console.log("My Gemini Response si:::::::",geminiResponse);
-      
+      console.log("Gemini Response:", geminiResponse);
+
       // Process the response
       if (geminiResponse.type && geminiResponse.token_name) {
         try {
           const marketData = await callMarketDataApi(
-            geminiResponse.type, 
+            geminiResponse.type,
             geminiResponse.token_name
           );
 
-          const formattedResponse = geminiResponse.text || 
-            `Here's the information about ${geminiResponse.token_name}:`;
+          // Combine Gemini and market data for important info extraction
+          const formattedResponse = geminiResponse.text ||
+            `Here's the information about ${geminiResponse.token_name}: ${JSON.stringify(marketData)}`;
 
-          const aiMessage: Message = {
-            role: "system",
-            content: `${formattedResponse}\n\n` +
-              `Market Data: ${JSON.stringify(marketData, null, 2)}\n\n` +
-              (geminiResponse.similar_tokens?.length ? 
-                `Similar Tokens: ${geminiResponse.similar_tokens.join(", ")}` : "")
-          };
+          const aiMessage: string = await extractImportantInfoFromData(formattedResponse);
+          console.log("my ai messages are::::"+aiMessage);
           
-          setMessages((prev) => [...prev, aiMessage]);
-        } catch (apiError: any) {
           setMessages((prev) => [
             ...prev,
-            { 
-              role: "system", 
-              content: `I couldn't fetch the market data for ${geminiResponse.token_name}: ${apiError.message}` 
+            { role: "system", content: aiMessage },
+          ]);
+        } catch (apiError: any) {
+          console.log("my Api Error is:::",apiError);
+          
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "system",
+              content: `I couldn't fetch the market data for ${geminiResponse.token_name}: ${apiError.message}`,
             },
           ]);
         }
@@ -144,8 +149,8 @@ export default function AiChatPage() {
       }
     } catch (error: any) {
       setMessages((prev) => [
-        ...prev, 
-        { role: "system", content: `Sorry, I encountered an error: ${error.message}` }
+        ...prev,
+        { role: "system", content: `Sorry, I encountered an error: ${error.message}` },
       ]);
     } finally {
       setLoading(false);
@@ -170,9 +175,9 @@ export default function AiChatPage() {
           </h1>
           <p className="text-white/60">Powered by advanced language models</p>
         </div>
-        <Button 
-          variant="outline" 
-          size="sm" 
+        <Button
+          variant="outline"
+          size="sm"
           className="gap-1 border-white/20 hover:bg-white/10 text-white"
           onClick={handleReset}
         >
@@ -188,9 +193,10 @@ export default function AiChatPage() {
           >
             <div className={`flex max-w-[80%] ${message.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
               <div
-                className={`rounded-full h-9 w-9 flex items-center justify-center ${
-                  message.role === "user" ? "bg-white/10 ml-2 border border-white/10" : "bg-white/10 mr-2 border border-white/10"
-                }`}
+                className={`rounded-full h-9 w-9 flex items-center justify-center ${message.role === "user"
+                  ? "bg-white/10 ml-2 border border-white/10"
+                  : "bg-white/10 mr-2 border border-white/10"
+                  }`}
               >
                 {message.role === "user" ? (
                   <User className="h-4 w-4 text-white/80" />
@@ -199,9 +205,10 @@ export default function AiChatPage() {
                 )}
               </div>
               <div
-                className={`py-3 px-4 rounded-2xl ${
-                  message.role === "user" ? "bg-white/5 border border-white/10" : "bg-black/30 border border-white/10"
-                } whitespace-pre-wrap`}
+                className={`py-3 px-4 rounded-2xl ${message.role === "user"
+                  ? "bg-white/5 border border-white/10"
+                  : "bg-black/30 border border-white/10"
+                  } whitespace-pre-wrap`}
               >
                 <p className="text-white/90">{message.content}</p>
               </div>
