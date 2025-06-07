@@ -2,24 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import https from 'https';
 import crypto from 'crypto';
 import querystring from 'querystring';
-import { error } from 'console';
 
-// API credentials
+// Your OKX API credentials
 const api_config = {
   api_key: "64bb967c-14de-4e86-b356-e1ee768ed2e2",
   secret_key: "1A29A90AEE915C983970FBCAD1ADC90B",
   passphrase: "Naman@2005",
 };
 
-function preHash(timestamp: string, method: string, request_path: string, params: any) {
-  let query_string = '';
-  if (method === 'GET' && params) {
-    query_string = '?' + querystring.stringify(params);
-  }
-  if (method === 'POST' && params) {
-    query_string = JSON.stringify(params);
-  }
-  return timestamp + method + request_path + query_string;
+function preHash(timestamp: string, method: string, request_path: string, query: string, body: string) {
+  // For GET: query is "?..." and body is ""
+  // For POST: query is "" and body is JSON string
+  return timestamp + method + request_path + query + body;
 }
 
 function sign(message: string, secret_key: string) {
@@ -28,170 +22,184 @@ function sign(message: string, secret_key: string) {
   return hmac.digest('base64');
 }
 
-function createSignature(method: string, request_path: string, params: any) {
-  // Get the timestamp in ISO 8601 format
+function createSignature(method: string, request_path: string, query: string, body: string) {
   const timestamp = new Date().toISOString();
-  const message = preHash(timestamp, method, request_path, params);
+  const message = preHash(timestamp, method, request_path, query, body);
   const signature = sign(message, api_config.secret_key);
   return { signature, timestamp };
 }
 
-function sendGetRequest(request_path: string, params: any): Promise<any> {
+function httpsRequest(options: any, body?: string): Promise<any> {
   return new Promise((resolve, reject) => {
-    console.log("Get Request function running:::",params);
-
-    // Handle case where params is an array (you only use one object in the array)
-    const queryParams = Array.isArray(params) ? params[0] : params;
-
-    // Generate a signature
-    const { signature, timestamp } = createSignature("GET", request_path, queryParams);
-
-    // Generate the request header
-    const headers = {
-      'OK-ACCESS-KEY': api_config.api_key,
-      'OK-ACCESS-SIGN': signature,
-      'OK-ACCESS-TIMESTAMP': timestamp,
-      'OK-ACCESS-PASSPHRASE': api_config.passphrase,
-      'Content-Type': 'application/json'
-    };
-
-    const fullPath = request_path + (queryParams ? `?${querystring.stringify(queryParams)}` : '');
-    
-    const options = {
-      hostname: 'www.okx.com',
-      path: fullPath,
-      method: 'GET',
-      headers: headers
-    };
-
-    console.log('My options are::',options);
-
     const req = https.request(options, (res) => {
       let data = '';
-      res.on('data', (chunk) => {
-        data += chunk;
-        console.log(data);
-        
-      });
+      res.on('data', (chunk) => data += chunk);
       res.on('end', () => {
         try {
           const parsed = JSON.parse(data);
           resolve(parsed);
         } catch (e) {
-          console.log("my error is::::",error);
-          
           reject(`Failed to parse JSON: ${data}`);
         }
       });
     });
-    console.log("Executing......");
-    
     req.on('error', (e) => reject(e));
+    if (body) req.write(body);
     req.end();
   });
 }
-function sendPostRequest(request_path: string, params: any): Promise<any> {
-  console.log("post REquest ");
+
+// Map each API path to its config: method, required params, and param location
+const apiConfigMap:any = {
+  // 1. Get Supported Chains (no params)
+    "/api/v5/dex/market/price": {
+    method: "POST",
+    required: ["chainIndex", "tokenContractAddress"],
+    paramLocation: "body"
+  },
+  "/api/v5/dex/balance/supported/chain": {
+    method: "GET",
+    required: [],
+    paramLocation: "query"
+  },// get candle price 
+    "/api/v5/dex/market/candles": {
+    method: "GET",  
+     required: ["chainIndex", "tokenContractAddress"],
+    paramLocation: "query"
+  },
+  // get historicals candle price 
+    "/api/v5/dex/market/historical-candles": {
+    method: "GET",  
+     required: ["chainIndex", "tokenContractAddress"],
+    paramLocation: "query"
+  },
+  // 2. Get Token Index Price (POST, array body)
+  "/api/dex/index/current-price": {
+    method: "POST",
+    required: ["chainIndex", "tokenContractAddress"],
+    paramLocation: "body"
+  },
+  // 3. Get Historical Index Price (GET, query)
+  "/api/v5/dex/index/historical-price": {
+    method: "GET",
+    required: ["chainIndex"],
+    paramLocation: "query"
+  },
+  // 4. Get Total Value (GET, query)
+  "/api/v5/dex/balance/total-value": {
+    method: "GET",
+    required: ["address"],
+    paramLocation: "query"
+  },
+  // 5. Get Total Token Balances (GET, query)
+  "/api/v5/dex/balance/all-token-balances-by-address": {
+    method: "GET",
+    required: ["address", "chains"],
+    paramLocation: "query"
+  },
+  // 6. Get Specific Token Balance (POST, body)
+  "/api/v5/dex/balance/token-balances-by-address": {
+    method: "POST",
+    required: ["address", "tokenContractAddresses"],
+    paramLocation: "body"
+  },
+  // 7. Get History by Address (GET, query)
+  "/api/v5/dex/post-transaction/transactions-by-address": {
+    method: "GET",
+    required: ["address"],
+    paramLocation: "query"
+  },
+  // 8. Get Specific Transaction (GET, query)
+  "/api/v5/dex/post-transaction/transaction-detail-by-txhash": {
+    method: "GET",
+    required: ["chainIndex", "txHash"],
+    paramLocation: "query"
+  },
+};
+
+function validateParams(params: any, required: string[]): string | null {
+  console.log("my params:::::::::::::::",params);
+  console.log("my params:::::::::::::::",required);
   
-  return new Promise((resolve, reject) => {
-    // Generate a signature
-    const { signature, timestamp } = createSignature("POST", request_path, params);
-
-    // Generate the request header
-    const headers = {
-      'OK-ACCESS-KEY': api_config.api_key,
-      'OK-ACCESS-SIGN': signature,
-      'OK-ACCESS-TIMESTAMP': timestamp,
-      'OK-ACCESS-PASSPHRASE': api_config.passphrase,
-      'Content-Type': 'application/json'
-    };
-
-    const options = {
-      hostname: 'www.okx.com',
-      path: request_path,
-      method: 'POST',
-      headers: headers
-    };
-console.log("options are::",options);
-
-    const req = https.request(options, (res) => {
-      let data = '';
-      res.on('data', (chunk) => {
-        data += chunk;
-        console.log("data is::",data);
-        
-      });
-      res.on('end', () => {
-        try {
-          console.log("error is:::",data);
-          const parsed = JSON.parse(data);
-          resolve(parsed);
-        } catch (e) {
-          
-          reject(`Failed to parse JSON: ${data}`);
-        }
-      });
-    });
-
-    req.on('error', (e) => reject(e));
-
-    if (params) {
-      req.write(JSON.stringify(params));
+  for (const key of required) {
+    if (params[key] === undefined || params[key] === null || params[key] === "") {
+      return key;
     }
-
-    req.end();
-  });
+  }
+  return null;
 }
 
-// GET route handler
-export async function GET(req:any,res:any) {
+// Main API handler
+export async function POST(req: NextRequest) {
   try {
-    // Get query parameters from the URL
-    const url = new URL(req.url);
-    const path = url.searchParams.get('path');
-    const dataParam = url.searchParams.get('data');
+    const { method, path, data } = await req.json();
+
+    // Route matching
+    const apiConfig = apiConfigMap[path];
+    console.log("api config is::::",apiConfig);
     
-    if (!path) {
-      return NextResponse.json({ error: 'Missing path parameter' }, { status: 400 });
+    if (!apiConfig) {
+      return NextResponse.json({ error: 'Unsupported API path' }, { status: 400 });
+    }
+    if (method !== apiConfig.method) {
+      return NextResponse.json({ error: `Invalid HTTP method for this endpoint. Use ${apiConfig.method}` }, { status: 400 });
     }
 
-    // Parse data if provided
-    let data = {};
-    if (dataParam) {
-      try {
-        data = JSON.parse(dataParam);
-      } catch (e) {
-        return NextResponse.json({ error: 'Invalid data parameter' }, { status: 400 });
+    // Parameter validation and formatting
+    let params = Array.isArray(data) ? data[0] : (Array.isArray(data) ? data : (data || {}));
+    if (apiConfig.paramLocation === "body" && Array.isArray(data)) params = data; // For POST array body
+    console.log("EXecuting............................");
+    
+
+    let query = "";
+    let body = "";
+    let fullPath = path;
+    if (apiConfig.method === "GET") {
+      if (apiConfig.paramLocation === "query") {
+        // For GET, flatten array to object if needed
+        const queryParams = Array.isArray(params) ? params[0] : params;
+        query = Object.keys(queryParams).length > 0 ? "?" + querystring.stringify(queryParams) : "";
+        fullPath = path + query;
+      }
+    } else if (apiConfig.method === "POST") {
+      if (apiConfig.paramLocation === "body") {
+        body = Array.isArray(params) ? JSON.stringify(params) : JSON.stringify(params);
       }
     }
 
-    const response = await sendGetRequest(path, data);
+    // Signature
+    const { signature, timestamp } = createSignature(
+      apiConfig.method,
+      path,
+      apiConfig.method === "GET" ? query : "",
+      apiConfig.method === "POST" ? body : ""
+    );
+
+    // Headers
+    const headers = {
+      'OK-ACCESS-KEY': api_config.api_key,
+      'OK-ACCESS-SIGN': signature,
+      'OK-ACCESS-TIMESTAMP': timestamp,
+      'OK-ACCESS-PASSPHRASE': api_config.passphrase,
+      'Content-Type': 'application/json'
+    };
+    console.log("my headers are:::::::::::",headers);
+    
+
+    // HTTPS options
+    const options = {
+      hostname: 'www.okx.com',
+      path: fullPath,
+      method: apiConfig.method,
+      headers: headers
+    };
+    console.log("My options are::::::::::",options);
+    
+    // Send request
+    const response = await httpsRequest(options, body);
+
     return NextResponse.json(response);
-  } catch (error: any) {
-    return NextResponse.json({ error: error?.toString() }, { status: 500 });
-  }
-}
 
-// POST route handler
-export async function POST(req:any,res:any) {
-  try {
-    const body = await req.json();
-    const { method, path, data } = body;
-
-    if (!path) {
-      return NextResponse.json({ error: 'Missing path parameter' }, { status: 400 });
-    }
-
-    // Handle based on method
-    if (method === 'GET') {
-      const response = await sendGetRequest(path, data || {});
-      return NextResponse.json(response);
-    } else if (method === 'POST') {
-      const response = await sendPostRequest(path, data || {});
-      return NextResponse.json(response);
-    } else {
-      return NextResponse.json({ error: 'Invalid method. Use GET or POST' }, { status: 400 });
-    }
   } catch (error: any) {
     return NextResponse.json({ error: error?.toString() }, { status: 500 });
   }

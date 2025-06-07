@@ -98,9 +98,9 @@ export default function SwapPage() {
       const params = {
         "amount": "22222223",  // 1 ETH in wei
   "fromChainIndex": "324",
-  "toChainIndex": "42161",
+  "toChainIndex": "1",
   "fromChainId": "324",
-  "toChainId": "42161",
+  "toChainId": "1",
   "fromTokenAddress": "0x3355df6d4c9c3035724fd0e3914de96a5a83aaf4",  // WETH
   "toTokenAddress": "0xff970a61a04b1ca14834a43f5de4533ebddb5cc8",    // USDC on Arbitrum
   "slippage": "0.07",
