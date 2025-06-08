@@ -1,9 +1,108 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Download, ArrowUp, ArrowDown, TrendingUp, Calendar } from "lucide-react"
+import { Download, Calendar } from "lucide-react"
+
+const AVAILABLE_CHAINS = [
+  { id: "1", name: "Ethereum" },
+  { id: "56", name: "Binance Smart Chain" },
+  { id: "137", name: "Polygon" },
+  { id: "43114", name: "Avalanche" },
+  // Add more chains as needed
+]
 
 export default function PortfolioPage() {
+  const [activeModal, setActiveModal] = useState<null | string>(null)
+  const [loading, setLoading] = useState(false)
+  const [history, setHistory] = useState<any[]>([])
+  const [tokenBalances, setTokenBalances] = useState<any[]>([])
+  const [totalValue, setTotalValue] = useState<string>("")
+  const [specificToken, setSpecificToken] = useState<any[]>([])
+  const [selectedTable, setSelectedTable] = useState<"balances" | "history" | "specific">("balances")
+  const [selectedChains, setSelectedChains] = useState<string[]>(["1", "56"])
+
+  // Toggle chain selection for multi-select
+  const toggleChain = (chainId: string) => {
+    setSelectedChains((prev) =>
+      prev.includes(chainId) ? prev.filter((c) => c !== chainId) : [...prev, chainId]
+    )
+  }
+
+  // Fetch all portfolio data
+  const fetchPortfolioData = async () => {
+    setLoading(true)
+    try {
+      const chainsStr = selectedChains.join(",")
+
+      const [
+        historyRes,
+        balancesRes,
+        valueRes,
+        specificRes,
+      ] = await Promise.all([
+        fetch("/api/portfolio/history_by_add", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            address: "0x50c476a139aab23fdaf9bca12614cdd54a4244e4",
+            chains: chainsStr,
+            limit: "20",
+          }),
+        }),
+        fetch("/api/portfolio/total_token_balances", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            address: "0xEd0C6079229E2d407672a117c22b62064f4a4312",
+            chains: chainsStr,
+            excludeRiskToken: "0",
+          }),
+        }),
+        fetch("/api/portfolio/token_value", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            address: "0xEd0C6079229E2d407672a117c22b62064f4a4312",
+            chains: chainsStr,
+            excludeRiskToken: "0",
+          }),
+        }),
+        fetch("/api/portfolio/specific_token_balance", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            address: "0x50c476a139aab23fdaf9bca12614cdd54a4244e3",
+            tokenContractAddresses: [
+              {
+                chainIndex: "1",
+                tokenContractAddress: "",
+              },
+            ],
+          }),
+        }),
+      ])
+
+      const historyJson = await historyRes.json()
+      const balancesJson = await balancesRes.json()
+      const valueJson = await valueRes.json()
+      const specificJson = await specificRes.json()
+
+      setHistory(historyJson?.data?.[0]?.transactionList || [])
+      setTokenBalances(balancesJson?.data?.[0]?.tokenAssets || [])
+      setTotalValue(valueJson?.data?.[0]?.totalValue || "0")
+      setSpecificToken(specificJson?.data?.[0]?.tokenAssets || [])
+    } catch (error) {
+      console.error("Error fetching portfolio data:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchPortfolioData()
+  }, [selectedChains])
+
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center">
@@ -23,10 +122,27 @@ export default function PortfolioPage() {
         </div>
       </div>
 
+      {/* Chain selection buttons */}
+      <div className="mb-6 flex flex-wrap gap-3">
+        {AVAILABLE_CHAINS.map((chain) => (
+          <button
+            key={chain.id}
+            onClick={() => toggleChain(chain.id)}
+            className={`px-4 py-2 rounded-full border ${
+              selectedChains.includes(chain.id)
+                ? "bg-blue-600 border-blue-600"
+                : "border-white/20 hover:bg-white/10"
+            } text-white`}
+          >
+            {chain.name}
+          </button>
+        ))}
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <PortfolioCard 
           title="Total Value" 
-          value="$12,345.67" 
+          value={`$${Number(totalValue).toLocaleString(undefined, {maximumFractionDigits: 2})}`}
           change="+15.3%" 
           trend="up"
         />
@@ -50,136 +166,60 @@ export default function PortfolioPage() {
         />
       </div>
 
+      <div className="flex gap-4">
+        <select
+          className="bg-black/50 border border-white/10 rounded px-3 py-2 text-white"
+          value={selectedTable}
+          onChange={e => setSelectedTable(e.target.value as any)}
+        >
+          <option value="balances">All Token Balances</option>
+          <option value="history">Transaction History</option>
+          <option value="specific">Specific Token Balance</option>
+        </select>
+        <Button onClick={() => setActiveModal("details")} variant="outline" size="sm" className="border-white/20 hover:bg-white/10 text-white">
+          Show Details
+        </Button>
+      </div>
+
       <div className="backdrop-blur-sm bg-black/20 border border-white/10 rounded-xl p-6 hover:border-white/20 transition-all hover:shadow-xl">
         <div className="flex justify-between items-center mb-8">
-          <h2 className="text-xl font-bold bg-gradient-to-r from-white to-white/80 text-transparent bg-clip-text">Portfolio Breakdown</h2>
+          <h2 className="text-xl font-bold bg-gradient-to-r from-white to-white/80 text-transparent bg-clip-text">
+            {selectedTable === "balances" && "Portfolio Breakdown"}
+            {selectedTable === "history" && "Transaction History"}
+            {selectedTable === "specific" && "Specific Token Balance"}
+          </h2>
           <Button variant="outline" size="sm" className="border-white/20 hover:bg-white/10 text-white">Filter</Button>
         </div>
-        
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-white/10">
-                <th className="text-left pb-3 text-white/60">Asset</th>
-                <th className="text-right pb-3 text-white/60">Price</th>
-                <th className="text-right pb-3 text-white/60">Holdings</th>
-                <th className="text-right pb-3 text-white/60">Value</th>
-                <th className="text-right pb-3 text-white/60">24h</th>
-                <th className="text-right pb-3 text-white/60">7d</th>
-                <th className="text-right pb-3 text-white/60"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {assets.map((asset) => (
-                <tr key={asset.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                  <td className="py-4">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-full ${asset.bgColor}`}></div>
-                      <div>
-                        <p className="font-medium">{asset.name}</p>
-                        <p className="text-xs text-muted-foreground">{asset.symbol}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="text-right py-4">${asset.price}</td>
-                  <td className="text-right py-4">
-                    <div>
-                      <p>{asset.amount} {asset.symbol}</p>
-                      <p className="text-xs text-muted-foreground">${asset.value}</p>
-                    </div>
-                  </td>
-                  <td className="text-right py-4">${asset.value}</td>
-                  <td className="text-right py-4">
-                    <span className={asset.change24h.startsWith("+") ? "text-green-500" : "text-red-500"}>
-                      {asset.change24h}
-                    </span>
-                  </td>
-                  <td className="text-right py-4">
-                    <span className={asset.change7d.startsWith("+") ? "text-green-500" : "text-red-500"}>
-                      {asset.change7d}
-                    </span>
-                  </td>
-                  <td className="text-right py-4">
-                    <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-white/60 hover:text-white hover:bg-white/5">
-                        <ArrowUp className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-white/60 hover:text-white hover:bg-white/5">
-                        <ArrowDown className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          {loading ? (
+            <div className="text-center text-white/60 py-8">Loading...</div>
+          ) : selectedTable === "balances" ? (
+            <TokenBalancesTable assets={tokenBalances} />
+          ) : selectedTable === "history" ? (
+            <HistoryTable transactions={history} />
+          ) : (
+            <TokenBalancesTable assets={specificToken} />
+          )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
-        <div className="backdrop-blur-sm bg-black/20 border border-white/10 rounded-xl p-6 hover:border-white/20 transition-all hover:shadow-xl">
-          <h2 className="text-xl font-bold bg-gradient-to-r from-white to-white/80 text-transparent bg-clip-text mb-6">Portfolio Distribution</h2>
-          <div className="flex items-center justify-center h-64">
-            <div className="w-full h-full flex items-center justify-center">
-              <div className="relative w-48 h-48">
-                {assets.map((asset, index) => (
-                  <div 
-                    key={asset.id}
-                    className={`absolute w-48 h-48 ${asset.bgColor}`}
-                    style={{ 
-                      clipPath: `conic-polygon(50% 50%, 50% 0%, ${50 - 50 * Math.cos((index + 1) * 0.5 * Math.PI)}% ${50 - 50 * Math.sin((index + 1) * 0.5 * Math.PI)}%)`,
-                      opacity: 0.8 
-                    }}
-                  ></div>
-                ))}                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="bg-black/40 w-24 h-24 rounded-full flex items-center justify-center backdrop-blur-sm border border-white/10">
-                    <p className="text-xl font-bold text-white">{assets.length}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
+      {/* Modal for details */}
+      {activeModal === "details" && (
+        <Modal onClose={() => setActiveModal(null)}>
+          <div className="p-4 text-white">
+            <h2 className="text-lg font-bold mb-2">Portfolio API Data (Demo)</h2>
+            <pre className="bg-black/50 p-2 rounded text-xs overflow-x-auto max-h-96">
+              {JSON.stringify({ history, tokenBalances, totalValue, specificToken }, null, 2)}
+            </pre>
+            <Button onClick={() => setActiveModal(null)} className="mt-4">Close</Button>
           </div>
-          <div className="grid grid-cols-2 gap-2 mt-4">
-            {assets.map((asset) => (
-              <div key={asset.id} className="flex items-center gap-2">
-                <div className={`w-3 h-3 rounded-full ${asset.bgColor}`}></div>
-                <span className="text-sm text-white/80">{asset.symbol} ({asset.percentage}%)</span>
-              </div>
-            ))}
-          </div>
-        </div>
-        
-        <div className="backdrop-blur-sm bg-black/20 border border-white/10 rounded-xl p-6 hover:border-white/20 transition-all hover:shadow-xl">
-          <h2 className="text-xl font-bold bg-gradient-to-r from-white to-white/80 text-transparent bg-clip-text mb-6">Performance</h2>
-          <div className="h-64 flex items-center justify-center">
-            <div className="w-full h-full flex flex-col items-center justify-center">
-              <TrendingUp className="h-12 w-12 text-white/80 mb-4" />
-              <p className="text-center text-white/90">Portfolio performance chart will be displayed here</p>
-              <p className="text-sm text-white/60 text-center mt-2">Showing historical data and AI-powered predictions</p>
-            </div>
-          </div>
-          <div className="flex gap-2 mt-4">
-            <Button variant="outline" size="sm" className="border-white/20 hover:bg-white/10 text-white">1D</Button>
-            <Button variant="outline" size="sm" className="border-white/20 bg-white/10 text-white">1W</Button>
-            <Button variant="outline" size="sm" className="border-white/20 hover:bg-white/10 text-white">1M</Button>
-            <Button variant="outline" size="sm" className="border-white/20 hover:bg-white/10 text-white">3M</Button>
-            <Button variant="outline" size="sm" className="border-white/20 hover:bg-white/10 text-white">1Y</Button>
-            <Button variant="outline" size="sm" className="border-white/20 hover:bg-white/10 text-white">All</Button>
-          </div>
-        </div>
-      </div>
+        </Modal>
+      )}
     </div>
   )
 }
 
-interface PortfolioCardProps {
-  title: string
-  value: string
-  change: string
-  trend: "up" | "down"
-}
-
-function PortfolioCard({ title, value, change, trend }: PortfolioCardProps) {
+function PortfolioCard({ title, value, change, trend }: { title: string, value: string, change: string, trend: "up" | "down" }) {
   return (
     <div className="backdrop-blur-sm bg-black/20 border border-white/10 rounded-xl p-6 hover:border-white/20 transition-all hover:shadow-xl">
       <p className="text-sm text-white/60">{title}</p>
@@ -193,77 +233,74 @@ function PortfolioCard({ title, value, change, trend }: PortfolioCardProps) {
   )
 }
 
-const assets = [
-  {
-    id: "1",
-    name: "Solana",
-    symbol: "SOL",
-    price: "97.35",
-    amount: "42.5",
-    value: "4,137.38",
-    change24h: "+3.2%",
-    change7d: "+15.7%",
-    percentage: 33.5,
-    bgColor: "bg-white/30"
-  },
-  {
-    id: "2",
-    name: "USD Coin",
-    symbol: "USDC",
-    price: "1.00",
-    amount: "3,245.67",
-    value: "3,245.67",
-    change24h: "+0.01%",
-    change7d: "+0.02%",
-    percentage: 26.3,
-    bgColor: "bg-white/25"
-  },
-  {
-    id: "3",
-    name: "Bonk",
-    symbol: "BONK",
-    price: "0.00002134",
-    amount: "24,567,890",
-    value: "524.08",
-    change24h: "+12.4%",
-    change7d: "-8.3%",
-    percentage: 4.2,
-    bgColor: "bg-white/20"
-  },
-  {
-    id: "4",
-    name: "Ethereum",
-    symbol: "ETH",
-    price: "3,456.78",
-    amount: "0.85",
-    value: "2,938.26",
-    change24h: "+1.2%",
-    change7d: "+4.5%",
-    percentage: 23.8,
-    bgColor: "bg-white/15"
-  },
-  {
-    id: "5",
-    name: "Jupiter",
-    symbol: "JUP",
-    price: "0.87",
-    amount: "1,245.67",
-    value: "1,083.73",
-    change24h: "-2.3%",
-    change7d: "+21.6%",
-    percentage: 8.8,
-    bgColor: "bg-white/10"
-  },
-  {
-    id: "6",
-    name: "Tether",
-    symbol: "USDT",
-    price: "1.00",
-    amount: "415.89",
-    value: "415.89",
-    change24h: "+0.01%",
-    change7d: "-0.01%",
-    percentage: 3.4,
-    bgColor: "bg-white/5"
-  }
-]
+function TokenBalancesTable({ assets }: { assets: any[] }) {
+  return (
+    <table className="w-full">
+      <thead>
+        <tr className="border-b border-white/10">
+          <th className="text-left pb-3 text-white/60">Asset</th>
+          <th className="text-right pb-3 text-white/60">Price</th>
+          <th className="text-right pb-3 text-white/60">Holdings</th>
+          <th className="text-right pb-3 text-white/60">Value</th>
+        </tr>
+      </thead>
+      <tbody>
+        {assets.map((asset, idx) => (
+          <tr key={idx} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+            <td className="py-4">
+              <div>
+                <p className="font-medium">{asset.symbol || asset.tokenContractAddress}</p>
+                <p className="text-xs text-muted-foreground">{asset.chainIndex}</p>
+              </div>
+            </td>
+            <td className="text-right py-4">${Number(asset.tokenPrice || 0).toLocaleString(undefined, { maximumFractionDigits: 4 })}</td>
+            <td className="text-right py-4">{asset.balance}</td>
+            <td className="text-right py-4">${(Number(asset.balance || 0) * Number(asset.tokenPrice || 0)).toLocaleString(undefined, { maximumFractionDigits: 4 })}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )
+}
+
+function HistoryTable({ transactions }: { transactions: any[] }) {
+  return (
+    <table className="w-full">
+      <thead>
+        <tr className="border-b border-white/10">
+          <th className="text-left pb-3 text-white/60">Tx Hash</th>
+          <th className="text-right pb-3 text-white/60">Amount</th>
+          <th className="text-right pb-3 text-white/60">Symbol</th>
+          <th className="text-right pb-3 text-white/60">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {transactions.map((tx, idx) => (
+          <tr key={idx} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+            <td className="py-4">{tx.txHash}</td>
+            <td className="text-right py-4">{tx.amount}</td>
+            <td className="text-right py-4">{tx.symbol}</td>
+            <td className="text-right py-4">
+              <span className={tx.txStatus === "success" ? "text-green-500" : "text-red-500"}>
+                {tx.txStatus}
+              </span>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )
+}
+
+function Modal({ children, onClose }: { children: React.ReactNode, onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+      <div className="bg-black rounded-lg shadow-lg p-6 min-w-[300px] max-w-2xl relative">
+        <button onClick={onClose} className="absolute top-2 right-2 text-white/70 hover:text-white text-xl">&times;</button>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+
