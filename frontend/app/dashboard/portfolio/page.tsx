@@ -9,7 +9,6 @@ const AVAILABLE_CHAINS = [
   { id: "56", name: "Binance Smart Chain" },
   { id: "137", name: "Polygon" },
   { id: "43114", name: "Avalanche" },
-  // Add more chains as needed
 ]
 
 export default function PortfolioPage() {
@@ -17,9 +16,11 @@ export default function PortfolioPage() {
   const [loading, setLoading] = useState(false)
   const [history, setHistory] = useState<any[]>([])
   const [tokenBalances, setTokenBalances] = useState<any[]>([])
-  const [totalValue, setTotalValue] = useState<string>("")
+  const [totalValue, setTotalValue] = useState<string>("0")
   const [specificToken, setSpecificToken] = useState<any[]>([])
-  const [selectedTable, setSelectedTable] = useState<"balances" | "history" | "specific">("balances")
+  const [selectedTable, setSelectedTable] = useState<
+    "balances" | "history" | "specific" | "total_value"
+  >("balances")
   const [selectedChains, setSelectedChains] = useState<string[]>(["1", "56"])
 
   // Toggle chain selection for multi-select
@@ -88,7 +89,13 @@ export default function PortfolioPage() {
       const valueJson = await valueRes.json()
       const specificJson = await specificRes.json()
 
-      setHistory(historyJson?.data?.[0]?.transactionList || [])
+      // Fix: Extract transaction list safely from nested data
+      const transactions =
+        historyJson?.data?.[0]?.transactionList ||
+        historyJson?.data?.[0]?.transactions || // fallback key if any
+        []
+
+      setHistory(transactions)
       setTokenBalances(balancesJson?.data?.[0]?.tokenAssets || [])
       setTotalValue(valueJson?.data?.[0]?.totalValue || "0")
       setSpecificToken(specificJson?.data?.[0]?.tokenAssets || [])
@@ -175,6 +182,7 @@ export default function PortfolioPage() {
           <option value="balances">All Token Balances</option>
           <option value="history">Transaction History</option>
           <option value="specific">Specific Token Balance</option>
+          <option value="total_value">Total Portfolio Value</option>
         </select>
         <Button onClick={() => setActiveModal("details")} variant="outline" size="sm" className="border-white/20 hover:bg-white/10 text-white">
           Show Details
@@ -187,6 +195,7 @@ export default function PortfolioPage() {
             {selectedTable === "balances" && "Portfolio Breakdown"}
             {selectedTable === "history" && "Transaction History"}
             {selectedTable === "specific" && "Specific Token Balance"}
+            {selectedTable === "total_value" && "Total Portfolio Value"}
           </h2>
           <Button variant="outline" size="sm" className="border-white/20 hover:bg-white/10 text-white">Filter</Button>
         </div>
@@ -197,8 +206,12 @@ export default function PortfolioPage() {
             <TokenBalancesTable assets={tokenBalances} />
           ) : selectedTable === "history" ? (
             <HistoryTable transactions={history} />
-          ) : (
+          ) : selectedTable === "specific" ? (
             <TokenBalancesTable assets={specificToken} />
+          ) : (
+            <div className="text-white text-lg font-semibold">
+              Total Portfolio Value: ${Number(totalValue).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+            </div>
           )}
         </div>
       </div>
@@ -234,6 +247,7 @@ function PortfolioCard({ title, value, change, trend }: { title: string, value: 
 }
 
 function TokenBalancesTable({ assets }: { assets: any[] }) {
+  if (!assets.length) return <p className="text-white/60 p-4">No token balances found.</p>
   return (
     <table className="w-full">
       <thead>
@@ -264,6 +278,7 @@ function TokenBalancesTable({ assets }: { assets: any[] }) {
 }
 
 function HistoryTable({ transactions }: { transactions: any[] }) {
+  if (!transactions.length) return <p className="text-white/60 p-4">No transaction history found.</p>
   return (
     <table className="w-full">
       <thead>
@@ -272,19 +287,19 @@ function HistoryTable({ transactions }: { transactions: any[] }) {
           <th className="text-right pb-3 text-white/60">Amount</th>
           <th className="text-right pb-3 text-white/60">Symbol</th>
           <th className="text-right pb-3 text-white/60">Status</th>
+          <th className="text-right pb-3 text-white/60">Time</th>
         </tr>
       </thead>
       <tbody>
         {transactions.map((tx, idx) => (
           <tr key={idx} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-            <td className="py-4">{tx.txHash}</td>
+            <td className="py-4 break-all">{tx.txHash}</td>
             <td className="text-right py-4">{tx.amount}</td>
             <td className="text-right py-4">{tx.symbol}</td>
-            <td className="text-right py-4">
-              <span className={tx.txStatus === "success" ? "text-green-500" : "text-red-500"}>
-                {tx.txStatus}
-              </span>
+            <td className={`text-right py-4 ${tx.txStatus === "success" ? "text-green-500" : "text-red-500"}`}>
+              {tx.txStatus}
             </td>
+            <td className="text-right py-4">{new Date(Number(tx.txTime)).toLocaleString()}</td>
           </tr>
         ))}
       </tbody>
@@ -292,7 +307,7 @@ function HistoryTable({ transactions }: { transactions: any[] }) {
   )
 }
 
-function Modal({ children, onClose }: { children: React.ReactNode, onClose: () => void }) {
+function Modal({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
       <div className="bg-black rounded-lg shadow-lg p-6 min-w-[300px] max-w-2xl relative">
@@ -302,5 +317,3 @@ function Modal({ children, onClose }: { children: React.ReactNode, onClose: () =
     </div>
   )
 }
-
-
