@@ -88,7 +88,7 @@ const apiConfigMap:any = {
   // 4. Get Total Value (GET, query)
   "/api/v5/dex/balance/total-value": {
     method: "GET",
-    required: ["address"],
+    required: ["accountId"],
     paramLocation: "query"
   },
   // 5. Get Total Token Balances (GET, query)
@@ -100,7 +100,7 @@ const apiConfigMap:any = {
   // 6. Get Specific Token Balance (POST, body)
   "/api/v5/dex/balance/token-balances-by-address": {
     method: "POST",
-    required: ["address", "tokenContractAddresses"],
+    required: ["address"],
     paramLocation: "body"
   },
   // 7. Get History by Address (GET, query)
@@ -166,7 +166,11 @@ export async function POST(req: NextRequest) {
         body = Array.isArray(params) ? JSON.stringify(params) : JSON.stringify(params);
       }
     }
+    console.log("my Body is:::::",body);
+    console.log("my Query is:::::",body);
+    
 
+   
     // Signature
     const { signature, timestamp } = createSignature(
       apiConfig.method,
@@ -174,7 +178,6 @@ export async function POST(req: NextRequest) {
       apiConfig.method === "GET" ? query : "",
       apiConfig.method === "POST" ? body : ""
     );
-
     // Headers
     const headers = {
       'OK-ACCESS-KEY': api_config.api_key,
@@ -197,7 +200,8 @@ export async function POST(req: NextRequest) {
     
     // Send request
     const response = await httpsRequest(options, body);
-
+    console.log("response is:");
+    
     return NextResponse.json(response);
 
   } catch (error: any) {

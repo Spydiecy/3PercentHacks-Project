@@ -121,14 +121,13 @@ async function callMarketDataApi(type: string, tokenName: string,address:string,
     method="GET"
       path = "/api/v5/dex/balance/total-value";
       break;
-    case "token_balance":
-    case "total_token_balance": 
-
+    case "total_token_balance":   
       method="GET"
-      path = "/api/v5/dex/balance/all-token-balances-by-address";
+      path = "/api/v5/dex/balance/all-token-balances";
       break;
+    case "token_balance":
     case "specific_token_balance":
-      path = "/api/v5/dex/balance/token-balances-by-address";
+      path = "/api/v5/dex/balance/token-balances";
       break;
     case "candlestick_history":
       method="GET"

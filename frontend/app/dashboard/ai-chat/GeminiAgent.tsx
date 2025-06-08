@@ -24,7 +24,7 @@ When a user query involves:
 --if related to Retrieve the total balance of all tokens and DeFi assets under an account. like that return type is return type "total_token_balance" with OHLC data.
 
 -is related to Query the balance of a specific token under an address.
-return type "specific_token_balance" with OHLC data.
+return type "specific_token_balance" with OHLC data with token_name and token_name in data.
 
 
 - Candlestick history: return type "candlestick_history" with historical OHLC data.
