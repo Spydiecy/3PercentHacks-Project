@@ -100,6 +100,65 @@ async function callMarketDataApi(type: string, tokenName: string,address:string,
   let path = "";
   let method="POST"
   let notReq=false;
+  if(type=="total_value"){
+      let body={
+    "address": "0xEd0C6079229E2d407672a117c22b62064f4a4312",//dummy address
+    "chains": "1,56",
+    "excludeRiskToken": "0"
+}
+     const response = await fetch("/api/portfolio/total_token_balances", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    let m=await response.json();
+    return m;
+  }
+   if(type=="total_token_balance"){//dummy address
+       let body={
+    "address": "0xEd0C6079229E2d407672a117c22b62064f4a4312",
+    "chains": "1,56",
+    "excludeRiskToken": "0"
+}
+     const response = await fetch("/api/portfolio/total_token_balances", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    let m=await response.json();
+    return m;
+  }
+   if(type=="specific_token_balance"){
+       let body={
+    "address": "0xEd0C6079229E2d407672a117c22b62064f4a4312",//dummy address
+    "tokenContractAddresses": getTokenContractAddress(tokenName),
+    "excludeRiskToken": "0"
+}
+     const response = await fetch("/api/portfolio/specific_token_balance", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    let m=await response.json();
+    return m;
+    
+  }
+  if(type=="transaction_history"){
+    let body={
+      "address": "0x50c476a139aab23fdaf9bca12614cdd54a4244e4",
+      "chains": chainIndexMap[tokenName],
+      "limit": "20"
+}
+     const response = await fetch("/api/portfolio/history_by_add", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    let m=await response.json();
+    return m;
+    
+  }
+
   switch (type) {
     case "price":
       path = "/api/v5/dex/market/price";
@@ -117,17 +176,9 @@ async function callMarketDataApi(type: string, tokenName: string,address:string,
     method="GET"
       path = "/api/v5/dex/index/historical-price";
       break;
-    case "total_value": 
-    method="GET"
-      path = "/api/v5/dex/balance/total-value";
-      break;
-    case "total_token_balance":   
+    case "":   
       method="GET"
       path = "/api/v5/dex/balance/all-token-balances";
-      break;
-    case "token_balance":
-    case "specific_token_balance":
-      path = "/api/v5/dex/balance/token-balances";
       break;
     case "candlestick_history":
       method="GET"
