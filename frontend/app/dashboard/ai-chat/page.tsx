@@ -31,8 +31,8 @@ interface GeminiResponse {
 
 // Map token names to contract addresses
 const tokenAddressMap: Record<string, string> = {
-  ETH: "0xc18360217d8f7ab5e7c516566761ea12ce7f9d72", // Native ETH
-  OP: "0x4200000000000000000000000000000000000042", // OP token
+  ETH: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // Native ETH
+  OP: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // OP token
   BSC: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // Native BNB
   OKT: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // Native OKT
   SONIC: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // Placeholder
@@ -55,7 +55,7 @@ const tokenAddressMap: Record<string, string> = {
   CRO: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // Native CRO
   ZETA: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // Native ZETA
   TRON: "TRX", // Tron native token symbol
-  SOL: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // Solana native token symbol
+  SOL: "So11111111111111111111111111111111111111112", // Solana native token symbol
   SUI: "0x2::sui::SUI", // SUI native token ID
   TON: "TON", // TON native token symbol
   MYS: "3",
