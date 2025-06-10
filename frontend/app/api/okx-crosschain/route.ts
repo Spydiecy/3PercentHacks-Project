@@ -14,7 +14,7 @@ const api_config = {
 // Fetch OKX server timestamp and convert to ISO 8601 string
 function getServerTimestamp(): Promise<string> {
   return new Promise((resolve, reject) => {
-    https.get("https://www.okx.com/api/v5/public/time", (res) => {
+    https.get("https://web3.okx.com/api/v5/public/time", (res) => {
       let data = "";
       res.on("data", (chunk) => (data += chunk));
       res.on("end", () => {
@@ -76,7 +76,7 @@ async function sendGetRequest(request_path: string, params: any): Promise<any> {
   const fullPath = request_path + (params && Object.keys(params).length > 0 ? "?" + querystring.stringify(params) : "");
 
   const options = {
-    hostname: "www.okx.com",
+    hostname: "web3.okx.com",
     path: fullPath,
     method: "GET",
     headers,

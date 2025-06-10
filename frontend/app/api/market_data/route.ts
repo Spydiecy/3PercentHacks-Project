@@ -191,7 +191,7 @@ export async function POST(req: NextRequest) {
 
     // HTTPS options
     const options = {
-      hostname: 'www.okx.com',
+      hostname: 'web3.okx.com',
       path: fullPath,
       method: apiConfig.method,
       headers: headers

@@ -56,7 +56,7 @@ interface DashboardStats {
 
 // Chain configuration
 const chainOptions = [
-  { name: "All Chains", value: "1,56,137,42161,10,43114,250,324,8453", label: "All" },
+  { name: "All Chains", value: "1", label: "All" },
   { name: "Ethereum", value: "1", label: "ETH" },
   { name: "BNB Chain", value: "56", label: "BSC" },
   { name: "Polygon", value: "137", label: "MATIC" },
