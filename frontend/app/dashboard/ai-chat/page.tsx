@@ -159,6 +159,23 @@ async function callMarketDataApi(type: string, tokenName: string,address:string,
     
   }
 
+  if(type=="tx_by_hash"){
+    let body={
+   
+    "chainIndex": chainIndexMap["token_name"],
+    "txHash": "0x9ab8ccccc9f778ea91ce4c0f15517672c4bd06d166e830da41ba552e744d29a5"
+
+}
+     const response = await fetch("/api/portfolio/transaction_by_hash", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    let m=await response.json();
+    return m;
+    
+  }
+
   switch (type) {
     case "price":
       path = "/api/v5/dex/market/price";
