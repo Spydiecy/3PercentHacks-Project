@@ -1,25 +1,32 @@
+"use client"
 
-"use client";
-
-import React, { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Send, Bot, User, Zap, RefreshCw } from 'lucide-react';
-import { geminiAgent } from "./GeminiAgent";
-import { extractImportantInfoFromData } from "./Gemini2Agent";
-import { useWallet } from "@/contexts/WalletContext";
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import { Send, Bot, User, Zap, RefreshCw } from "lucide-react"
+import { geminiAgent } from "./GeminiAgent"
+import { extractImportantInfoFromData } from "./Gemini2Agent"
+import { useWallet } from "@/contexts/WalletContext"
+import { LineChart, Line, XAxis, YAxis, ResponsiveContainer } from "recharts"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import { TrendingUp, TrendingDown, BarChart3 } from "lucide-react"
 
 interface Message {
-  role: "user" | "system";
-  content: string;
+  role: "user" | "system"
+  content: string
+  chartData?: any
+  chartType?: string
+  chartTitle?: string
+  tokenName?: string
 }
 
 interface GeminiResponse {
-  text?: string;
-  type?: string;
-  token_name?: string;
-  txHash?:string,
-  similar_tokens?: string[];
-  [key: string]: any;
+  text?: string
+  type?: string
+  token_name?: string
+  txHash?: string
+  similar_tokens?: string[]
+  [key: string]: any
 }
 
 // Map token names to contract addresses
@@ -48,13 +55,13 @@ const tokenAddressMap: Record<string, string> = {
   CRO: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // Native CRO
   ZETA: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // Native ZETA
   TRON: "TRX", // Tron native token symbol
-  SOL: "SOL", // Solana native token symbol
+  SOL: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // Solana native token symbol
   SUI: "0x2::sui::SUI", // SUI native token ID
-  TON: "TON" ,// TON native token symbol
-   MYS:"3"
-};
+  TON: "TON", // TON native token symbol
+  MYS: "3",
+}
 
-const chainIndexMap:Record<string,String> = {
+const chainIndexMap: Record<string, string> = {
   ETH: "1",
   OP: "10",
   BSC: "56",
@@ -82,199 +89,367 @@ const chainIndexMap:Record<string,String> = {
   SOL: "501",
   SUI: "784",
   TON: "607",
-  MYS:"3"
-};
-
+  MYS: "3",
+}
 
 function getTokenContractAddress(tokenName: string): string | null {
-  return tokenAddressMap[tokenName] || null;
+  return tokenAddressMap[tokenName] || null
 }
 
 // Call your local market data API with POST request
-async function callMarketDataApi(type: string, tokenName: string,address:string,txHash:string) {
-  const tokenContractAddress = getTokenContractAddress(tokenName);
+async function callMarketDataApi(type: string, tokenName: string, address: string, txHash: string) {
+  const tokenContractAddress = getTokenContractAddress(tokenName)
   if (!tokenContractAddress) {
-    throw new Error(`Token contract address not found for token: ${tokenName}`);
+    throw new Error(`Token contract address not found for token: ${tokenName}`)
   }
 
-  let path = "";
-  let method="POST"
-  let notReq=false;
-  if(type=="total_value"){
-      let body={
-    "address": "0xEd0C6079229E2d407672a117c22b62064f4a4312",//dummy address
-    "chains": "1,56",
-    "excludeRiskToken": "0"
-}
-     const response = await fetch("/api/portfolio/total_token_balances", {
+  let path = ""
+  let method = "POST"
+  let notReq = false
+  if (type == "total_value") {
+    const body = {
+      address: "0xEd0C6079229E2d407672a117c22b62064f4a4312", //dummy address
+      chains: "1,56",
+      excludeRiskToken: "0",
+    }
+    const response = await fetch("/api/portfolio/total_token_balances", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    });
-    let m=await response.json();
-    return m;
+    })
+    const m = await response.json()
+    return m
   }
-   if(type=="total_token_balance"){//dummy address
-       let body={
-    "address": "0xEd0C6079229E2d407672a117c22b62064f4a4312",
-    "chains": "1,56",
-    "excludeRiskToken": "0"
-}
-     const response = await fetch("/api/portfolio/total_token_balances", {
+  if (type == "total_token_balance") {
+    //dummy address
+    const body = {
+      address: "0xEd0C6079229E2d407672a117c22b62064f4a4312",
+      chains: "1,56",
+      excludeRiskToken: "0",
+    }
+    const response = await fetch("/api/portfolio/total_token_balances", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    });
-    let m=await response.json();
-    return m;
+    })
+    const m = await response.json()
+    return m
   }
-   if(type=="specific_token_balance"){
-       let body={
-    "address": "0xEd0C6079229E2d407672a117c22b62064f4a4312",//dummy address
-    "tokenContractAddresses": getTokenContractAddress(tokenName),
-    "excludeRiskToken": "0"
-}
-     const response = await fetch("/api/portfolio/specific_token_balance", {
+  if (type == "specific_token_balance") {
+    const body = {
+      address: "0xEd0C6079229E2d407672a117c22b62064f4a4312", //dummy address
+      tokenContractAddresses: getTokenContractAddress(tokenName),
+      excludeRiskToken: "0",
+    }
+    const response = await fetch("/api/portfolio/specific_token_balance", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    });
-    let m=await response.json();
-    return m;
-    
+    })
+    const m = await response.json()
+    return m
   }
-  if(type=="transaction_history"){
-    let body={
-      "address": "0x50c476a139aab23fdaf9bca12614cdd54a4244e4",
-      "chains": chainIndexMap[tokenName],
-      "limit": "20"
-}
-     const response = await fetch("/api/portfolio/history_by_add", {
+  if (type == "transaction_history") {
+    const body = {
+      address: "0x50c476a139aab23fdaf9bca12614cdd54a4244e4",
+      chains: chainIndexMap[tokenName],
+      limit: "20",
+    }
+    const response = await fetch("/api/portfolio/history_by_add", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    });
-    let m=await response.json();
-    return m;
-    
+    })
+    const m = await response.json()
+    return m
   }
 
-  if(type=="tx_by_hash"){
-    let body={
-   
-    "chainIndex": chainIndexMap["token_name"],
-    "txHash": "0x9ab8ccccc9f778ea91ce4c0f15517672c4bd06d166e830da41ba552e744d29a5"
-
-}
-     const response = await fetch("/api/portfolio/transaction_by_hash", {
+  if (type == "tx_by_hash") {
+    const body = {
+      chainIndex: chainIndexMap["token_name"],
+      txHash: "0x9ab8ccccc9f778ea91ce4c0f15517672c4bd06d166e830da41ba552e744d29a5",
+    }
+    const response = await fetch("/api/portfolio/transaction_by_hash", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    });
-    let m=await response.json();
-    return m;
-    
+    })
+    const m = await response.json()
+    return m
   }
 
   switch (type) {
     case "price":
-      path = "/api/v5/dex/market/price";
-      break;
-    case "trades": 
-      method="GET"
-      path = "/api/v5/dex/market/trades";
-      break;
-    case "candlestick": 
-    method="GET"
-    notReq=true;
-      path = "/api/v5/dex/market/candles";
-      break;
-    case "hist_data": 
-    method="GET"
-      path = "/api/v5/dex/index/historical-price";
-      break;
-    case "":   
-      method="GET"
-      path = "/api/v5/dex/balance/all-token-balances";
-      break;
+      path = "/api/v5/dex/market/price"
+      break
+    case "trades":
+      method = "GET"
+      path = "/api/v5/dex/market/trades"
+      break
+    case "candlestick":
+      method = "GET"
+      notReq = true
+      path = "/api/v5/dex/market/candles"
+      break
+    case "hist_data":
+      method = "GET"
+      path = "/api/v5/dex/index/historical-price"
+      break
+    case "":
+      method = "GET"
+      path = "/api/v5/dex/balance/all-token-balances"
+      break
     case "candlestick_history":
-      method="GET"
-      notReq=true;
-      path = "/api/v5/dex/market/historical-candles";
-      break;
+      method = "GET"
+      notReq = true
+      path = "/api/v5/dex/market/historical-candles"
+      break
     case "historical_index_price":
-      notReq=true;
-      method="GET"
-      path = "/api/v5/dex/index/historical-price";
-      break;
-     case "token_index_price":
-      notReq=true;
-      path = "/api/dex/index/current-price";
-      break;
-  
+      notReq = true
+      method = "GET"
+      path = "/api/v5/dex/index/historical-price"
+      break
+    case "token_index_price":
+      notReq = true
+      path = "/api/dex/index/current-price"
+      break
+
     case "transaction_history":
-      method="GET"
-      path = "/api/v5/dex/post-transaction/transactions-by-address";
-      break;
+      method = "GET"
+      path = "/api/v5/dex/post-transaction/transactions-by-address"
+      break
     case "spe_transaction":
-      method="GET"
-      path = "/api/v5/dex/post-transaction/transaction-detail-by-txhash";
-      break;
+      method = "GET"
+      path = "/api/v5/dex/post-transaction/transaction-detail-by-txhash"
+      break
     case "total_value":
-      path = "/api/v5/dex/balance/total-value";
-      break;    
+      path = "/api/v5/dex/balance/total-value"
+      break
     // Add more cases as needed
     default:
-      path = "/api/v5/dex/default";
+      path = "/api/v5/dex/default"
   }
- 
+
   try {
-    let  body;
-     if(notReq==true){
-    body = {
-      method: method,
-      path,
-      data: [
-        {
-          chainIndex: chainIndexMap[tokenName],
-          tokenContractAddress,
-        },
-      ],
-    };  
-    }
-    else{
+    let body
+    if (notReq == true) {
       body = {
-      method: method,
-      path,
-      data: [
-        {
-          chainIndex: chainIndexMap[tokenName],
-          address:address,
-          tokenContractAddress,
-        },
-      ],
-    }; 
+        method: method,
+        path,
+        data: [
+          {
+            chainIndex: chainIndexMap[tokenName],
+            tokenContractAddress,
+          },
+        ],
+      }
+    } else {
+      body = {
+        method: method,
+        path,
+        data: [
+          {
+            chainIndex: chainIndexMap[tokenName],
+            address: address,
+            tokenContractAddress,
+          },
+        ],
+      }
     }
-     
-    console.log("my body is::",body);
-    
+
+    console.log("my body is::", body)
+
     const response = await fetch("http://127.0.0.1:3000/api/market_data", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    });
-    let m=await response.json();
-    console.log("my m fetch is:::",m);
-    
+    })
+    const m = await response.json()
+    console.log("my m fetch is:::", m)
 
     if (!response.ok) {
-      throw new Error(`Market data API error: ${response.statusText}`);
+      throw new Error(`Market data API error: ${response.statusText}`)
     }
-    return m;
+    return m
   } catch (error) {
-    console.error("Market data API error:", error);
-    throw error;
+    console.error("Market data API error:", error)
+    throw error
   }
+}
+
+// Helper function to format timestamp to readable date
+function formatTimestamp(timestamp: string | number): string {
+  const date = new Date(Number(timestamp))
+  return date.toLocaleDateString() + " " + date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+}
+
+// Helper function to format price
+function formatPrice(price: string | number): string {
+  return Number(price).toFixed(6)
+}
+
+// Component for rendering historical price chart
+function HistoricalPriceChart({ data, title }: { data: any; title: string }) {
+  if (!data?.data?.[0]?.prices) return null
+
+  const chartData = data.data[0].prices
+    .map((item: any) => ({
+      time: formatTimestamp(item.time),
+      price: Number(item.price),
+      timestamp: Number(item.time),
+    }))
+    .reverse() // Reverse to show chronological order
+
+  const currentPrice = chartData[chartData.length - 1]?.price || 0
+  const previousPrice = chartData[chartData.length - 2]?.price || 0
+  const priceChange = currentPrice - previousPrice
+  const isPositive = priceChange >= 0
+
+  return (
+    <Card className="w-full bg-black/40 border-white/20 backdrop-blur-sm">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-white flex items-center gap-2">
+          <BarChart3 className="h-5 w-5" />
+          {title}
+        </CardTitle>
+        <div className="flex items-center gap-2">
+          <span className="text-2xl font-bold text-white">${formatPrice(currentPrice)}</span>
+          <span className={`flex items-center gap-1 text-sm ${isPositive ? "text-green-400" : "text-red-400"}`}>
+            {isPositive ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+            {isPositive ? "+" : ""}
+            {formatPrice(priceChange)}
+          </span>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <ChartContainer
+          config={{
+            price: {
+              label: "Price",
+              color: "hsl(var(--chart-1))",
+            },
+          }}
+          className="h-[300px]"
+        >
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData}>
+              <XAxis
+                dataKey="time"
+                tick={{ fill: "white", fontSize: 12 }}
+                axisLine={{ stroke: "rgba(255,255,255,0.2)" }}
+                tickLine={{ stroke: "rgba(255,255,255,0.2)" }}
+              />
+              <YAxis
+                tick={{ fill: "white", fontSize: 12 }}
+                axisLine={{ stroke: "rgba(255,255,255,0.2)" }}
+                tickLine={{ stroke: "rgba(255,255,255,0.2)" }}
+                domain={["dataMin - 0.01", "dataMax + 0.01"]}
+              />
+              <ChartTooltip
+                content={<ChartTooltipContent />}
+                contentStyle={{
+                  backgroundColor: "rgba(0,0,0,0.8)",
+                  border: "1px solid rgba(255,255,255,0.2)",
+                  borderRadius: "8px",
+                  color: "white",
+                }}
+              />
+              <Line
+                type="monotone"
+                dataKey="price"
+                stroke="#3b82f6"
+                strokeWidth={2}
+                dot={false}
+                activeDot={{ r: 4, fill: "#3b82f6" }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </ChartContainer>
+      </CardContent>
+    </Card>
+  )
+}
+
+// Component for rendering candlestick chart
+function CandlestickChart({ data, title }: { data: any; title: string }) {
+  if (!data?.data || !Array.isArray(data.data)) return null
+
+  const chartData = data.data
+    .map((item: any) => ({
+      time: formatTimestamp(item[0]),
+      open: Number(item[1]),
+      high: Number(item[2]),
+      low: Number(item[3]),
+      close: Number(item[4]),
+      volume: Number(item[5]),
+      timestamp: Number(item[0]),
+    }))
+    .reverse()
+
+  const currentPrice = chartData[chartData.length - 1]?.close || 0
+  const previousPrice = chartData[chartData.length - 2]?.close || 0
+  const priceChange = currentPrice - previousPrice
+  const isPositive = priceChange >= 0
+
+  return (
+    <Card className="w-full bg-black/40 border-white/20 backdrop-blur-sm">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-white flex items-center gap-2">
+          <BarChart3 className="h-5 w-5" />
+          {title}
+        </CardTitle>
+        <div className="flex items-center gap-2">
+          <span className="text-2xl font-bold text-white">${formatPrice(currentPrice)}</span>
+          <span className={`flex items-center gap-1 text-sm ${isPositive ? "text-green-400" : "text-red-400"}`}>
+            {isPositive ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+            {isPositive ? "+" : ""}
+            {formatPrice(priceChange)}
+          </span>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <ChartContainer
+          config={{
+            high: { label: "High", color: "#22c55e" },
+            low: { label: "Low", color: "#ef4444" },
+            open: { label: "Open", color: "#3b82f6" },
+            close: { label: "Close", color: "#8b5cf6" },
+          }}
+          className="h-[300px]"
+        >
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData}>
+              <XAxis
+                dataKey="time"
+                tick={{ fill: "white", fontSize: 12 }}
+                axisLine={{ stroke: "rgba(255,255,255,0.2)" }}
+                tickLine={{ stroke: "rgba(255,255,255,0.2)" }}
+              />
+              <YAxis
+                tick={{ fill: "white", fontSize: 12 }}
+                axisLine={{ stroke: "rgba(255,255,255,0.2)" }}
+                tickLine={{ stroke: "rgba(255,255,255,0.2)" }}
+                domain={["dataMin - 0.01", "dataMax + 0.01"]}
+              />
+              <ChartTooltip
+                content={<ChartTooltipContent />}
+                contentStyle={{
+                  backgroundColor: "rgba(0,0,0,0.8)",
+                  border: "1px solid rgba(255,255,255,0.2)",
+                  borderRadius: "8px",
+                  color: "white",
+                }}
+              />
+              <Line type="monotone" dataKey="high" stroke="#22c55e" strokeWidth={1} dot={false} />
+              <Line type="monotone" dataKey="low" stroke="#ef4444" strokeWidth={1} dot={false} />
+              <Line type="monotone" dataKey="open" stroke="#3b82f6" strokeWidth={1} dot={false} />
+              <Line type="monotone" dataKey="close" stroke="#8b5cf6" strokeWidth={2} dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </ChartContainer>
+      </CardContent>
+    </Card>
+  )
 }
 
 const suggestions = [
@@ -282,82 +457,110 @@ const suggestions = [
   "Explain the current SOL market conditions",
   "What's the best DeFi strategy for beginners?",
   "How to minimize transaction fees?",
-];
+]
 
 export default function AiChatPage() {
-    const {publicKey }:any = useWallet()
-    console.log("Public Key is::::",publicKey);
-    
+  const { publicKey }: any = useWallet()
+  console.log("Public Key is::::", publicKey)
+
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "system",
       content: "Hello! I'm Astra AI, your DeFi assistant. How can I help you today?",
     },
-  ]);
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
+  ])
+  const [input, setInput] = useState("")
+  const [loading, setLoading] = useState(false)
 
   const handleSendMessage = async () => {
-    if (!input.trim()) return;
+    if (!input.trim()) return
 
-    const userMessage: Message = { role: "user", content: input };
-    setMessages((prev) => [...prev, userMessage]);
-    setInput("");
-    setLoading(true);
+    const userMessage: Message = { role: "user", content: input }
+    setMessages((prev) => [...prev, userMessage])
+    setInput("")
+    setLoading(true)
 
     try {
       // Call Gemini API
-      const geminiResponse: GeminiResponse = await geminiAgent(input);
-      console.log("Gemini Response:", geminiResponse);
+      const geminiResponse: GeminiResponse = await geminiAgent(input)
+      console.log("Gemini Response:", geminiResponse)
 
       // Process the response
       if (geminiResponse.type && geminiResponse.token_name) {
         try {
-          const marketData:any = await callMarketDataApi(
+          const marketData: any = await callMarketDataApi(
             geminiResponse.type,
             geminiResponse.token_name,
             publicKey,
-            geminiResponse.txhash
-          );
+            geminiResponse.txhash,
+          )
 
-          // Combine Gemini and market data for important info extraction
-          const formattedResponse = geminiResponse.text ||
-            `Here's the information about ${geminiResponse.token_name}: ${JSON.stringify(marketData)}`;
+          // Check if this is chart data and render accordingly
+          const shouldShowChart = ["hist_data", "candlestick_history", "historical_index_price"].includes(
+            geminiResponse.type,
+          )
 
-          const aiMessage: string = await extractImportantInfoFromData(formattedResponse);
-          console.log("my ai messages are::::"+aiMessage);
-          
-          setMessages((prev) => [
-            ...prev,
-            { role: "system", content: aiMessage },
-          ]);
+          if (shouldShowChart) {
+            // Create a chart message
+            const chartTitle =
+              geminiResponse.type === "hist_data"
+                ? "Historical Price Data"
+                : geminiResponse.type === "candlestick_history"
+                  ? "Candlestick Chart"
+                  : "Historical Index Price"
+
+            // Add the AI response first
+            const formattedResponse =
+              geminiResponse.text || `Here's the ${chartTitle.toLowerCase()} for ${geminiResponse.token_name}:`
+
+            const aiMessage: string = "Here is Your Data.."
+
+            setMessages((prev) => [
+              ...prev,
+              { role: "system", content: aiMessage },
+              {
+                role: "system",
+                content: "CHART_DATA",
+                chartData: marketData,
+                chartType: geminiResponse.type,
+                chartTitle: `${chartTitle} - ${geminiResponse.token_name}`,
+                tokenName: geminiResponse.token_name,
+              } as any,
+            ])
+          } else {
+            // Regular processing for non-chart data
+            const formattedResponse =
+              geminiResponse.text ||
+              `Here's the information about ${geminiResponse.token_name}: ${JSON.stringify(marketData)}`
+
+            const aiMessage: string = await extractImportantInfoFromData(formattedResponse)
+
+            setMessages((prev) => [...prev, { role: "system", content: aiMessage }])
+          }
         } catch (apiError: any) {
-          console.log("my Api Error is:::",apiError);
-          
+          console.log("my Api Error is:::", apiError)
+
           setMessages((prev) => [
             ...prev,
             {
               role: "system",
               content: `I couldn't fetch the market data for ${geminiResponse.token_name}: ${apiError.message}`,
             },
-          ]);
+          ])
         }
       } else {
         // Show Gemini response if no actionable data
-        const responseText = geminiResponse.text || JSON.stringify(geminiResponse);
-           const aiMessage: string = await extractImportantInfoFromData(responseText);
-          console.log("my ai messages are::::"+aiMessage);
-        setMessages((prev) => [...prev, { role: "system", content: aiMessage}]);
+        const responseText = geminiResponse.text || JSON.stringify(geminiResponse)
+        const aiMessage: string = await extractImportantInfoFromData(responseText)
+        console.log("my ai messages are::::" + aiMessage)
+        setMessages((prev) => [...prev, { role: "system", content: aiMessage }])
       }
     } catch (error: any) {
-      setMessages((prev) => [
-        ...prev,
-        { role: "system", content: `Sorry, I encountered an error: ${error.message}` },
-      ]);
+      setMessages((prev) => [...prev, { role: "system", content: `Sorry, I encountered an error: ${error.message}` }])
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const handleReset = () => {
     setMessages([
@@ -365,8 +568,8 @@ export default function AiChatPage() {
         role: "system",
         content: "Hello! I'm Astra AI, your DeFi assistant. How can I help you today?",
       },
-    ]);
-  };
+    ])
+  }
 
   return (
     <div className="flex flex-col h-[calc(100vh-6rem)] bg-black p-6 rounded-xl text-white">
@@ -389,32 +592,39 @@ export default function AiChatPage() {
 
       <div className="flex-1 overflow-y-auto backdrop-blur-sm bg-black/20 border border-white/10 rounded-xl mb-4 p-6 hover:border-white/20 transition-all hover:shadow-xl">
         {messages.map((message, index) => (
-          <div
-            key={index}
-            className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} mb-4`}
-          >
-            <div className={`flex max-w-[80%] ${message.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
-              <div
-                className={`rounded-full h-9 w-9 flex items-center justify-center ${message.role === "user"
-                  ? "bg-white/10 ml-2 border border-white/10"
-                  : "bg-white/10 mr-2 border border-white/10"
-                  }`}
-              >
-                {message.role === "user" ? (
-                  <User className="h-4 w-4 text-white/80" />
+          <div key={index} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} mb-4`}>
+            {message.content === "CHART_DATA" ? (
+              <div className="w-full max-w-4xl">
+                {message.chartType === "candlestick_history" ? (
+                  <CandlestickChart data={message.chartData} title={message.chartTitle || "Chart"} />
                 ) : (
-                  <Bot className="h-4 w-4 text-white/80" />
+                  <HistoricalPriceChart data={message.chartData} title={message.chartTitle || "Chart"} />
                 )}
               </div>
-              <div
-                className={`py-3 px-4 rounded-2xl ${message.role === "user"
-                  ? "bg-white/5 border border-white/10"
-                  : "bg-black/30 border border-white/10"
+            ) : (
+              <div className={`flex max-w-[80%] ${message.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
+                <div
+                  className={`rounded-full h-9 w-9 flex items-center justify-center ${
+                    message.role === "user"
+                      ? "bg-white/10 ml-2 border border-white/10"
+                      : "bg-white/10 mr-2 border border-white/10"
+                  }`}
+                >
+                  {message.role === "user" ? (
+                    <User className="h-4 w-4 text-white/80" />
+                  ) : (
+                    <Bot className="h-4 w-4 text-white/80" />
+                  )}
+                </div>
+                <div
+                  className={`py-3 px-4 rounded-2xl ${
+                    message.role === "user" ? "bg-white/5 border border-white/10" : "bg-black/30 border border-white/10"
                   } whitespace-pre-wrap`}
-              >
-                <p className="text-white/90">{message.content}</p>
+                >
+                  <p className="text-white/90">{message.content}</p>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         ))}
         {loading && (
@@ -482,5 +692,5 @@ export default function AiChatPage() {
         ))}
       </div>
     </div>
-  );
+  )
 }

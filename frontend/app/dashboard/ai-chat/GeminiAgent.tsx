@@ -33,7 +33,7 @@ return type "specific_token_balance" with OHLC data with token_name and token_na
 - Total value: return type "total_value" with aggregated value data.
 - Total token balances: return type "total_token_balances" with aggregated balances.
 - Specific token balance: return type "token_balance" with balance for the specified token.
-- Transaction history by address: return type "transaction_history" with transactions for the given address.
+- Transaction history by address: return type "transaction_history" with transactions for the given address do not ask for address it passes automatically in backend.
 - Specific transaction details: return type "tx_by_hash" with detailed data for the specified transaction if given by hash.
 
 Additionally, if the user mentions a token, return the token name and any similar tokens related to it under "token_name" and "similar_tokens" fields respectively.
