@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { ArrowDown, Settings, Clock, Zap, Info, ChevronDown, Check } from "lucide-react"
+import { ArrowDown, Settings, Clock, Zap, Info, ChevronDown, Check, ExternalLink, Copy } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 // Solana-specific token list
@@ -25,32 +25,26 @@ interface SolanaSwapResult {
   timestamp: string
   chainId: string
   code: string
-  data: {
-    instructionLists: Array<{
-      programId: string
-      accounts: Array<{
-        pubkey: string
-        isSigner: boolean
-        isWritable: boolean
-      }>
-      data: string
-    }>
-    addressLookupTableAccount: string[]
-    fromToken: {
-      tokenSymbol: string
-      decimal: string
-      tokenUnitPrice: string
-    }
-    toToken: {
-      tokenSymbol: string
-      decimal: string
-      tokenUnitPrice: string
-    }
-    fromTokenAmount: string
-    toTokenAmount: string
-    minimumReceived: string
-  }
+  data: any
   msg: string
+}
+
+interface ExecuteResult {
+  success: boolean
+  transactionId: string
+  explorerUrl: string
+  tokenInfo: {
+    fromToken: { symbol: string; decimals: number; price: string }
+    toToken: { symbol: string; decimals: number; price: string }
+  }
+  swapDetails: {
+    fromAmount: string
+    fromToken: string
+    toToken: string
+    slippage: string
+  }
+  instructionsUsed: number
+  lookupTablesUsed: number
 }
 
 export default function SolanaSwapPage() {
@@ -61,8 +55,10 @@ export default function SolanaSwapPage() {
   const [slippage, setSlippage] = useState("0.5")
   const [swapResult, setSwapResult] = useState<SolanaSwapResult | null>(null)
   const [quoteResult, setQuoteResult] = useState<any>(null)
+  const [executeResult, setExecuteResult] = useState<ExecuteResult | null>(null)
   const [loading, setLoading] = useState(false)
   const [quoting, setQuoting] = useState(false)
+  const [executing, setExecuting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showFromTokens, setShowFromTokens] = useState(false)
   const [showToTokens, setShowToTokens] = useState(false)
@@ -79,6 +75,7 @@ export default function SolanaSwapPage() {
     // Clear previous results
     setSwapResult(null)
     setQuoteResult(null)
+    setExecuteResult(null)
   }
 
   const formatAmount = (amount: string, decimals: number): string => {
@@ -89,6 +86,10 @@ export default function SolanaSwapPage() {
   const formatDisplayAmount = (amount: string, decimals: number): string => {
     const num = Number.parseFloat(amount || "0")
     return (num / Math.pow(10, decimals)).toFixed(6)
+  }
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text)
   }
 
   // Get quote first
@@ -201,6 +202,59 @@ export default function SolanaSwapPage() {
     }
   }
 
+  // Execute swap
+  const handleExecuteSwap = async () => {
+    if (!fromAmount || Number.parseFloat(fromAmount) <= 0) {
+      setError("Please enter a valid amount")
+      return
+    }
+
+    setExecuting(true)
+    setError(null)
+    setExecuteResult(null)
+
+    try {
+      const formattedAmount = formatAmount(fromAmount, fromToken.decimals)
+
+      const params = {
+        action: "execute",
+        chainId: "501", // Solana
+        fromTokenAddress: fromToken.address,
+        toTokenAddress: toToken.address,
+        amount: formattedAmount,
+        slippage: slippage,
+        userWalletAddress: userWalletAddress,
+        feePercent: "1",
+        priceTolerance: "0",
+        autoSlippage: "false",
+        pathNum: "3",
+      }
+
+      console.log("Execute swap params:", params)
+
+      const res = await fetch("/api/dex-swap", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(params),
+      })
+
+      const data = await res.json()
+      console.log("Execute swap response:", data)
+
+      if (data.error) {
+        setError(data.error)
+      } else if (data.success) {
+        setExecuteResult(data)
+      } else {
+        setError(data.msg || "Failed to execute swap")
+      }
+    } catch (e: any) {
+      setError(e.message || "Network error occurred")
+    } finally {
+      setExecuting(false)
+    }
+  }
+
   const TokenSelector = ({
     tokens,
     selectedToken,
@@ -238,6 +292,7 @@ export default function SolanaSwapPage() {
                   // Clear results when token changes
                   setSwapResult(null)
                   setQuoteResult(null)
+                  setExecuteResult(null)
                   setToAmount("")
                 }}
               >
@@ -290,6 +345,7 @@ export default function SolanaSwapPage() {
                 setFromAmount(e.target.value)
                 setSwapResult(null)
                 setQuoteResult(null)
+                setExecuteResult(null)
                 setToAmount("")
               }}
               className="text-2xl font-medium bg-transparent outline-none w-[60%] text-white"
@@ -304,6 +360,7 @@ export default function SolanaSwapPage() {
                   setFromAmount("1.0")
                   setSwapResult(null)
                   setQuoteResult(null)
+                  setExecuteResult(null)
                   setToAmount("")
                 }}
               >
@@ -406,25 +463,35 @@ export default function SolanaSwapPage() {
         </div>
       </div>
 
-      <div className="flex gap-3 mt-6">
+      <div className="grid grid-cols-3 gap-3 mt-6">
         <Button
-          className="flex-1 py-6 text-lg gap-2 bg-gradient-to-r from-purple-500/20 to-blue-500/20 hover:from-purple-500/30 hover:to-blue-500/30 border border-purple-500/30 hover:border-purple-500/50 text-white shadow-lg backdrop-blur-sm"
+          className="py-6 text-sm gap-2 bg-gradient-to-r from-purple-500/20 to-blue-500/20 hover:from-purple-500/30 hover:to-blue-500/30 border border-purple-500/30 hover:border-purple-500/50 text-white shadow-lg backdrop-blur-sm"
           size="lg"
           onClick={handleGetQuote}
           disabled={quoting || !fromAmount || Number.parseFloat(fromAmount) <= 0}
         >
-          <Info className="h-5 w-5" />
-          {quoting ? "Getting Quote..." : "Get Quote"}
+          <Info className="h-4 w-4" />
+          {quoting ? "Getting..." : "Quote"}
         </Button>
 
         <Button
-          className="flex-1 py-6 text-lg gap-2 bg-gradient-to-r from-green-500/20 to-emerald-500/20 hover:from-green-500/30 hover:to-emerald-500/30 border border-green-500/30 hover:border-green-500/50 text-white shadow-lg backdrop-blur-sm"
+          className="py-6 text-sm gap-2 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 hover:from-blue-500/30 hover:to-cyan-500/30 border border-blue-500/30 hover:border-blue-500/50 text-white shadow-lg backdrop-blur-sm"
           size="lg"
           onClick={handleGetSwapInstructions}
           disabled={loading || !fromAmount || Number.parseFloat(fromAmount) <= 0}
         >
-          <Zap className="h-5 w-5" />
-          {loading ? "Getting Instructions..." : "Get Swap Instructions"}
+          <Zap className="h-4 w-4" />
+          {loading ? "Getting..." : "Instructions"}
+        </Button>
+
+        <Button
+          className="py-6 text-sm gap-2 bg-gradient-to-r from-green-500/20 to-emerald-500/20 hover:from-green-500/30 hover:to-emerald-500/30 border border-green-500/30 hover:border-green-500/50 text-white shadow-lg backdrop-blur-sm"
+          size="lg"
+          onClick={handleExecuteSwap}
+          disabled={executing || !fromAmount || Number.parseFloat(fromAmount) <= 0}
+        >
+          <Zap className="h-4 w-4" />
+          {executing ? "Executing..." : "Execute"}
         </Button>
       </div>
 
@@ -481,7 +548,7 @@ export default function SolanaSwapPage() {
       )}
 
       {swapResult && !error && (
-        <Card className="mt-4 bg-gradient-to-r from-green-900/20 to-emerald-900/20 border-green-500/30">
+        <Card className="mt-4 bg-gradient-to-r from-blue-900/20 to-cyan-900/20 border-blue-500/30">
           <CardHeader>
             <CardTitle className="text-white text-lg flex items-center gap-2">
               <Zap className="h-5 w-5" />
@@ -536,15 +603,87 @@ export default function SolanaSwapPage() {
                   </div>
                 </div>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-              <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
-                <div className="text-amber-400 font-medium mb-2 flex items-center gap-2">
-                  <Info className="h-4 w-4" />
-                  Next Steps
+      {executeResult && !error && (
+        <Card className="mt-4 bg-gradient-to-r from-green-900/20 to-emerald-900/20 border-green-500/30">
+          <CardHeader>
+            <CardTitle className="text-white text-lg flex items-center gap-2">
+              <Zap className="h-5 w-5 text-green-400" />
+              Swap Executed Successfully!
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-white/60">Swapped:</span>
+                  <div className="text-white font-medium">
+                    {formatDisplayAmount(
+                      executeResult.swapDetails.fromAmount,
+                      executeResult.tokenInfo.fromToken.decimals,
+                    )}{" "}
+                    {executeResult.swapDetails.fromToken}
+                  </div>
                 </div>
-                <div className="text-sm text-amber-200">
-                  Use these instructions with your Solana wallet to execute the swap. The instructions include all
-                  necessary transaction data and lookup tables.
+                <div>
+                  <span className="text-white/60">For:</span>
+                  <div className="text-white font-medium">{executeResult.swapDetails.toToken}</div>
+                </div>
+                <div>
+                  <span className="text-white/60">Instructions Used:</span>
+                  <div className="text-white font-medium">{executeResult.instructionsUsed}</div>
+                </div>
+                <div>
+                  <span className="text-white/60">Lookup Tables:</span>
+                  <div className="text-white font-medium">{executeResult.lookupTablesUsed}</div>
+                </div>
+              </div>
+
+              <div className="bg-white/5 rounded-lg p-3">
+                <div className="text-white/80 font-medium mb-2">Transaction Details</div>
+                <div className="text-sm space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-white/60">Transaction ID:</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-white font-mono text-xs">
+                        {executeResult.transactionId.slice(0, 8)}...{executeResult.transactionId.slice(-8)}
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 w-6 p-0 hover:bg-white/10"
+                        onClick={() => copyToClipboard(executeResult.transactionId)}
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="flex justify-center">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-green-500/30 hover:bg-green-500/10 text-green-400 gap-2"
+                      onClick={() => window.open(executeResult.explorerUrl, "_blank")}
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      View on Solscan
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3">
+                <div className="text-green-400 font-medium mb-2 flex items-center gap-2">
+                  <Check className="h-4 w-4" />
+                  Transaction Confirmed
+                </div>
+                <div className="text-sm text-green-200">
+                  Your swap has been successfully executed on Solana. The transaction has been confirmed and is now
+                  visible on the blockchain.
                 </div>
               </div>
             </div>

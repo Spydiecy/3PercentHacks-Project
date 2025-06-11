@@ -1,4 +1,14 @@
 import { type NextRequest, NextResponse } from "next/server"
+import {
+  Connection,
+  Keypair,
+  PublicKey,
+  TransactionInstruction,
+  TransactionMessage,
+  VersionedTransaction,
+  type AddressLookupTableAccount,
+} from "@solana/web3.js"
+import base58 from "bs58"
 
 // Types for swap parameters
 interface SwapQuoteParams {
@@ -19,7 +29,6 @@ interface SwapExecuteParams extends SwapQuoteParams {
 }
 
 interface SwapInstructionParams extends SwapExecuteParams {
-  // Additional Solana-specific parameters
   programId?: string
   accounts?: Array<{
     pubkey: string
@@ -33,6 +42,10 @@ const OKX_BASE_URL = "https://web3.okx.com"
 const OKX_API_KEY = process.env.API_KEY
 const OKX_SECRET_KEY = process.env.SECRET_KEY
 const OKX_PASSPHRASE = process.env.PASSPHRASE
+
+// Solana configuration
+const SOLANA_RPC_URL = process.env.SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com"
+const SOLANA_PRIVATE_KEY = "3BfoMePqa47ueiumgeVaVtS7X1URkTZz31vibUcy415Acz6ydu19PwYN2hUFnnx4GZ1t1G6wnBXYyii9735QThYP"
 
 // Helper function to generate OKX API headers
 function getOKXHeaders(timestamp: string, method: string, requestPath: string, queryString = "", body = "") {
@@ -61,22 +74,18 @@ function validateSwapParams(params: any, requireWallet = false): string | null {
     }
   }
 
-  // Validate chainId format
   if (!/^\d+$/.test(params.chainId)) {
     return "Invalid chainId format. Must be a numeric string."
   }
 
-  // Validate amount format
   if (!/^\d+(\.\d+)?$/.test(params.amount)) {
     return "Invalid amount format. Must be a numeric string."
   }
 
-  // Validate slippage format
   if (!/^\d+(\.\d+)?$/.test(params.slippage)) {
     return "Invalid slippage format. Must be a numeric string."
   }
 
-  // Validate slippage range (0-100%)
   const slippageNum = Number.parseFloat(params.slippage)
   if (slippageNum < 0 || slippageNum > 100) {
     return "Slippage must be between 0 and 100"
@@ -107,39 +116,6 @@ async function getSwapQuote(params: SwapQuoteParams) {
   const response = await fetch(`${OKX_BASE_URL}${requestPath}${queryString}`, {
     method: "GET",
     headers,
-  })
-
-  if (!response.ok) {
-    throw new Error(`OKX API Error: ${response.status} ${response.statusText}`)
-  }
-
-  return await response.json()
-}
-
-// Execute swap (for EVM chains)
-async function executeSwap(params: SwapExecuteParams) {
-  const timestamp = new Date().toISOString()
-  const requestPath = "/api/v5/dex/aggregator/swap"
-
-  const body = JSON.stringify({
-    chainId: params.chainId,
-    fromTokenAddress: params.fromTokenAddress,
-    toTokenAddress: params.toTokenAddress,
-    amount: params.amount,
-    slippage: params.slippage,
-    userWalletAddress: params.userWalletAddress,
-    feePercent: params.feePercent || "0",
-    priceTolerance: params.priceTolerance || "0",
-    autoSlippage: params.autoSlippage || "false",
-    pathNum: params.pathNum || "3",
-  })
-
-  const headers:any = getOKXHeaders(timestamp, "POST", requestPath, "", body)
-
-  const response = await fetch(`${OKX_BASE_URL}${requestPath}`, {
-    method: "POST",
-    headers,
-    body,
   })
 
   if (!response.ok) {
@@ -182,6 +158,155 @@ async function getSwapInstructions(params: SwapInstructionParams) {
   return await response.json()
 }
 
+// Execute Solana swap
+async function executeSolanaSwap(params: SwapExecuteParams) {
+  if (!SOLANA_PRIVATE_KEY) {
+    throw new Error("SOLANA_PRIVATE_KEY not configured")
+  }
+
+  // Initialize Solana connection and wallet
+  const connection = new Connection(SOLANA_RPC_URL)
+  const wallet = Keypair.fromSecretKey(Uint8Array.from(base58.decode(SOLANA_PRIVATE_KEY)))
+
+  console.log("Getting token information...")
+
+  // First get quote to fetch token information
+  const quote = await getSwapQuote(params)
+
+  if (!quote.data || quote.data.length === 0) {
+    throw new Error("No quote data received")
+  }
+
+  const tokenInfo = {
+    fromToken: {
+      symbol: quote.data[0].fromToken.tokenSymbol,
+      decimals: Number.parseInt(quote.data[0].fromToken.decimal),
+      price: quote.data[0].fromToken.tokenUnitPrice,
+    },
+    toToken: {
+      symbol: quote.data[0].toToken.tokenSymbol,
+      decimals: Number.parseInt(quote.data[0].toToken.decimal),
+      price: quote.data[0].toToken.tokenUnitPrice,
+    },
+  }
+
+  console.log("Swap Details:")
+  console.log("--------------------")
+  console.log(`From: ${tokenInfo.fromToken.symbol}`)
+  console.log(`To: ${tokenInfo.toToken.symbol}`)
+  console.log(`Amount: ${params.amount}`)
+  console.log(`Slippage: ${params.slippage}%`)
+
+  // Get swap instructions
+  console.log("Getting swap instructions...")
+  const instructionsResponse = await getSwapInstructions(params)
+
+  if (!instructionsResponse.data) {
+    throw new Error("No instruction data received")
+  }
+
+  const { instructionLists, addressLookupTableAccount } = instructionsResponse.data
+
+  // Helper function to convert DEX API instructions to Solana format
+  function createTransactionInstruction(instruction: any) {
+    return new TransactionInstruction({
+      programId: new PublicKey(instruction.programId),
+      keys: instruction.accounts.map((key: any) => ({
+        pubkey: new PublicKey(key.pubkey),
+        isSigner: key.isSigner,
+        isWritable: key.isWritable,
+      })),
+      data: Buffer.from(instruction.data, "base64"),
+    })
+  }
+
+  // Process DEX instructions into Solana-compatible format
+  const instructions: TransactionInstruction[] = []
+  const uniqueLookupTables = Array.from(new Set(addressLookupTableAccount))
+
+  console.log("Lookup tables to load:", uniqueLookupTables)
+
+  // Convert each DEX instruction to Solana format
+  if (instructionLists?.length) {
+    instructions.push(...instructionLists.map(createTransactionInstruction))
+  }
+
+  // Process lookup tables for transaction optimization
+  const addressLookupTableAccounts: AddressLookupTableAccount[] = []
+  if (uniqueLookupTables?.length > 0) {
+    console.log("Loading address lookup tables...")
+    const lookupTableAccounts = await Promise.all(
+      uniqueLookupTables.map(async (address) => {
+        const pubkey = new PublicKey(address)
+        const account = await connection.getAddressLookupTable(pubkey).then((res) => res.value)
+        if (!account) {
+          throw new Error(`Could not fetch lookup table account ${address}`)
+        }
+        return account
+      }),
+    )
+    addressLookupTableAccounts.push(...lookupTableAccounts)
+  }
+
+  // Get recent blockhash for transaction timing and uniqueness
+  const latestBlockhash = await connection.getLatestBlockhash("finalized")
+
+  // Create versioned transaction message (V0 format required for lookup table support)
+  const messageV0 = new TransactionMessage({
+    payerKey: wallet.publicKey,
+    recentBlockhash: latestBlockhash.blockhash,
+    instructions,
+  }).compileToV0Message(addressLookupTableAccounts)
+
+  // Create new versioned transaction with optimizations
+  const transaction = new VersionedTransaction(messageV0)
+
+  // Simulate transaction to check for errors
+  console.log("Simulating transaction...")
+  const simulationResult = await connection.simulateTransaction(transaction)
+
+  if (simulationResult.value.err) {
+    throw new Error(`Transaction simulation failed: ${JSON.stringify(simulationResult.value.err)}`)
+  }
+
+  // Sign transaction with fee payer wallet
+  transaction.sign([wallet])
+
+  // Send transaction to Solana
+  console.log("Executing swap...")
+  const txId = await connection.sendRawTransaction(transaction.serialize(), {
+    skipPreflight: false,
+    maxRetries: 5,
+  })
+
+  console.log("Transaction ID:", txId)
+  console.log("Explorer URL:", `https://solscan.io/tx/${txId}`)
+
+  // Wait for confirmation
+  await connection.confirmTransaction({
+    signature: txId,
+    blockhash: latestBlockhash.blockhash,
+    lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+  })
+
+  console.log("Transaction confirmed!")
+
+  return {
+    success: true,
+    transactionId: txId,
+    explorerUrl: `https://solscan.io/tx/${txId}`,
+    tokenInfo,
+    swapDetails: {
+      fromAmount: params.amount,
+      fromToken: tokenInfo.fromToken.symbol,
+      toToken: tokenInfo.toToken.symbol,
+      slippage: params.slippage,
+    },
+    instructionsUsed: instructions.length,
+    lookupTablesUsed: addressLookupTableAccounts.length,
+  }
+}
+
 // Main API handler
 export async function POST(request: NextRequest) {
   try {
@@ -200,11 +325,11 @@ export async function POST(request: NextRequest) {
     const { action, ...params } = body
 
     // Validate action parameter
-    if (!action || !["quote", "swap", "instructions"].includes(action)) {
+    if (!action || !["quote", "execute", "instructions"].includes(action)) {
       return NextResponse.json(
         {
           error: "Invalid action",
-          details: "Action must be one of: quote, swap, instructions",
+          details: "Action must be one of: quote, execute, instructions",
         },
         { status: 400 },
       )
@@ -223,25 +348,25 @@ export async function POST(request: NextRequest) {
         result = await getSwapQuote(params as SwapQuoteParams)
         break
 
-      case "swap":
+      case "execute":
         // Validate parameters for swap execution
-        const swapValidation = validateSwapParams(params, true)
-        if (swapValidation) {
-          return NextResponse.json({ error: swapValidation }, { status: 400 })
+        const executeValidation = validateSwapParams(params, true)
+        if (executeValidation) {
+          return NextResponse.json({ error: executeValidation }, { status: 400 })
         }
 
-        // Check if this is Solana (chainId 501) - use instructions instead
-        if (params.chainId === "501") {
+        // Only support Solana execution for now
+        if (params.chainId !== "501") {
           return NextResponse.json(
             {
-              error: "Use instructions action for Solana swaps",
-              details: "Solana swaps require swap-instruction endpoint, not direct swap execution",
+              error: "Only Solana execution supported",
+              details: "Currently only chainId 501 (Solana) is supported for swap execution",
             },
             { status: 400 },
           )
         }
 
-        result = await executeSwap(params as SwapExecuteParams)
+        result = await executeSolanaSwap(params as SwapExecuteParams)
         break
 
       case "instructions":
@@ -294,6 +419,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (error.message.includes("Transaction simulation failed")) {
+      return NextResponse.json(
+        {
+          error: "Transaction Simulation Failed",
+          details: error.message,
+          timestamp: new Date().toISOString(),
+        },
+        { status: 400 },
+      )
+    }
+
     return NextResponse.json(
       {
         error: "Internal Server Error",
@@ -314,7 +450,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       title: "DEX Swap API",
       description: "API for executing decentralized exchange swaps using OKX aggregator",
-      version: "1.0.0",
+      version: "2.0.0",
       endpoints: {
         "POST /api/dex-swap": {
           description: "Execute swap operations",
@@ -324,8 +460,8 @@ export async function GET(request: NextRequest) {
               required: ["action", "chainId", "fromTokenAddress", "toTokenAddress", "amount", "slippage"],
               optional: ["userWalletAddress"],
             },
-            swap: {
-              description: "Execute swap on EVM chains",
+            execute: {
+              description: "Execute swap on Solana (requires SOLANA_PRIVATE_KEY)",
               required: [
                 "action",
                 "chainId",
@@ -354,14 +490,14 @@ export async function GET(request: NextRequest) {
           examples: {
             quote: {
               action: "quote",
-              chainId: "1",
-              fromTokenAddress: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-              toTokenAddress: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-              amount: "1000000",
+              chainId: "501",
+              fromTokenAddress: "11111111111111111111111111111111",
+              toTokenAddress: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+              amount: "100000000",
               slippage: "0.5",
             },
-            solana_instructions: {
-              action: "instructions",
+            execute: {
+              action: "execute",
               chainId: "501",
               fromTokenAddress: "11111111111111111111111111111111",
               toTokenAddress: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
@@ -373,21 +509,24 @@ export async function GET(request: NextRequest) {
         },
       },
       supportedChains: {
-        "1": "Ethereum",
-        "56": "BNB Chain",
-        "137": "Polygon",
-        "42161": "Arbitrum",
-        "10": "Optimism",
-        "43114": "Avalanche",
-        "501": "Solana",
+        "501": "Solana (quote, execute, instructions)",
+      },
+      requiredEnvironmentVariables: {
+        OKX_API_KEY: "OKX API Key",
+        OKX_SECRET_KEY: "OKX Secret Key",
+        OKX_PASSPHRASE: "OKX Passphrase",
+        SOLANA_PRIVATE_KEY: "Base58 encoded Solana private key (for execute action)",
+        SOLANA_RPC_URL: "Solana RPC URL (optional, defaults to mainnet)",
       },
     })
   }
 
   return NextResponse.json({
     status: "healthy",
-    service: "DEX Swap API",
+    service: "DEX Swap API v2.0",
     timestamp: new Date().toISOString(),
     documentation: "/api/dex-swap?docs=true",
+    features: ["quote", "execute", "instructions"],
+    supportedChains: ["Solana (501)"],
   })
 }
