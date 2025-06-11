@@ -109,7 +109,7 @@ async function callMarketDataApi(type: string, tokenName: string, address: strin
   if (type == "total_value") {
     const body = {
       address: "52C9T2T7JRojtxumYnYZhyUmrN7kqzvCLc4Ksvjk7TxD", //dummy address
-      chains: "1,56",
+      chains: "501",
       excludeRiskToken: "0",
     }
     const response = await fetch("/api/portfolio/total_token_balances", {
@@ -124,7 +124,7 @@ async function callMarketDataApi(type: string, tokenName: string, address: strin
     //dummy address
     const body = {
       address: "52C9T2T7JRojtxumYnYZhyUmrN7kqzvCLc4Ksvjk7TxD",
-      chains: "1,56",
+      chains: "501",
       excludeRiskToken: "0",
     }
     const response = await fetch("/api/portfolio/total_token_balances", {
@@ -133,6 +133,8 @@ async function callMarketDataApi(type: string, tokenName: string, address: strin
       body: JSON.stringify(body),
     })
     const m = await response.json()
+    console.log("my m value is:::",m);
+    
     return m
   }
   if (type == "specific_token_balance") {
@@ -147,6 +149,7 @@ async function callMarketDataApi(type: string, tokenName: string, address: strin
       body: JSON.stringify(body),
     })
     const m = await response.json()
+    console.log("my m value is:::",m);
     return m
   }
   if (type == "transaction_history") {
@@ -161,9 +164,10 @@ async function callMarketDataApi(type: string, tokenName: string, address: strin
       body: JSON.stringify(body),
     })
     const m = await response.json()
+    console.log("my m value is:::",m);
     return m
   }
-
+  
   if (type == "tx_by_hash") {
     const body = {
       chainIndex: chainIndexMap["token_name"],
@@ -175,6 +179,7 @@ async function callMarketDataApi(type: string, tokenName: string, address: strin
       body: JSON.stringify(body),
     })
     const m = await response.json()
+    console.log("my m value is:::",m);
     return m
   }
 

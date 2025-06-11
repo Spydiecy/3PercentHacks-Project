@@ -56,16 +56,8 @@ interface DashboardStats {
 
 // Chain configuration
 const chainOptions = [
-  { name: "All Chains", value: "1", label: "All" },
-  { name: "Ethereum", value: "1", label: "ETH" },
-  { name: "BNB Chain", value: "56", label: "BSC" },
-  { name: "Polygon", value: "137", label: "MATIC" },
-  { name: "Arbitrum", value: "42161", label: "ARB" },
-  { name: "Optimism", value: "10", label: "OP" },
-  { name: "Avalanche", value: "43114", label: "AVAX" },
-  { name: "Fantom", value: "250", label: "FTM" },
-  { name: "zkSync Era", value: "324", label: "zkSync" },
-  { name: "Base", value: "8453", label: "BASE" },
+ 
+  { name: "Solana", value: "501", label: "SOL" },
 ]
 
 const quickActions = [
@@ -105,9 +97,9 @@ const quickActions = [
 
 // Demo addresses for different purposes
 const demoAddresses = {
-  portfolio: "0xEd0C6079229E2d407672a117c22b62064f4a4312",
-  transactions: "0x50c476a139aab23fdaf9bca12614cdd54a4244e4",
-  market: "0x382bb369d343125bfb2117af9c149795c6c65c50",
+  portfolio: "52C9T2T7JRojtxumYnYZhyUmrN7kqzvCLc4Ksvjk7TxD",
+  transactions: "52C9T2T7JRojtxumYnYZhyUmrN7kqzvCLc4Ksvjk7TxD",
+  market: "52C9T2T7JRojtxumYnYZhyUmrN7kqzvCLc4Ksvjk7TxD",
 }
 
 export default function DashboardPage() {
@@ -274,7 +266,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const interval = setInterval(() => {
       fetchAllData()
-    }, 30000)
+    }, 1230000)
 
     return () => clearInterval(interval)
   }, [selectedChain])
