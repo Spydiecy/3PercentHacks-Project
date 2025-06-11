@@ -4,10 +4,10 @@ import crypto from 'crypto';
 import querystring from 'querystring';
 
 // Your OKX API credentials
-const api_config = {
-  api_key: "64bb967c-14de-4e86-b356-e1ee768ed2e2",
-  secret_key: "1A29A90AEE915C983970FBCAD1ADC90B",
-  passphrase: "Naman@2005",
+const api_config:any = {
+  api_key: process.env.API_KEY,
+  secret_key: process.env.SECRET_KEY,
+  passphrase: process.env.PASSPHRASE,
 };
 
 function preHash(timestamp: string, method: string, request_path: string, query: string, body: string) {

@@ -2,7 +2,7 @@
 import { GoogleGenAI } from "@google/genai";
 
 const ai = new GoogleGenAI({
-  apiKey: "AIzaSyCNqDApCumryib67jTVBqssnojqXisg7oM",
+  apiKey: process.env.NEXT_PUBLIC_GEMINI_KEY,
 });
 
 const IMPORTANT_INFO_PROMPT = `

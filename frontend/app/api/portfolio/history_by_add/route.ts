@@ -9,11 +9,11 @@ interface ApiConfig {
   project: string;
 }
 
-const api_config: ApiConfig = {
-  api_key: "64bb967c-14de-4e86-b356-e1ee768ed2e2",
-  secret_key: "1A29A90AEE915C983970FBCAD1ADC90B",
-  passphrase: "Naman@2005",
-  project: "4270cf35358dec5fe0195038b45e4cab",  // <-- Add your actual Project ID here
+const api_config: any = {
+  api_key: process.env.API_KEY,
+  secret_key: process.env.SECRET_KEY,
+  passphrase: process.env.PASSPHRASE,
+  project: process.env.PROJECT_ID,  // <-- Add your actual Project ID here
 };
 
 interface TransactionHistoryRequestBody {

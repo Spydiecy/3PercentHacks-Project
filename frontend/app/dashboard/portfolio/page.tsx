@@ -24,15 +24,7 @@ import {
 
 // Enhanced chain configuration
 const AVAILABLE_CHAINS = [
-  { id: "1", name: "Ethereum", label: "ETH", color: "from-purple-500 to-blue-500" },
-  { id: "56", name: "BNB Chain", label: "BSC", color: "from-yellow-500 to-orange-500" },
-  { id: "137", name: "Polygon", label: "MATIC", color: "from-purple-600 to-pink-500" },
-  { id: "42161", name: "Arbitrum", label: "ARB", color: "from-blue-600 to-cyan-500" },
-  { id: "10", name: "Optimism", label: "OP", color: "from-red-500 to-pink-500" },
-  { id: "43114", name: "Avalanche", label: "AVAX", color: "from-red-600 to-orange-500" },
-  { id: "250", name: "Fantom", label: "FTM", color: "from-blue-400 to-cyan-400" },
-  { id: "324", name: "zkSync Era", label: "zkSync", color: "from-gray-500 to-blue-500" },
-  { id: "8453", name: "Base", label: "BASE", color: "from-blue-500 to-indigo-500" },
+  { id: "501", name: "Solana", label: "SOL", color: "from-purple-500 to-blue-500" },
 ]
 
 const TIME_PERIODS = [
@@ -52,7 +44,7 @@ export default function PortfolioPage() {
   const [totalValue, setTotalValue] = useState<string>("0")
   const [specificToken, setSpecificToken] = useState<any[]>([])
   const [selectedTable, setSelectedTable] = useState<"balances" | "history" | "specific" | "total_value">("balances")
-  const [selectedChains, setSelectedChains] = useState<string[]>(["1", "56", "137"])
+  const [selectedChains, setSelectedChains] = useState<string[]>(["501"])
   const [selectedPeriod, setSelectedPeriod] = useState("30d")
   const [searchTerm, setSearchTerm] = useState("")
   const [showChainDropdown, setShowChainDropdown] = useState(false)
