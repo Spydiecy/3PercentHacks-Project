@@ -93,6 +93,43 @@ class RateLimitManager {
 
 const rateLimitManager = new RateLimitManager()
 
+// Filter function to remove tokens with zero value or zero price
+function filterValidTokens(tokens: any[]): any[] {
+  if (!Array.isArray(tokens)) return []
+
+  return tokens.filter((token) => {
+    try {
+      const balance = Number(token?.balance || 0)
+      const price = Number(token?.tokenPrice || 0)
+      const value = balance * price
+
+      // Filter out tokens with:
+      // 1. Zero or negative balance
+      // 2. Zero or negative price
+      // 3. Total value less than $0.01 (to remove dust)
+      return balance > 0 && price > 0 && value >= 0.01
+    } catch (error) {
+      console.warn("Error filtering token:", token, error)
+      return false
+    }
+  })
+}
+
+// Filter function for transactions with non-zero amounts
+function filterValidTransactions(transactions: any[]): any[] {
+  if (!Array.isArray(transactions)) return []
+
+  return transactions.filter((tx) => {
+    try {
+      const amount = Number(tx?.amount || 0)
+      return Math.abs(amount) > 0 // Only show transactions with non-zero amounts
+    } catch (error) {
+      console.warn("Error filtering transaction:", tx, error)
+      return false
+    }
+  })
+}
+
 export default function PortfolioPage() {
   const [activeModal, setActiveModal] = useState<null | string>(null)
   const [loading, setLoading] = useState(false)
@@ -101,6 +138,8 @@ export default function PortfolioPage() {
   const [refreshing, setRefreshing] = useState(false)
   const [history, setHistory] = useState<any[]>([])
   const [tokenBalances, setTokenBalances] = useState<any[]>([])
+  const [filteredTokenBalances, setFilteredTokenBalances] = useState<any[]>([])
+  const [filteredHistory, setFilteredHistory] = useState<any[]>([])
   const [totalValue, setTotalValue] = useState<string>("0")
   const [specificToken, setSpecificToken] = useState<any[]>([])
   const [selectedTable, setSelectedTable] = useState<"balances" | "history" | "specific" | "total_value">("balances")
@@ -118,6 +157,8 @@ export default function PortfolioPage() {
     dayChangePercent: "0",
     diversityScore: "0",
     activeTokens: "0",
+    filteredTokens: "0",
+    totalTokens: "0",
   })
 
   // Toggle chain selection for multi-select
@@ -128,30 +169,47 @@ export default function PortfolioPage() {
   // Calculate real portfolio statistics from actual data
   const calculateRealStats = (balances: any[], transactions: any[], totalVal: string) => {
     const total = Number(totalVal)
-    const tokenCount = balances.length
-    const transactionCount = transactions.length
+    const allTokenCount = balances.length
+    const filteredTokens = filterValidTokens(balances)
+    const filteredTransactions = filterValidTransactions(transactions)
+    const activeTokenCount = filteredTokens.length
+    const transactionCount = filteredTransactions.length
 
     // Calculate portfolio diversity (number of different tokens with value > $1)
-    const activeTokens = balances.filter((token) => {
+    const significantTokens = filteredTokens.filter((token) => {
       const value = Number(token.balance || 0) * Number(token.tokenPrice || 0)
       return value > 1
     }).length
 
     // Calculate diversity score (0-100 based on token distribution)
-    const diversityScore = Math.min(100, (activeTokens / Math.max(tokenCount, 1)) * 100)
+    const diversityScore = Math.min(100, (significantTokens / Math.max(activeTokenCount, 1)) * 100)
 
     // Calculate recent activity (transactions in last 24h - mock for now)
     const recentActivity = Math.min(100, (transactionCount / 10) * 100)
 
+    // Calculate total value from filtered tokens
+    const calculatedValue = filteredTokens.reduce((sum, token) => {
+      const value = Number(token.balance || 0) * Number(token.tokenPrice || 0)
+      return sum + value
+    }, 0)
+
+    const finalTotalValue = Number(totalVal) > 0 ? totalVal : calculatedValue.toString()
+
     setPortfolioStats({
-      totalValue: totalVal,
-      tokenCount: tokenCount.toString(),
+      totalValue: finalTotalValue,
+      tokenCount: allTokenCount.toString(),
       transactionCount: transactionCount.toString(),
       portfolioDiversity: diversityScore.toFixed(1),
       dayChangePercent: recentActivity.toFixed(1),
       diversityScore: diversityScore.toFixed(1),
-      activeTokens: activeTokens.toString(),
+      activeTokens: significantTokens.toString(),
+      filteredTokens: activeTokenCount.toString(),
+      totalTokens: allTokenCount.toString(),
     })
+
+    // Update filtered data
+    setFilteredTokenBalances(filteredTokens)
+    setFilteredHistory(filteredTransactions)
   }
 
   // Enhanced fetch function with rate limiting
@@ -233,21 +291,21 @@ export default function PortfolioPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-    "address": "52C9T2T7JRojtxumYnYZhyUmrN7kqzvCLc4Ksvjk7TxD",
-    "tokenContractAddresses": [
-    {
-      "chainIndex": "501",
-      "tokenContractAddress": ""
-    }
-  ]
-}),
+          address: "52C9T2T7JRojtxumYnYZhyUmrN7kqzvCLc4Ksvjk7TxD",
+          tokenContractAddresses: [
+            {
+              chainIndex: "501",
+              tokenContractAddress: "",
+            },
+          ],
+        }),
       })
 
       const specific = specificJson?.data?.[0]?.tokenAssets || []
       setSpecificToken(specific)
 
-      // Calculate real statistics
-      setLoadingStep("Calculating portfolio statistics...")
+      // Calculate real statistics with filtering
+      setLoadingStep("Filtering and calculating portfolio statistics...")
       setLoadingProgress(100)
       calculateRealStats(balances, transactions, value)
     } catch (error) {
@@ -271,11 +329,19 @@ export default function PortfolioPage() {
   const handleExport = () => {
     const data = {
       portfolioStats,
-      tokenBalances,
-      transactions: history,
+      tokenBalances: filteredTokenBalances, // Export filtered data
+      allTokenBalances: tokenBalances, // Also include raw data
+      transactions: filteredHistory, // Export filtered transactions
+      allTransactions: history, // Also include raw data
       exportDate: new Date().toISOString(),
       selectedChains,
       requestCount,
+      filterInfo: {
+        totalTokens: tokenBalances.length,
+        filteredTokens: filteredTokenBalances.length,
+        totalTransactions: history.length,
+        filteredTransactions: filteredHistory.length,
+      },
     }
 
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
@@ -289,16 +355,16 @@ export default function PortfolioPage() {
     URL.revokeObjectURL(url)
   }
 
-  // Filter data based on search term
+  // Filter data based on search term (using filtered data)
   const filteredData = () => {
     if (selectedTable === "balances") {
-      return tokenBalances.filter(
+      return filteredTokenBalances.filter(
         (asset) =>
           asset.symbol?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           asset.tokenContractAddress?.toLowerCase().includes(searchTerm.toLowerCase()),
       )
     } else if (selectedTable === "history") {
-      return history.filter(
+      return filteredHistory.filter(
         (tx) =>
           tx.symbol?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           tx.txHash?.toLowerCase().includes(searchTerm.toLowerCase()),
@@ -330,6 +396,13 @@ export default function PortfolioPage() {
           </h1>
           <p className="text-white/60">Track and manage your Solana assets</p>
           {requestCount > 0 && <p className="text-white/40 text-sm mt-1">API Requests: {requestCount}</p>}
+          <div className="flex gap-4 mt-2 text-sm text-white/60">
+            <span>Total Tokens: {portfolioStats.totalTokens}</span>
+            <span>•</span>
+            <span>Filtered Tokens: {portfolioStats.filteredTokens}</span>
+            <span>•</span>
+            <span>Active Transactions: {portfolioStats.transactionCount}</span>
+          </div>
         </div>
         <div className="flex gap-3">
           <div className="relative">
@@ -449,16 +522,16 @@ export default function PortfolioPage() {
         <PortfolioCard
           title="Total Value"
           value={`$${Number(portfolioStats.totalValue).toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
-          change={`${portfolioStats.activeTokens} active tokens`}
+          change={`${portfolioStats.filteredTokens} active tokens`}
           trend="up"
           icon={DollarSign}
           gradientFrom="#8B5CF6"
           gradientTo="#3B82F6"
         />
         <PortfolioCard
-          title="Token Count"
-          value={portfolioStats.tokenCount}
-          change={`${portfolioStats.diversityScore}% diversity`}
+          title="Active Tokens"
+          value={portfolioStats.filteredTokens}
+          change={`${portfolioStats.totalTokens} total tokens`}
           trend="up"
           icon={Coins}
           gradientFrom="#EC4899"
@@ -476,13 +549,37 @@ export default function PortfolioPage() {
         <PortfolioCard
           title="Portfolio Health"
           value={`${portfolioStats.portfolioDiversity}%`}
-          change={`${portfolioStats.activeTokens}/${portfolioStats.tokenCount} tokens`}
+          change={`${portfolioStats.activeTokens} significant tokens`}
           trend="up"
           icon={BarChart3}
           gradientFrom="#10B981"
           gradientTo="#3B82F6"
         />
       </div>
+
+      {/* Filter Info Banner */}
+      <Card className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border-purple-500/20">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Filter className="h-5 w-5 text-purple-400" />
+              <div>
+                <p className="text-white font-medium">Active Filters Applied</p>
+                <p className="text-white/60 text-sm">
+                  Showing only tokens with value {">"} $0.01 and price {">"} $0
+                </p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-white text-sm">
+                <span className="text-purple-400 font-bold">{portfolioStats.filteredTokens}</span> of{" "}
+                <span className="text-white/60">{portfolioStats.totalTokens}</span> tokens
+              </p>
+              <p className="text-white/60 text-xs">{portfolioStats.transactionCount} active transactions</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Controls */}
       <Card className="bg-black/20 border-white/10 hover:border-white/20 transition-all">
@@ -495,8 +592,8 @@ export default function PortfolioPage() {
                 onChange={(e) => setSelectedTable(e.target.value as any)}
                 disabled={loading}
               >
-                <option value="balances">All Token Balances ({tokenBalances.length})</option>
-                <option value="history">Transaction History ({history.length})</option>
+                <option value="balances">Active Token Balances ({filteredTokenBalances.length})</option>
+                <option value="history">Transaction History ({filteredHistory.length})</option>
                 <option value="specific">Specific Token Balance</option>
                 <option value="total_value">Total Portfolio Value</option>
               </select>
@@ -516,7 +613,7 @@ export default function PortfolioPage() {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/40" />
                 <input
                   type="text"
-                  placeholder="Search tokens or transactions..."
+                  placeholder="Search active tokens or transactions..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   disabled={loading}
@@ -541,8 +638,8 @@ export default function PortfolioPage() {
       <Card className="bg-black/20 border-white/10 hover:border-white/20 transition-all hover:shadow-xl">
         <CardHeader>
           <CardTitle className="text-xl font-bold bg-gradient-to-r from-white to-white/80 text-transparent bg-clip-text">
-            {selectedTable === "balances" && `Portfolio Breakdown (${tokenBalances.length} tokens)`}
-            {selectedTable === "history" && `Transaction History (${history.length} transactions)`}
+            {selectedTable === "balances" && `Active Portfolio Breakdown (${filteredTokenBalances.length} tokens)`}
+            {selectedTable === "history" && `Active Transaction History (${filteredHistory.length} transactions)`}
             {selectedTable === "specific" && "Specific Token Balance"}
             {selectedTable === "total_value" && "Total Portfolio Value"}
           </CardTitle>
@@ -565,7 +662,7 @@ export default function PortfolioPage() {
             ) : selectedTable === "history" ? (
               <HistoryTable transactions={filteredData()} />
             ) : selectedTable === "specific" ? (
-              <TokenBalancesTable assets={specificToken} />
+              <TokenBalancesTable assets={filterValidTokens(specificToken)} />
             ) : (
               <div className="text-center py-12">
                 <div className="bg-gradient-to-r from-purple-500/20 to-blue-500/20 rounded-xl p-8 border border-white/10">
@@ -576,8 +673,8 @@ export default function PortfolioPage() {
                   <div className="text-white/60">Total Portfolio Value</div>
                   <div className="grid grid-cols-2 gap-4 mt-6 text-sm">
                     <div className="bg-white/5 rounded-lg p-3">
-                      <div className="text-white/60">Tokens</div>
-                      <div className="text-white font-bold">{portfolioStats.tokenCount}</div>
+                      <div className="text-white/60">Active Tokens</div>
+                      <div className="text-white font-bold">{portfolioStats.filteredTokens}</div>
                     </div>
                     <div className="bg-white/5 rounded-lg p-3">
                       <div className="text-white/60">Transactions</div>
@@ -600,26 +697,35 @@ export default function PortfolioPage() {
             </h2>
             <div className="space-y-4">
               <div className="bg-black/50 p-4 rounded-lg border border-white/10">
-                <h3 className="font-semibold mb-2 text-purple-400">Real Portfolio Statistics</h3>
+                <h3 className="font-semibold mb-2 text-purple-400">Portfolio Statistics</h3>
                 <pre className="text-xs overflow-x-auto text-white/80">{JSON.stringify(portfolioStats, null, 2)}</pre>
               </div>
               <div className="bg-black/50 p-4 rounded-lg border border-white/10">
-                <h3 className="font-semibold mb-2 text-blue-400">Token Balances ({tokenBalances.length})</h3>
+                <h3 className="font-semibold mb-2 text-blue-400">
+                  Active Token Balances ({filteredTokenBalances.length} of {tokenBalances.length})
+                </h3>
                 <pre className="text-xs overflow-x-auto text-white/80 max-h-40">
-                  {JSON.stringify(tokenBalances.slice(0, 5), null, 2)}
+                  {JSON.stringify(filteredTokenBalances.slice(0, 5), null, 2)}
                 </pre>
               </div>
               <div className="bg-black/50 p-4 rounded-lg border border-white/10">
-                <h3 className="font-semibold mb-2 text-green-400">Recent Transactions ({history.length})</h3>
+                <h3 className="font-semibold mb-2 text-green-400">
+                  Active Transactions ({filteredHistory.length} of {history.length})
+                </h3>
                 <pre className="text-xs overflow-x-auto text-white/80 max-h-40">
-                  {JSON.stringify(history.slice(0, 3), null, 2)}
+                  {JSON.stringify(filteredHistory.slice(0, 3), null, 2)}
                 </pre>
               </div>
               <div className="bg-black/50 p-4 rounded-lg border border-white/10">
-                <h3 className="font-semibold mb-2 text-orange-400">API Request Info</h3>
+                <h3 className="font-semibold mb-2 text-orange-400">Filter Information</h3>
                 <div className="text-xs text-white/80">
-                  <p>Total Requests: {requestCount}</p>
-                  <p>Rate Limiting: Active (3s delays)</p>
+                  <p>Total Tokens: {tokenBalances.length}</p>
+                  <p>Active Tokens (filtered): {filteredTokenBalances.length}</p>
+                  <p>Total Transactions: {history.length}</p>
+                  <p>Active Transactions (filtered): {filteredHistory.length}</p>
+                  <p>
+                    Filter Criteria: Balance {">"} 0, Price {">"} 0, Value ≥ $0.01
+                  </p>
                   <p>Last Updated: {new Date().toLocaleString()}</p>
                 </div>
               </div>
@@ -681,7 +787,10 @@ function TokenBalancesTable({ assets }: { assets: any[] }) {
     return (
       <div className="text-center py-12">
         <Coins className="h-12 w-12 mx-auto mb-4 text-white/40" />
-        <p className="text-white/60">No token balances found.</p>
+        <p className="text-white/60">No active token balances found.</p>
+        <p className="text-white/40 text-sm mt-2">
+          All tokens have been filtered out (zero balance, zero price, or value {"<"} $0.01)
+        </p>
       </div>
     )
 
@@ -699,7 +808,10 @@ function TokenBalancesTable({ assets }: { assets: any[] }) {
       <tbody>
         {assets.map((asset, idx) => {
           const chainInfo = AVAILABLE_CHAINS.find((c) => c.id === asset.chainIndex) || AVAILABLE_CHAINS[0]
-          const tokenValue = Number(asset.balance || 0) * Number(asset.tokenPrice || 0)
+          const balance = Number(asset.balance || 0)
+          const price = Number(asset.tokenPrice || 0)
+          const tokenValue = balance * price
+
           return (
             <tr key={idx} className="border-b border-white/5 hover:bg-white/5 transition-colors group">
               <td className="py-4">
@@ -723,13 +835,14 @@ function TokenBalancesTable({ assets }: { assets: any[] }) {
                 </span>
               </td>
               <td className="text-right py-4 text-white font-medium">
-                ${Number(asset.tokenPrice || 0).toLocaleString(undefined, { maximumFractionDigits: 4 })}
+                ${price.toLocaleString(undefined, { maximumFractionDigits: 6 })}
               </td>
               <td className="text-right py-4 text-white">
-                {Number(asset.balance || 0).toLocaleString(undefined, { maximumFractionDigits: 6 })}
+                {balance.toLocaleString(undefined, { maximumFractionDigits: 6 })}
               </td>
               <td className="text-right py-4 text-white font-bold">
                 ${tokenValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                {tokenValue >= 1000 && <span className="ml-1 text-xs text-green-400">●</span>}
               </td>
             </tr>
           )
@@ -744,7 +857,8 @@ function HistoryTable({ transactions }: { transactions: any[] }) {
     return (
       <div className="text-center py-12">
         <Activity className="h-12 w-12 mx-auto mb-4 text-white/40" />
-        <p className="text-white/60">No transaction history found.</p>
+        <p className="text-white/60">No active transaction history found.</p>
+        <p className="text-white/40 text-sm mt-2">All zero-amount transactions have been filtered out</p>
       </div>
     )
 
@@ -760,47 +874,52 @@ function HistoryTable({ transactions }: { transactions: any[] }) {
         </tr>
       </thead>
       <tbody>
-        {transactions.map((tx, idx) => (
-          <tr key={idx} className="border-b border-white/5 hover:bg-white/5 transition-colors group">
-            <td className="py-4">
-              <div className="flex items-center gap-3">
-                <div
-                  className={`p-2 rounded-full ${
-                    Number(tx.amount) > 0
-                      ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
-                      : "bg-rose-500/10 text-rose-500 border border-rose-500/20"
+        {transactions.map((tx, idx) => {
+          const amount = Number(tx.amount || 0)
+          return (
+            <tr key={idx} className="border-b border-white/5 hover:bg-white/5 transition-colors group">
+              <td className="py-4">
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`p-2 rounded-full ${
+                      amount > 0
+                        ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
+                        : "bg-rose-500/10 text-rose-500 border border-rose-500/20"
+                    }`}
+                  >
+                    {amount > 0 ? "+" : "-"}
+                  </div>
+                  <div>
+                    <p className="font-medium text-white font-mono text-sm">
+                      {tx.txHash?.slice(0, 10)}...{tx.txHash?.slice(-8)}
+                    </p>
+                    <p className="text-xs text-white/60">Transaction Hash</p>
+                  </div>
+                </div>
+              </td>
+              <td className="text-right py-4 text-white font-medium">
+                {Math.abs(amount).toLocaleString(undefined, { maximumFractionDigits: 6 })}
+              </td>
+              <td className="text-right py-4">
+                <span className="px-2 py-1 bg-white/10 rounded text-xs text-white">{tx.symbol || "Unknown"}</span>
+              </td>
+              <td className="text-right py-4">
+                <span
+                  className={`px-2 py-1 rounded text-xs ${
+                    tx.txStatus === "success"
+                      ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                      : "bg-rose-500/20 text-rose-400 border border-rose-500/30"
                   }`}
                 >
-                  {Number(tx.amount) > 0 ? "+" : "-"}
-                </div>
-                <div>
-                  <p className="font-medium text-white font-mono text-sm">
-                    {tx.txHash?.slice(0, 10)}...{tx.txHash?.slice(-8)}
-                  </p>
-                  <p className="text-xs text-white/60">Transaction Hash</p>
-                </div>
-              </div>
-            </td>
-            <td className="text-right py-4 text-white font-medium">{tx.amount || "0"}</td>
-            <td className="text-right py-4">
-              <span className="px-2 py-1 bg-white/10 rounded text-xs text-white">{tx.symbol || "Unknown"}</span>
-            </td>
-            <td className="text-right py-4">
-              <span
-                className={`px-2 py-1 rounded text-xs ${
-                  tx.txStatus === "success"
-                    ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                    : "bg-rose-500/20 text-rose-400 border border-rose-500/30"
-                }`}
-              >
-                {tx.txStatus || "Unknown"}
-              </span>
-            </td>
-            <td className="text-right py-4 text-white/80 text-sm">
-              {tx.txTime ? new Date(Number(tx.txTime) * 1000).toLocaleString() : "Unknown"}
-            </td>
-          </tr>
-        ))}
+                  {tx.txStatus || "Unknown"}
+                </span>
+              </td>
+              <td className="text-right py-4 text-white/80 text-sm">
+                {tx.txTime ? new Date(Number(tx.txTime) * 1000).toLocaleString() : "Unknown"}
+              </td>
+            </tr>
+          )
+        })}
       </tbody>
     </table>
   )
