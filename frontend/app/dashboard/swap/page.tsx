@@ -14,12 +14,13 @@ const tokenList = [
   { symbol: "ARB", name: "Arbitrum", address: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" },
   { symbol: "MATIC", name: "Polygon", address: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" },
   { symbol: "AVAX", name: "Avalanche", address: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" },
-  { symbol: "SOL", name: "Solana", address: "SOL" },
+  { symbol: "SOL", name: "Solana", address: "11111111111111111111111111111111" },
   { symbol: "BNB", name: "BNB Chain", address: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" },
   { symbol: "FTM", name: "Fantom", address: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" },
 ]
 
 const chainList = [
+  { name: "Solana", index: "501", id: "501" },
   { name: "Ethereum", index: "1", id: "1" },
   { name: "BNB Chain", index: "56", id: "56" },
   { name: "Polygon", index: "137", id: "137" },
@@ -29,7 +30,6 @@ const chainList = [
   { name: "Fantom", index: "250", id: "250" },
   { name: "zkSync Era", index: "324", id: "324" },
   { name: "Base", index: "8453", id: "8453" },
-  { name: "Solana", index: "101", id: "101" },
 ]
 
 interface SwapResult {
