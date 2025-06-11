@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Send, Bot, User, Zap, RefreshCw } from "lucide-react"
+import { Send, Bot, User, Zap, RefreshCw, ChevronUp, ChevronDown, Minus, Plus } from "lucide-react"
 import { geminiAgent } from "./GeminiAgent"
 import { extractImportantInfoFromData } from "./Gemini2Agent"
 import { useWallet } from "@/contexts/WalletContext"
@@ -362,6 +362,7 @@ function HistoricalPriceChart({ data, title }: { data: any; title: string }) {
                 axisLine={{ stroke: "rgba(255,255,255,0.2)" }}
                 tickLine={{ stroke: "rgba(255,255,255,0.2)" }}
                 domain={["dataMin - 0.01", "dataMax + 0.01"]}
+                tickFormatter={formatPriceForAxis}
               />
               <ChartTooltip
                 content={<ChartTooltipContent />}
@@ -803,14 +804,61 @@ export default function AiChatPage() {
     ])
   }
 
+  const [isExpanded, setIsExpanded] = useState(true)
+  const [contentZoom, setContentZoom] = useState(100) // Zoom percentage (80%, 90%, 100%, 110%, 120%)
+
+  const zoomLevels = [80, 90, 100, 110, 120]
+  
+  const getZoomStyles = () => ({
+    transform: `scale(${contentZoom / 100})`,
+    transformOrigin: 'top left',
+    width: `${10000 / contentZoom}%`, // Compensate for scaling
+    fontSize: `${contentZoom}%`
+  })
+
   return (
-    <div className="flex flex-col h-[calc(100vh-6rem)] bg-black p-6 rounded-xl text-white">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-white to-white/80 text-transparent bg-clip-text mb-1">
+    <div className="flex flex-col h-[calc(100vh-4rem)] bg-black p-4 rounded-xl text-white">
+      <div className="flex justify-between items-center mb-4">
+        <div className="flex items-center gap-4">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-white to-white/80 text-transparent bg-clip-text">
             AI Assistant
           </h1>
-          <p className="text-white/60">Powered by advanced language models</p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-white/60 hover:text-white hover:bg-white/10"
+              onClick={() => setIsExpanded(!isExpanded)}
+              title={isExpanded ? "Collapse content" : "Expand content"}
+            >
+              {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </Button>
+            <div className="flex items-center gap-1 bg-white/5 rounded-lg p-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 text-white/60 hover:text-white hover:bg-white/10"
+                onClick={() => setContentZoom(Math.max(80, contentZoom - 10))}
+                disabled={contentZoom <= 80}
+                title="Zoom out"
+              >
+                <Minus className="h-3 w-3" />
+              </Button>
+              <span className="text-xs text-white/60 px-2 min-w-[3rem] text-center">
+                {contentZoom}%
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 text-white/60 hover:text-white hover:bg-white/10"
+                onClick={() => setContentZoom(Math.min(120, contentZoom + 10))}
+                disabled={contentZoom >= 120}
+                title="Zoom in"
+              >
+                <Plus className="h-3 w-3" />
+              </Button>
+            </div>
+          </div>
         </div>
         <Button
           variant="outline"
@@ -822,57 +870,68 @@ export default function AiChatPage() {
         </Button>
       </div>
 
-      <div className="flex-1 overflow-y-auto backdrop-blur-sm bg-black/20 border border-white/10 rounded-xl mb-4 p-6 hover:border-white/20 transition-all hover:shadow-xl">
-        {messages.map((message, index) => (
-          <div key={index} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} mb-4`}>
-            {message.content === "CHART_DATA" ? (
-              <div className="w-full max-w-4xl">
-                {(message.chartType === "candlestick" || message.chartType === "candlestick_history") ? (
-                  <CandlestickChart data={message.chartData} title={message.chartTitle || "Chart"} />
-                ) : (
-                  <HistoricalPriceChart data={message.chartData} title={message.chartTitle || "Chart"} />
-                )}
-              </div>
-            ) : (
-              <div className={`flex max-w-[80%] ${message.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
-                <div
-                  className={`rounded-full h-9 w-9 flex items-center justify-center ${
-                    message.role === "user"
-                      ? "bg-white/10 ml-2 border border-white/10"
-                      : "bg-white/10 mr-2 border border-white/10"
-                  }`}
-                >
-                  {message.role === "user" ? (
-                    <User className="h-4 w-4 text-white/80" />
+      <div className="flex-1 overflow-y-auto backdrop-blur-sm bg-black/20 border border-white/10 rounded-xl mb-4 hover:border-white/20 transition-all hover:shadow-xl">
+        <div 
+          className={`p-6 transition-all duration-300 ${isExpanded ? 'block' : 'hidden'}`}
+          style={getZoomStyles()}
+        >
+          {messages.map((message, index) => (
+            <div key={index} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} mb-4`}>
+              {message.content === "CHART_DATA" ? (
+                <div className="w-full max-w-4xl">
+                  {(message.chartType === "candlestick" || message.chartType === "candlestick_history") ? (
+                    <CandlestickChart data={message.chartData} title={message.chartTitle || "Chart"} />
                   ) : (
-                    <Bot className="h-4 w-4 text-white/80" />
+                    <HistoricalPriceChart data={message.chartData} title={message.chartTitle || "Chart"} />
                   )}
                 </div>
-                <div
-                  className={`py-3 px-4 rounded-2xl ${
-                    message.role === "user" ? "bg-white/5 border border-white/10" : "bg-black/30 border border-white/10"
-                  } whitespace-pre-wrap`}
-                >
-                  <p className="text-white/90">{message.content}</p>
+              ) : (
+                <div className={`flex max-w-[80%] ${message.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
+                  <div
+                    className={`rounded-full h-9 w-9 flex items-center justify-center ${
+                      message.role === "user"
+                        ? "bg-white/10 ml-2 border border-white/10"
+                        : "bg-white/10 mr-2 border border-white/10"
+                    }`}
+                  >
+                    {message.role === "user" ? (
+                      <User className="h-4 w-4 text-white/80" />
+                    ) : (
+                      <Bot className="h-4 w-4 text-white/80" />
+                    )}
+                  </div>
+                  <div
+                    className={`py-3 px-4 rounded-2xl ${
+                      message.role === "user" ? "bg-white/5 border border-white/10" : "bg-black/30 border border-white/10"
+                    } whitespace-pre-wrap`}
+                  >
+                    <p className="text-white/90">{message.content}</p>
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
-        ))}
-        {loading && (
-          <div className="flex justify-start mb-4">
-            <div className="flex flex-row">
-              <div className="rounded-full h-9 w-9 flex items-center justify-center bg-white/10 mr-2 border border-white/10">
-                <Bot className="h-4 w-4 text-white/80" />
-              </div>
-              <div className="py-3 px-4 rounded-2xl bg-black/30 border border-white/10">
-                <div className="flex space-x-2">
-                  <div className="h-2 w-2 bg-white/40 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                  <div className="h-2 w-2 bg-white/40 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                  <div className="h-2 w-2 bg-white/40 rounded-full animate-bounce"></div>
+              )}
+            </div>
+          ))}
+          {loading && (
+            <div className="flex justify-start mb-4">
+              <div className="flex flex-row">
+                <div className="rounded-full h-9 w-9 flex items-center justify-center bg-white/10 mr-2 border border-white/10">
+                  <Bot className="h-4 w-4 text-white/80" />
+                </div>
+                <div className="py-3 px-4 rounded-2xl bg-black/30 border border-white/10">
+                  <div className="flex space-x-2">
+                    <div className="h-2 w-2 bg-white/40 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                    <div className="h-2 w-2 bg-white/40 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                    <div className="h-2 w-2 bg-white/40 rounded-full animate-bounce"></div>
+                  </div>
                 </div>
               </div>
             </div>
+          )}
+        </div>
+        {!isExpanded && (
+          <div className="p-6 text-center text-white/40">
+            <Bot className="h-8 w-8 mx-auto mb-2 text-white/20" />
+            <p className="text-sm">Chat content collapsed. Click the expand button to show messages.</p>
           </div>
         )}
       </div>
