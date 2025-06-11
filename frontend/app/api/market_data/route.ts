@@ -57,6 +57,16 @@ const apiConfigMap:any = {
     required: ["chainIndex", "tokenContractAddress"],
     paramLocation: "body"
   },
+  "/api/v5/dex/market/trades": {
+    method: "GET",
+    required: ["chainIndex", "tokenContractAddress"],
+    paramLocation: "query"
+  },
+    "/api/v5/dex/market/price-info": {
+    method: "POST",
+    required: ["chainIndex", "tokenContractAddress"],
+    paramLocation: "body"
+  },
   "/api/v5/dex/balance/supported/chain": {
     method: "GET",
     required: [],
@@ -86,6 +96,7 @@ const apiConfigMap:any = {
     paramLocation: "query"
   },
   // 4. Get Total Value (GET, query)
+
   "/api/v5/dex/balance/total-value": {
     method: "GET",
     required: ["accountId"],
@@ -167,7 +178,7 @@ export async function POST(req: NextRequest) {
       }
     }
     console.log("my Body is:::::",body);
-    console.log("my Query is:::::",body);
+    console.log("my Query is:::::",query);
     
 
    

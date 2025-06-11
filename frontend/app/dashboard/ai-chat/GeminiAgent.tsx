@@ -21,6 +21,8 @@ When a user query involves:
 
 -if related to Retrieve the total balance of all tokens and DeFi assets under an account or use says what is the total balance of all the tokens liket that. like that return type is return type return type "total_value" with OHLC data. in this case give token name to "MYS"
 
+if related to latest token price or batch or something relarted to new token price then return batch_price as return type with OHLC data.
+
 --if related to Retrieve the total balance of all tokens and DeFi assets under an account. like that return type is return type "total_token_balance" with OHLC data.
 
 -is related to Query the balance of a specific token under an address.
@@ -69,6 +71,7 @@ when you returnning the token  name then only return   ETH,
   SUI,
   TON,
 these when matches
+if any general query  is asked then pick the above mentioned conditions and find most suitable return the type with data which matches most  from that if it matches and else general answer.
 User Query:
 `;
 

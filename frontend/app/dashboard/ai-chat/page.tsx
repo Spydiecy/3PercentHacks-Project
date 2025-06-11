@@ -171,7 +171,7 @@ async function callMarketDataApi(type: string, tokenName: string, address: strin
   if (type == "tx_by_hash") {
     const body = {
       chainIndex: chainIndexMap["token_name"],
-      txHash: "0x9ab8ccccc9f778ea91ce4c0f15517672c4bd06d166e830da41ba552e744d29a5",
+      txHash: txHash,
     }
     const response = await fetch("/api/portfolio/transaction_by_hash", {
       method: "POST",
@@ -200,9 +200,8 @@ async function callMarketDataApi(type: string, tokenName: string, address: strin
       method = "GET"
       path = "/api/v5/dex/index/historical-price"
       break
-    case "":
-      method = "GET"
-      path = "/api/v5/dex/balance/all-token-balances"
+    case "batch_price":
+      path = "/api/v5/dex/market/price-info"
       break
     case "candlestick_history":
       method = "GET"
@@ -497,7 +496,7 @@ export default function AiChatPage() {
             geminiResponse.type,
             geminiResponse.token_name,
             publicKey,
-            geminiResponse.txhash,
+            geminiResponse.transaction_hash,
           )
 
           // Check if this is chart data and render accordingly
