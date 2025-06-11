@@ -15,9 +15,17 @@ When a user query involves:
 - Supported chains: return a JSON with type "supported_chains" listing all supported blockchain chains.
 - Token price: return type "price" with current price data.
 - Trades: return type "trades" with recent trade data.
--Historical data: return type "hist_data" with OHLC data.
+- Historical price data or historical data: return type "hist_data" with historical price data (for line charts).
 - Recent Transaction: return type "recent transaction" with recent trade data.
-- Candlestick data: return type "candlestick" with OHLC data.
+
+CANDLESTICK CHART RULES (VERY IMPORTANT):
+- Current candlestick chart, candlestick data, candle chart, OHLC chart (WITHOUT "historical" keyword): return type "candlestick" for current/recent candlestick data.
+- Historical candlestick, candlestick history, historical candle chart (WITH "historical" keyword): return type "candlestick_history" for historical candlestick data.
+
+IMPORTANT: 
+- If user asks for "candlestick chart" or "show me candlestick" WITHOUT mentioning "historical", return type "candlestick"
+- If user asks for "historical candlestick" or "candlestick history", return type "candlestick_history"
+- If user asks for "historical data" or "historical price" WITHOUT mentioning "candlestick", return type "hist_data"
 
 -if related to Retrieve the total balance of all tokens and DeFi assets under an account or use says what is the total balance of all the tokens liket that. like that return type is return type return type "total_value" with OHLC data. in this case give token name to "MYS"
 
@@ -28,8 +36,6 @@ if related to latest token price or batch or something relarted to new token pri
 -is related to Query the balance of a specific token under an address.
 return type "specific_token_balance" with OHLC data with token_name and token_name in data.
 
-
-- Candlestick history: return type "candlestick_history" with historical OHLC data.
 - Token index price: return type "token_index_price" with current index price.
 - Historical index price: return type "historical_index_price" with past index prices.
 - Total value: return type "total_value" with aggregated value data.

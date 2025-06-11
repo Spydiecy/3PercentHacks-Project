@@ -32,15 +32,15 @@ interface GeminiResponse {
 // Map token names to contract addresses
 const tokenAddressMap: Record<string, string> = {
   ETH: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // Native ETH
-  OP: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // OP token
+  OP: "0x4200000000000000000000000000000000000042", // OP token
   BSC: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // Native BNB
   OKT: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // Native OKT
   SONIC: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // Placeholder
   XLAYER: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // Placeholder
   POLYGON: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // Native MATIC
-  ARB: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // Native ETH on Arbitrum
+  ARB: "0x912CE59144191C1204E64559FE8253a0e49E6548", // Native ETH on Arbitrum
   AVAX: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // Native AVAX
-  ZKSYNC: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // Native ETH on zkSync
+  ZKSYNC: "0x5A7d6b2F92C77FAD6CCaBd7EE0624E64907Eaf3E", // Native ETH on zkSync
   POLYZKEVM: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // Native MATIC
   BASE: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // Native ETH
   LINEA: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // Native ETH
@@ -57,7 +57,7 @@ const tokenAddressMap: Record<string, string> = {
   TRON: "TRX", // Tron native token symbol
   SOL: "So11111111111111111111111111111111111111112", // Solana native token symbol
   SUI: "0x2::sui::SUI", // SUI native token ID
-  TON: "TON", // TON native token symbol
+  TON: "0x582d872a1b094fc48f5de31d3b73f2d9be47def1", // TON native token symbol
   MYS: "3",
 }
 
@@ -289,7 +289,21 @@ function formatTimestamp(timestamp: string | number): string {
 
 // Helper function to format price
 function formatPrice(price: string | number): string {
-  return Number(price).toFixed(6)
+  return Number(price).toFixed(2)
+}
+
+// Helper function to format price for Y-axis (shorter format)
+function formatPriceForAxis(price: string | number): string {
+  const num = Number(price)
+  if (num >= 1000000) {
+    return `$${(num / 1000000).toFixed(1)}M`
+  } else if (num >= 1000) {
+    return `$${(num / 1000).toFixed(1)}K`
+  } else if (num >= 1) {
+    return `$${num.toFixed(2)}`
+  } else {
+    return `$${num.toFixed(4)}`
+  }
 }
 
 // Component for rendering historical price chart
@@ -374,26 +388,135 @@ function HistoricalPriceChart({ data, title }: { data: any; title: string }) {
   )
 }
 
+// Custom Candlestick component for D3-style rendering
+const CandlestickBar = ({ x, y, width, height, payload }: any) => {
+  if (!payload) return null
+  
+  const { open, high, low, close } = payload
+  const isPositive = close >= open
+  const bodyColor = isPositive ? "#22c55e" : "#ef4444"
+  const wickColor = isPositive ? "#16a34a" : "#dc2626"
+  
+  // Chart dimensions
+  const chartHeight = 300
+  const margin = 40
+  const plotHeight = chartHeight - margin * 2
+  
+  // Calculate price range
+  const allPrices = [open, high, low, close]
+  const minPrice = Math.min(...allPrices)
+  const maxPrice = Math.max(...allPrices)
+  const priceRange = maxPrice - minPrice || 1
+  const padding = priceRange * 0.1
+  const yMin = minPrice - padding
+  const yMax = maxPrice + padding
+  const totalRange = yMax - yMin
+  
+  // Convert price to pixel position
+  const priceToY = (price: number) => {
+    return margin + ((yMax - price) / totalRange) * plotHeight
+  }
+  
+  // Calculate positions
+  const highY = priceToY(high)
+  const lowY = priceToY(low)
+  const openY = priceToY(open)
+  const closeY = priceToY(close)
+  
+  const bodyTop = Math.min(openY, closeY)
+  const bodyHeight = Math.abs(closeY - openY) || 2
+  const bodyWidth = Math.max(width * 0.6, 2)
+  const bodyX = x + (width - bodyWidth) / 2
+  const wickX = x + width / 2
+  
+  return (
+    <g>
+      {/* Upper wick */}
+      <line
+        x1={wickX}
+        y1={highY}
+        x2={wickX}
+        y2={bodyTop}
+        stroke={wickColor}
+        strokeWidth={1}
+      />
+      {/* Lower wick */}
+      <line
+        x1={wickX}
+        y1={bodyTop + bodyHeight}
+        x2={wickX}
+        y2={lowY}
+        stroke={wickColor}
+        strokeWidth={1}
+      />
+      {/* Candle body */}
+      <rect
+        x={bodyX}
+        y={bodyTop}
+        width={bodyWidth}
+        height={bodyHeight}
+        fill={isPositive ? bodyColor : "transparent"}
+        stroke={bodyColor}
+        strokeWidth={isPositive ? 0 : 2}
+      />
+    </g>
+  )
+}
+
 // Component for rendering candlestick chart
 function CandlestickChart({ data, title }: { data: any; title: string }) {
-  if (!data?.data || !Array.isArray(data.data)) return null
+  if (!data?.data) return null
 
-  const chartData = data.data
-    .map((item: any) => ({
-      time: formatTimestamp(item[0]),
-      open: Number(item[1]),
-      high: Number(item[2]),
-      low: Number(item[3]),
-      close: Number(item[4]),
-      volume: Number(item[5]),
-      timestamp: Number(item[0]),
-    }))
-    .reverse()
+  let chartData: any[] = []
+  
+  // Handle different data formats
+  if (Array.isArray(data.data)) {
+    // Format: [[timestamp, open, high, low, close, volume], ...]
+    chartData = data.data
+      .map((item: any) => ({
+        time: formatTimestamp(item[0]),
+        open: Number(item[1]),
+        high: Number(item[2]),
+        low: Number(item[3]),
+        close: Number(item[4]),
+        volume: Number(item[5]) || 0,
+        timestamp: Number(item[0]),
+      }))
+      .reverse()
+  } else if (data.data[0] && typeof data.data[0] === 'object') {
+    // Format: [{timestamp, open, high, low, close, volume}, ...]
+    chartData = data.data
+      .map((item: any) => ({
+        time: formatTimestamp(item.timestamp || item.time),
+        open: Number(item.open),
+        high: Number(item.high),
+        low: Number(item.low),
+        close: Number(item.close),
+        volume: Number(item.volume) || 0,
+        timestamp: Number(item.timestamp || item.time),
+      }))
+      .reverse()
+  } else {
+    return <div className="text-white p-4">No candlestick data available</div>
+  }
+
+  if (chartData.length === 0) {
+    return <div className="text-white p-4">No candlestick data available</div>
+  }
 
   const currentPrice = chartData[chartData.length - 1]?.close || 0
   const previousPrice = chartData[chartData.length - 2]?.close || 0
   const priceChange = currentPrice - previousPrice
   const isPositive = priceChange >= 0
+  
+  // Calculate price range for the entire dataset
+  const allPrices = chartData.flatMap((item: any) => [item.open, item.high, item.low, item.close])
+  const minPrice = Math.min(...allPrices)
+  const maxPrice = Math.max(...allPrices)
+  const priceRange = maxPrice - minPrice || 1
+  const padding = priceRange * 0.1
+  const yMin = minPrice - padding
+  const yMax = maxPrice + padding
 
   return (
     <Card className="w-full bg-black/40 border-white/20 backdrop-blur-sm">
@@ -422,33 +545,134 @@ function CandlestickChart({ data, title }: { data: any; title: string }) {
           className="h-[300px]"
         >
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData}>
-              <XAxis
-                dataKey="time"
-                tick={{ fill: "white", fontSize: 12 }}
-                axisLine={{ stroke: "rgba(255,255,255,0.2)" }}
-                tickLine={{ stroke: "rgba(255,255,255,0.2)" }}
-              />
-              <YAxis
-                tick={{ fill: "white", fontSize: 12 }}
-                axisLine={{ stroke: "rgba(255,255,255,0.2)" }}
-                tickLine={{ stroke: "rgba(255,255,255,0.2)" }}
-                domain={["dataMin - 0.01", "dataMax + 0.01"]}
-              />
-              <ChartTooltip
-                content={<ChartTooltipContent />}
-                contentStyle={{
-                  backgroundColor: "rgba(0,0,0,0.8)",
-                  border: "1px solid rgba(255,255,255,0.2)",
-                  borderRadius: "8px",
-                  color: "white",
-                }}
-              />
-              <Line type="monotone" dataKey="high" stroke="#22c55e" strokeWidth={1} dot={false} />
-              <Line type="monotone" dataKey="low" stroke="#ef4444" strokeWidth={1} dot={false} />
-              <Line type="monotone" dataKey="open" stroke="#3b82f6" strokeWidth={1} dot={false} />
-              <Line type="monotone" dataKey="close" stroke="#8b5cf6" strokeWidth={2} dot={false} />
-            </LineChart>
+            <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+              <svg width="100%" height="100%" className="candlestick-chart">
+                <defs>
+                  <linearGradient id="bgGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor="rgba(255,255,255,0.05)" />
+                    <stop offset="100%" stopColor="rgba(255,255,255,0.01)" />
+                  </linearGradient>
+                </defs>
+                
+                {/* Background */}
+                <rect width="100%" height="100%" fill="url(#bgGradient)" />
+                
+                {/* Grid lines */}
+                {[0, 25, 50, 75, 100].map((percent: number) => (
+                  <line
+                    key={percent}
+                    x1="40"
+                    y1={40 + (percent / 100) * 220}
+                    x2="100%"
+                    y2={40 + (percent / 100) * 220}
+                    stroke="rgba(255,255,255,0.1)"
+                    strokeWidth={0.5}
+                  />
+                ))}
+                
+                {/* Y-axis labels */}
+                {[0, 25, 50, 75, 100].map((percent: number) => {
+                  const price = yMax - (percent / 100) * (yMax - yMin)
+                  return (
+                    <text
+                      key={percent}
+                      x="35"
+                      y={45 + (percent / 100) * 220}
+                      fill="white"
+                      fontSize="10"
+                      textAnchor="end"
+                    >
+                      ${price.toFixed(4)}
+                    </text>
+                  )
+                })}
+                
+                {/* Candlesticks */}
+                {chartData.map((item: any, index: number) => {
+                  const chartWidth = 600 // Approximate chart width
+                  const x = 50 + (index / Math.max(chartData.length - 1, 1)) * (chartWidth - 100)
+                  const candleWidth = Math.max((chartWidth - 100) / chartData.length * 0.8, 2)
+                  
+                  // Calculate positions
+                  const priceToY = (price: number) => 40 + ((yMax - price) / (yMax - yMin)) * 220
+                  
+                  const highY = priceToY(item.high)
+                  const lowY = priceToY(item.low)
+                  const openY = priceToY(item.open)
+                  const closeY = priceToY(item.close)
+                  
+                  const isPositive = item.close >= item.open
+                  const bodyColor = isPositive ? "#22c55e" : "#ef4444"
+                  const wickColor = isPositive ? "#16a34a" : "#dc2626"
+                  
+                  const bodyTop = Math.min(openY, closeY)
+                  const bodyHeight = Math.abs(closeY - openY) || 1
+                  const bodyX = x - candleWidth / 2
+                  
+                  return (
+                    <g key={index}>
+                      {/* Wick */}
+                      <line
+                        x1={x}
+                        y1={highY}
+                        x2={x}
+                        y2={lowY}
+                        stroke={wickColor}
+                        strokeWidth={1}
+                      />
+                      {/* Body */}
+                      <rect
+                        x={bodyX}
+                        y={bodyTop}
+                        width={candleWidth}
+                        height={bodyHeight}
+                        fill={isPositive ? bodyColor : "transparent"}
+                        stroke={bodyColor}
+                        strokeWidth={isPositive ? 0 : 1}
+                      />
+                      
+                      {/* Tooltip trigger area */}
+                      <rect
+                        x={bodyX - 5}
+                        y={Math.min(highY, lowY) - 5}
+                        width={candleWidth + 10}
+                        height={Math.abs(highY - lowY) + 10}
+                        fill="transparent"
+                        className="cursor-pointer"
+                      >
+                        <title>
+                          {`Time: ${item.time}
+Open: $${item.open.toFixed(4)}
+High: $${item.high.toFixed(4)}
+Low: $${item.low.toFixed(4)}
+Close: $${item.close.toFixed(4)}
+Volume: ${item.volume.toLocaleString()}`}
+                        </title>
+                      </rect>
+                    </g>
+                  )
+                })}
+                
+                {/* X-axis labels */}
+                {chartData.filter((_: any, index: number) => index % Math.ceil(chartData.length / 6) === 0).map((item: any, filteredIndex: number) => {
+                  const originalIndex = filteredIndex * Math.ceil(chartData.length / 6)
+                  const chartWidth = 600
+                  const x = 50 + (originalIndex / Math.max(chartData.length - 1, 1)) * (chartWidth - 100)
+                  return (
+                    <text
+                      key={filteredIndex}
+                      x={x}
+                      y="285"
+                      fill="white"
+                      fontSize="10"
+                      textAnchor="middle"
+                    >
+                      {item.time.split(' ')[0]}
+                    </text>
+                  )
+                })}
+              </svg>
+            </div>
           </ResponsiveContainer>
         </ChartContainer>
       </CardContent>
@@ -500,7 +724,7 @@ export default function AiChatPage() {
           )
 
           // Check if this is chart data and render accordingly
-          const shouldShowChart = ["hist_data", "candlestick_history", "historical_index_price"].includes(
+          const shouldShowChart = ["hist_data", "candlestick_history", "historical_index_price", "candlestick"].includes(
             geminiResponse.type,
           )
 
@@ -509,9 +733,13 @@ export default function AiChatPage() {
             const chartTitle =
               geminiResponse.type === "hist_data"
                 ? "Historical Price Data"
+                : geminiResponse.type === "candlestick"
+                  ? "Current Candlestick Chart"
                 : geminiResponse.type === "candlestick_history"
-                  ? "Candlestick Chart"
-                  : "Historical Index Price"
+                  ? "Historical Candlestick Chart"
+                : geminiResponse.type === "historical_index_price"
+                  ? "Historical Index Price"
+                : "Price Chart"
 
             // Add the AI response first
             const formattedResponse =
@@ -599,7 +827,7 @@ export default function AiChatPage() {
           <div key={index} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} mb-4`}>
             {message.content === "CHART_DATA" ? (
               <div className="w-full max-w-4xl">
-                {message.chartType === "candlestick_history" ? (
+                {(message.chartType === "candlestick" || message.chartType === "candlestick_history") ? (
                   <CandlestickChart data={message.chartData} title={message.chartTitle || "Chart"} />
                 ) : (
                   <HistoricalPriceChart data={message.chartData} title={message.chartTitle || "Chart"} />
