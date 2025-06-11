@@ -37,6 +37,11 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
       icon: ArrowLeftRight,
       href: "/dashboard/swap"
     },
+      {
+      label: "Cross Chain Swap",
+      icon: ArrowLeftRight,
+      href: "/dashboard/cross-chain"
+    },
     {
       label: "Portfolio",
       icon: BarChart2,

@@ -236,7 +236,7 @@ async function executeSolanaSwap(params: SwapExecuteParams) {
   if (uniqueLookupTables?.length > 0) {
     console.log("Loading address lookup tables...")
     const lookupTableAccounts = await Promise.all(
-      uniqueLookupTables.map(async (address) => {
+      uniqueLookupTables.map(async (address:any) => {
         const pubkey = new PublicKey(address)
         const account = await connection.getAddressLookupTable(pubkey).then((res) => res.value)
         if (!account) {
