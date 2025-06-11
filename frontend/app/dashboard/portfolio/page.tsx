@@ -8,7 +8,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Download,
   Calendar,
-  Filter,
   DollarSign,
   Coins,
   Activity,
@@ -94,7 +93,7 @@ class RateLimitManager {
 const rateLimitManager = new RateLimitManager()
 
 // Filter function to remove tokens with zero value or zero price
-function filterValidTokens(tokens: any[]): any[] {
+function filterValidTokens(tokens: any[], criteria = { minValue: 0.01, minPrice: 0, minBalance: 0, showZeroBalance: false }): any[] {
   if (!Array.isArray(tokens)) return []
 
   return tokens.filter((token) => {
@@ -103,11 +102,12 @@ function filterValidTokens(tokens: any[]): any[] {
       const price = Number(token?.tokenPrice || 0)
       const value = balance * price
 
-      // Filter out tokens with:
-      // 1. Zero or negative balance
-      // 2. Zero or negative price
-      // 3. Total value less than $0.01 (to remove dust)
-      return balance > 0 && price > 0 && value >= 0.01
+      // Apply filtering criteria
+      if (!criteria.showZeroBalance && balance <= criteria.minBalance) return false
+      if (price <= criteria.minPrice) return false
+      if (value < criteria.minValue) return false
+
+      return true
     } catch (error) {
       console.warn("Error filtering token:", token, error)
       return false
@@ -148,7 +148,6 @@ export default function PortfolioPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [showChainDropdown, setShowChainDropdown] = useState(false)
   const [showPeriodDropdown, setShowPeriodDropdown] = useState(false)
-  const [requestCount, setRequestCount] = useState(0)
   const [portfolioStats, setPortfolioStats] = useState({
     totalValue: "0",
     tokenCount: "0",
@@ -214,8 +213,6 @@ export default function PortfolioPage() {
 
   // Enhanced fetch function with rate limiting
   const fetchWithRateLimit = async (url: string, options: RequestInit) => {
-    setRequestCount((prev) => prev + 1)
-
     return rateLimitManager.addRequest(async () => {
       const response = await fetch(url, options)
       if (!response.ok) {
@@ -229,7 +226,6 @@ export default function PortfolioPage() {
   const fetchPortfolioData = async () => {
     setLoading(true)
     setLoadingProgress(0)
-    setRequestCount(0)
 
     try {
       // Step 1: Fetch transaction history
@@ -335,7 +331,6 @@ export default function PortfolioPage() {
       allTransactions: history, // Also include raw data
       exportDate: new Date().toISOString(),
       selectedChains,
-      requestCount,
       filterInfo: {
         totalTokens: tokenBalances.length,
         filteredTokens: filteredTokenBalances.length,
@@ -357,20 +352,33 @@ export default function PortfolioPage() {
 
   // Filter data based on search term (using filtered data)
   const filteredData = () => {
+    let data: any[] = []
+    
     if (selectedTable === "balances") {
-      return filteredTokenBalances.filter(
+      data = filteredTokenBalances.filter(
         (asset) =>
           asset.symbol?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           asset.tokenContractAddress?.toLowerCase().includes(searchTerm.toLowerCase()),
       )
     } else if (selectedTable === "history") {
-      return filteredHistory.filter(
+      data = filteredHistory.filter(
         (tx) =>
           tx.symbol?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           tx.txHash?.toLowerCase().includes(searchTerm.toLowerCase()),
       )
     }
-    return []
+
+    // Apply sorting for token balances
+    if (selectedTable === "balances" && data.length > 0) {
+      data.sort((a, b) => {
+        // Default sort by value descending
+        const aVal = Number(a.balance || 0) * Number(a.tokenPrice || 0)
+        const bVal = Number(b.balance || 0) * Number(b.tokenPrice || 0)
+        return bVal - aVal // Descending order
+      })
+    }
+
+    return data
   }
 
   useEffect(() => {
@@ -387,7 +395,7 @@ export default function PortfolioPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 relative">
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>
@@ -395,14 +403,6 @@ export default function PortfolioPage() {
             Portfolio
           </h1>
           <p className="text-white/60">Track and manage your Solana assets</p>
-          {requestCount > 0 && <p className="text-white/40 text-sm mt-1">API Requests: {requestCount}</p>}
-          <div className="flex gap-4 mt-2 text-sm text-white/60">
-            <span>Total Tokens: {portfolioStats.totalTokens}</span>
-            <span>•</span>
-            <span>Filtered Tokens: {portfolioStats.filteredTokens}</span>
-            <span>•</span>
-            <span>Active Transactions: {portfolioStats.transactionCount}</span>
-          </div>
         </div>
         <div className="flex gap-3">
           <div className="relative">
@@ -481,42 +481,6 @@ export default function PortfolioPage() {
         </Card>
       )}
 
-      {/* Chain Selection */}
-      <Card className="bg-black/20 border-white/10 hover:border-white/20 transition-all">
-        <CardHeader>
-          <CardTitle className="text-lg text-white flex items-center gap-2">
-            <Coins className="h-5 w-5" />
-            Active Chains ({selectedChains.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-3">
-            {AVAILABLE_CHAINS.map((chain) => {
-              const isSelected = selectedChains.includes(chain.id)
-              return (
-                <button
-                  key={chain.id}
-                  onClick={() => !loading && toggleChain(chain.id)}
-                  disabled={loading}
-                  className={`relative px-4 py-2 rounded-full border transition-all duration-300 ${
-                    isSelected
-                      ? "border-white/40 bg-white/10 text-white shadow-lg"
-                      : "border-white/20 hover:bg-white/5 text-white/80 hover:text-white"
-                  } ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
-                >
-                  <div
-                    className={`absolute inset-0 rounded-full bg-gradient-to-r opacity-20 ${
-                      isSelected ? "opacity-30" : "opacity-0"
-                    } transition-opacity ${chain.color}`}
-                  ></div>
-                  <span className="relative z-10 font-medium">{chain.label}</span>
-                </button>
-              )
-            })}
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Real Portfolio Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <PortfolioCard
@@ -557,33 +521,9 @@ export default function PortfolioPage() {
         />
       </div>
 
-      {/* Filter Info Banner */}
-      <Card className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border-purple-500/20">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Filter className="h-5 w-5 text-purple-400" />
-              <div>
-                <p className="text-white font-medium">Active Filters Applied</p>
-                <p className="text-white/60 text-sm">
-                  Showing only tokens with value {">"} $0.01 and price {">"} $0
-                </p>
-              </div>
-            </div>
-            <div className="text-right">
-              <p className="text-white text-sm">
-                <span className="text-purple-400 font-bold">{portfolioStats.filteredTokens}</span> of{" "}
-                <span className="text-white/60">{portfolioStats.totalTokens}</span> tokens
-              </p>
-              <p className="text-white/60 text-xs">{portfolioStats.transactionCount} active transactions</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Controls */}
-      <Card className="bg-black/20 border-white/10 hover:border-white/20 transition-all">
-        <CardContent className="p-6">
+      <Card className="bg-black/20 border-white/10 hover:border-white/20 transition-all relative overflow-visible">
+        <CardContent className="p-6 overflow-visible">
           <div className="flex flex-wrap gap-4 items-center justify-between">
             <div className="flex gap-4 items-center">
               <select
@@ -595,7 +535,6 @@ export default function PortfolioPage() {
                 <option value="balances">Active Token Balances ({filteredTokenBalances.length})</option>
                 <option value="history">Transaction History ({filteredHistory.length})</option>
                 <option value="specific">Specific Token Balance</option>
-                <option value="total_value">Total Portfolio Value</option>
               </select>
               <Button
                 onClick={() => setActiveModal("details")}
@@ -613,35 +552,48 @@ export default function PortfolioPage() {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/40" />
                 <input
                   type="text"
-                  placeholder="Search active tokens or transactions..."
+                  placeholder="Search tokens, addresses, or transactions..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   disabled={loading}
-                  className="bg-black/50 border border-white/20 rounded-lg pl-10 pr-4 py-2 text-white placeholder:text-white/40 backdrop-blur-sm hover:border-white/30 transition-colors disabled:opacity-50"
+                  className="bg-black/50 border border-white/20 rounded-lg pl-10 pr-4 py-2 text-white placeholder:text-white/40 backdrop-blur-sm hover:border-white/30 transition-colors disabled:opacity-50 w-80"
                 />
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-white/20 hover:bg-white/10 text-white gap-2"
-                disabled={loading}
-              >
-                <Filter className="h-4 w-4" />
-                Filter
-              </Button>
+              <div className="flex items-center gap-2">
+                <Coins className="h-4 w-4 text-white/60" />
+                <span className="text-sm text-white/70">Chain:</span>
+                <div className="flex gap-2">
+                  {AVAILABLE_CHAINS.map((chain) => {
+                    const isSelected = selectedChains.includes(chain.id)
+                    return (
+                      <button
+                        key={chain.id}
+                        onClick={() => !loading && toggleChain(chain.id)}
+                        disabled={loading}
+                        className={`px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
+                          isSelected
+                            ? "bg-white/15 text-white border border-white/20"
+                            : "bg-white/5 text-white/60 hover:bg-white/10 border border-transparent"
+                        } ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
+                      >
+                        {chain.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
             </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Main Data Table */}
-      <Card className="bg-black/20 border-white/10 hover:border-white/20 transition-all hover:shadow-xl">
+      <Card className="bg-black/20 border-white/10 hover:border-white/20 transition-all hover:shadow-xl relative z-10">
         <CardHeader>
           <CardTitle className="text-xl font-bold bg-gradient-to-r from-white to-white/80 text-transparent bg-clip-text">
             {selectedTable === "balances" && `Active Portfolio Breakdown (${filteredTokenBalances.length} tokens)`}
             {selectedTable === "history" && `Active Transaction History (${filteredHistory.length} transactions)`}
             {selectedTable === "specific" && "Specific Token Balance"}
-            {selectedTable === "total_value" && "Total Portfolio Value"}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -663,27 +615,7 @@ export default function PortfolioPage() {
               <HistoryTable transactions={filteredData()} />
             ) : selectedTable === "specific" ? (
               <TokenBalancesTable assets={filterValidTokens(specificToken)} />
-            ) : (
-              <div className="text-center py-12">
-                <div className="bg-gradient-to-r from-purple-500/20 to-blue-500/20 rounded-xl p-8 border border-white/10">
-                  <DollarSign className="h-16 w-16 mx-auto mb-4 text-white/80" />
-                  <div className="text-3xl font-bold text-white mb-2">
-                    ${Number(totalValue).toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                  </div>
-                  <div className="text-white/60">Total Portfolio Value</div>
-                  <div className="grid grid-cols-2 gap-4 mt-6 text-sm">
-                    <div className="bg-white/5 rounded-lg p-3">
-                      <div className="text-white/60">Active Tokens</div>
-                      <div className="text-white font-bold">{portfolioStats.filteredTokens}</div>
-                    </div>
-                    <div className="bg-white/5 rounded-lg p-3">
-                      <div className="text-white/60">Transactions</div>
-                      <div className="text-white font-bold">{portfolioStats.transactionCount}</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
+            ) : null}
           </div>
         </CardContent>
       </Card>

@@ -2,14 +2,13 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Send, Bot, User, Zap, RefreshCw, ChevronUp, ChevronDown, Minus, Plus } from "lucide-react"
+import { Send, Bot, User, Zap, RefreshCw, ChevronUp, ChevronDown, Minus, Plus, Activity, Clock, TrendingUp, TrendingDown, BarChart3 } from "lucide-react"
 import { geminiAgent } from "./GeminiAgent"
 import { extractImportantInfoFromData } from "./Gemini2Agent"
 import { useWallet } from "@/contexts/WalletContext"
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer } from "recharts"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
-import { TrendingUp, TrendingDown, BarChart3 } from "lucide-react"
 
 interface Message {
   role: "user" | "system"
@@ -18,6 +17,7 @@ interface Message {
   chartType?: string
   chartTitle?: string
   tokenName?: string
+  transactionData?: any[] // Add transaction data field
 }
 
 interface GeminiResponse {
@@ -27,6 +27,106 @@ interface GeminiResponse {
   txHash?: string
   similar_tokens?: string[]
   [key: string]: any
+}
+
+// Transaction History Display Component
+function TransactionHistoryDisplay({ transactions, title }: { transactions: any[]; title: string }) {
+  if (!transactions || transactions.length === 0) {
+    return (
+      <Card className="w-full bg-black/40 border-white/20 backdrop-blur-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-white flex items-center gap-2">
+            <Activity className="h-5 w-5" />
+            {title}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8">
+            <Activity className="h-12 w-12 mx-auto mb-4 text-white/40" />
+            <p className="text-white/60">No recent transactions found</p>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // Filter and take only the last 5 transactions with non-zero amounts
+  const validTransactions = transactions
+    .filter((tx) => {
+      try {
+        const amount = Number(tx?.amount || 0)
+        return Math.abs(amount) > 0
+      } catch {
+        return false
+      }
+    })
+    .slice(0, 5)
+
+  return (
+    <Card className="w-full bg-black/40 border-white/20 backdrop-blur-sm">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-white flex items-center gap-2">
+          <Activity className="h-5 w-5" />
+          {title}
+        </CardTitle>
+        <p className="text-white/60 text-sm">Last {validTransactions.length} transactions</p>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          {validTransactions.map((tx, idx) => {
+            const amount = Number(tx.amount || 0)
+            const isPositive = amount > 0
+            
+            return (
+              <div key={idx} className="p-4 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`p-2 rounded-full ${
+                        isPositive
+                          ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
+                          : "bg-rose-500/10 text-rose-500 border border-rose-500/20"
+                      }`}
+                    >
+                      {isPositive ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+                    </div>
+                    <div>
+                      <p className="font-medium text-white font-mono text-sm">
+                        {tx.txHash?.slice(0, 10)}...{tx.txHash?.slice(-8)}
+                      </p>
+                      <p className="text-xs text-white/60 flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {tx.txTime ? new Date(Number(tx.txTime) * 1000).toLocaleString() : "Unknown time"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className={`font-medium ${isPositive ? "text-emerald-400" : "text-rose-400"}`}>
+                      {isPositive ? "+" : ""}{Math.abs(amount).toLocaleString(undefined, { maximumFractionDigits: 6 })}
+                    </p>
+                    <div className="flex items-center gap-2 justify-end">
+                      <span className="px-2 py-1 bg-white/10 rounded text-xs text-white">
+                        {tx.symbol || "Unknown"}
+                      </span>
+                      <span
+                        className={`px-2 py-1 rounded text-xs ${
+                          tx.txStatus === "success"
+                            ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                            : "bg-rose-500/20 text-rose-400 border border-rose-500/30"
+                        }`}
+                      >
+                        {tx.txStatus || "Unknown"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  )
 }
 
 // Map token names to contract addresses
@@ -682,8 +782,10 @@ Volume: ${item.volume.toLocaleString()}`}
 }
 
 const suggestions = [
-  "How does Astra's AI trading work?",
+  "Show me my transaction history",
+  "What are my recent transactions?",
   "Explain the current SOL market conditions",
+  "How does Astra's AI trading work?",
   "What's the best DeFi strategy for beginners?",
   "How to minimize transaction fees?",
 ]
@@ -724,51 +826,71 @@ export default function AiChatPage() {
             geminiResponse.transaction_hash,
           )
 
-          // Check if this is chart data and render accordingly
-          const shouldShowChart = ["hist_data", "candlestick_history", "historical_index_price", "candlestick"].includes(
-            geminiResponse.type,
-          )
-
-          if (shouldShowChart) {
-            // Create a chart message
-            const chartTitle =
-              geminiResponse.type === "hist_data"
-                ? "Historical Price Data"
-                : geminiResponse.type === "candlestick"
-                  ? "Current Candlestick Chart"
-                : geminiResponse.type === "candlestick_history"
-                  ? "Historical Candlestick Chart"
-                : geminiResponse.type === "historical_index_price"
-                  ? "Historical Index Price"
-                : "Price Chart"
-
-            // Add the AI response first
-            const formattedResponse =
-              geminiResponse.text || `Here's the ${chartTitle.toLowerCase()} for ${geminiResponse.token_name}:`
-
-            const aiMessage: string = "Here is Your Data.."
-
+          // Check if this is transaction history data
+          if (geminiResponse.type === "transaction_history") {
+            // Extract transactions from the API response
+            const transactions = marketData?.data?.[0]?.transactionList || marketData?.data?.[0]?.transactions || []
+            
+            // Add AI response message
+            const aiMessage = "Here's your recent transaction history:"
+            
             setMessages((prev) => [
               ...prev,
               { role: "system", content: aiMessage },
               {
                 role: "system",
-                content: "CHART_DATA",
-                chartData: marketData,
-                chartType: geminiResponse.type,
-                chartTitle: `${chartTitle} - ${geminiResponse.token_name}`,
-                tokenName: geminiResponse.token_name,
+                content: "TRANSACTION_DATA",
+                transactionData: transactions,
+                chartTitle: "Recent Transaction History",
               } as any,
             ])
           } else {
-            // Regular processing for non-chart data
-            const formattedResponse =
-              geminiResponse.text ||
-              `Here's the information about ${geminiResponse.token_name}: ${JSON.stringify(marketData)}`
+            // Check if this is chart data and render accordingly
+            const shouldShowChart = ["hist_data", "candlestick_history", "historical_index_price", "candlestick"].includes(
+              geminiResponse.type,
+            )
 
-            const aiMessage: string = await extractImportantInfoFromData(formattedResponse)
+            if (shouldShowChart) {
+              // Create a chart message
+              const chartTitle =
+                geminiResponse.type === "hist_data"
+                  ? "Historical Price Data"
+                  : geminiResponse.type === "candlestick"
+                    ? "Current Candlestick Chart"
+                  : geminiResponse.type === "candlestick_history"
+                    ? "Historical Candlestick Chart"
+                  : geminiResponse.type === "historical_index_price"
+                    ? "Historical Index Price"
+                  : "Price Chart"
 
-            setMessages((prev) => [...prev, { role: "system", content: aiMessage }])
+              // Add the AI response first
+              const formattedResponse =
+                geminiResponse.text || `Here's the ${chartTitle.toLowerCase()} for ${geminiResponse.token_name}:`
+
+              const aiMessage: string = "Here is Your Data.."
+
+              setMessages((prev) => [
+                ...prev,
+                { role: "system", content: aiMessage },
+                {
+                  role: "system",
+                  content: "CHART_DATA",
+                  chartData: marketData,
+                  chartType: geminiResponse.type,
+                  chartTitle: `${chartTitle} - ${geminiResponse.token_name}`,
+                  tokenName: geminiResponse.token_name,
+                } as any,
+              ])
+            } else {
+              // Regular processing for non-chart data
+              const formattedResponse =
+                geminiResponse.text ||
+                `Here's the information about ${geminiResponse.token_name}: ${JSON.stringify(marketData)}`
+
+              const aiMessage: string = await extractImportantInfoFromData(formattedResponse)
+
+              setMessages((prev) => [...prev, { role: "system", content: aiMessage }])
+            }
           }
         } catch (apiError: any) {
           console.log("my Api Error is:::", apiError)
@@ -777,7 +899,7 @@ export default function AiChatPage() {
             ...prev,
             {
               role: "system",
-              content: `I couldn't fetch the market data for ${geminiResponse.token_name}: ${apiError.message}`,
+              content: `I couldn't fetch the data for ${geminiResponse.token_name}: ${apiError.message}`,
             },
           ])
         }
@@ -884,6 +1006,13 @@ export default function AiChatPage() {
                   ) : (
                     <HistoricalPriceChart data={message.chartData} title={message.chartTitle || "Chart"} />
                   )}
+                </div>
+              ) : message.content === "TRANSACTION_DATA" ? (
+                <div className="w-full max-w-4xl">
+                  <TransactionHistoryDisplay 
+                    transactions={message.transactionData || []} 
+                    title={message.chartTitle || "Recent Transaction History"} 
+                  />
                 </div>
               ) : (
                 <div className={`flex max-w-[80%] ${message.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
