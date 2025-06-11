@@ -196,7 +196,7 @@ class RequestQueueManager {
         const data = await response.json()
         this.isProcessing = false
         return data
-      } catch (error) {
+      } catch (error:any) {
         console.error(`❌ Error with ${request.name}:`, error)
 
         // Retry logic for non-rate-limit errors
@@ -223,7 +223,7 @@ class RequestQueueManager {
   }
 }
 
-export default function CrossChainSwapPage() {
+export default function  CrossChainSwapPage(){
   // Chain and token state
   const [fromChain, setFromChain] = useState(chainList[0]) // Solana
   const [toChain, setToChain] = useState(chainList[1]) // Ethereum
@@ -360,7 +360,8 @@ export default function CrossChainSwapPage() {
       setLoadingState((prev) => ({ ...prev, pairs: true }))
 
       const data = await fetchWithQueue("/api/cross-chain-pairs", "Loading token pairs", 2)
-
+      console.log("My data loaded with pairs are:::::",data);
+      
       if (data.pairs) {
         setSupportedPairs(data.pairs)
         console.log(`🔗 Loaded ${data.pairs.length} supported token pairs`)
@@ -435,7 +436,7 @@ export default function CrossChainSwapPage() {
           toTokens: false,
         }))
       }, 2000)
-    } catch (error) {
+    } catch (error:any) {
       console.error("Error loading tokens:", error)
       setError(`Failed to load tokens: ${error.message}`)
     } finally {
