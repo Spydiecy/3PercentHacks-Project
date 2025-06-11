@@ -1,23 +1,19 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { ArrowDown, Settings, Clock, Zap, Info, ChevronDown, Check, ExternalLink, Copy } from "lucide-react"
+import { ArrowDown, Settings, Clock, Zap, Info, ChevronDown, Check, ExternalLink, Copy, RefreshCw } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
-// Solana-specific token list
-const solanaTokenList = [
-  { symbol: "SOL", name: "Solana", address: "11111111111111111111111111111111", decimals: 9 },
-  { symbol: "USDC", name: "USD Coin", address: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", decimals: 6 },
-  { symbol: "USDT", name: "Tether USD", address: "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB", decimals: 6 },
-  { symbol: "RAY", name: "Raydium", address: "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R", decimals: 6 },
-  { symbol: "SRM", name: "Serum", address: "SRMuApVNdxXokk5GT7XD5cUUgXMBCoAz2LHeuAoKWRt", decimals: 6 },
-  { symbol: "ORCA", name: "Orca", address: "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE", decimals: 6 },
-  { symbol: "MNGO", name: "Mango", address: "MangoCzJ36AjZyKwVj3VnYU4GTonjfVEnJmvvWaxLac", decimals: 6 },
-  { symbol: "STEP", name: "Step Finance", address: "StepAscQoEioFxxWGnh2sLBDFp9d8rvKz2Yp39iDpyT", decimals: 9 },
-  { symbol: "COPE", name: "Cope", address: "8HGyAAB1yoM1ttS7pXjHMa3dukTFGQggnFFH3hJZgzQh", decimals: 6 },
-  { symbol: "FIDA", name: "Bonfida", address: "EchesyfXePKdLtoiZSL8pBe8Myagyy8ZRqsACNCFGnvp", decimals: 6 },
-]
+// Token interface for API response
+interface Token {
+  symbol: string
+  name: string
+  address: string
+  decimals: number
+  logoUrl?: string
+  hasLogo?: boolean
+}
 
 interface SolanaSwapResult {
   success: boolean
@@ -48,8 +44,24 @@ interface ExecuteResult {
 }
 
 export default function SolanaSwapPage() {
-  const [fromToken, setFromToken] = useState(solanaTokenList[0]) // SOL
-  const [toToken, setToToken] = useState(solanaTokenList[1]) // USDC
+  // State for tokens
+  const [availableTokens, setAvailableTokens] = useState<Token[]>([])
+  const [loadingTokens, setLoadingTokens] = useState(true)
+  const [tokensError, setTokensError] = useState<string | null>(null)
+
+  // Add these new state variables after the existing state declarations
+  const [isRequestInProgress, setIsRequestInProgress] = useState(false)
+  const [lastRequestTime, setLastRequestTime] = useState(0)
+  const [retryCount, setRetryCount] = useState(0)
+
+  // Default tokens (fallback)
+  const defaultTokens: Token[] = [
+    { symbol: "SOL", name: "Solana", address: "11111111111111111111111111111111", decimals: 9 },
+    { symbol: "USDC", name: "USD Coin", address: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", decimals: 6 },
+  ]
+
+  const [fromToken, setFromToken] = useState<Token>(defaultTokens[0])
+  const [toToken, setToToken] = useState<Token>(defaultTokens[1])
   const [fromAmount, setFromAmount] = useState("0.1")
   const [toAmount, setToAmount] = useState("")
   const [slippage, setSlippage] = useState("0.5")
@@ -65,6 +77,106 @@ export default function SolanaSwapPage() {
 
   // Demo Solana wallet address
   const userWalletAddress = "DemHwXRcTyc76MuRwXwyhDdVpYLwoDz1T2rVpzaajMsR"
+
+  // Replace the fetchSupportedTokens function with this improved version:
+  const fetchSupportedTokens = async (isRetry = false) => {
+    // Prevent multiple simultaneous requests
+    if (isRequestInProgress) {
+      console.log("Request already in progress, skipping...")
+      return
+    }
+
+    // Rate limiting: minimum 2 seconds between requests
+    const now = Date.now()
+    const timeSinceLastRequest = now - lastRequestTime
+    const minDelay = 2000 // 2 seconds
+
+    if (timeSinceLastRequest < minDelay && !isRetry) {
+      console.log("Rate limiting: waiting before next request...")
+      setTimeout(() => fetchSupportedTokens(isRetry), minDelay - timeSinceLastRequest)
+      return
+    }
+
+    setIsRequestInProgress(true)
+    setLoadingTokens(true)
+    setTokensError(null)
+    setLastRequestTime(now)
+
+    try {
+      // Add exponential backoff delay for retries
+      if (isRetry && retryCount > 0) {
+        const delay = Math.min(1000 * Math.pow(2, retryCount - 1), 10000) // Max 10 seconds
+        console.log(`Retry attempt ${retryCount}, waiting ${delay}ms...`)
+        await new Promise((resolve) => setTimeout(resolve, delay))
+      }
+
+      console.log("Fetching supported tokens from OKX API...")
+
+      const response = await fetch("/api/dex-tokens?chainIndex=501", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+
+      if (!response.ok) {
+        if (response.status === 429) {
+          throw new Error("Rate limit exceeded. Please wait a moment before trying again.")
+        }
+        throw new Error(`API request failed: ${response.status} ${response.statusText}`)
+      }
+
+      const data = await response.json()
+
+      if (data.success && data.tokens && data.tokens.length > 0) {
+        setAvailableTokens(data.tokens)
+        setRetryCount(0) // Reset retry count on success
+
+        // Update default selections if they exist in the fetched tokens
+        const solToken = data.tokens.find((token: Token) => token.symbol === "SOL")
+        const usdcToken = data.tokens.find((token: Token) => token.symbol === "USDC")
+
+        if (solToken && fromToken.symbol === "SOL") setFromToken(solToken)
+        if (usdcToken && toToken.symbol === "USDC") setToToken(usdcToken)
+
+        console.log(`Successfully loaded ${data.tokens.length} supported tokens from OKX`)
+        setTokensError(null)
+      } else {
+        throw new Error(data.error || "No tokens received from API")
+      }
+    } catch (error: any) {
+      console.error("Error fetching tokens:", error)
+      setRetryCount((prev) => prev + 1)
+
+      let errorMessage = error.message
+      if (error.message.includes("Rate limit") || error.message.includes("429")) {
+        errorMessage = "Too many requests. Please wait a moment before retrying."
+      } else if (error.message.includes("fetch")) {
+        errorMessage = "Network error. Please check your connection and try again."
+      }
+
+      setTokensError(errorMessage)
+
+      // Use default tokens as fallback only if this isn't a retry
+      if (!isRetry) {
+        console.log("Using default tokens as fallback...")
+        setAvailableTokens(defaultTokens)
+      }
+    } finally {
+      setIsRequestInProgress(false)
+      setLoadingTokens(false)
+    }
+  }
+
+  // Replace the useEffect with this improved version:
+  useEffect(() => {
+    // Add a small delay on initial load to prevent immediate API calls
+    const initialDelay = setTimeout(() => {
+      fetchSupportedTokens(false)
+    }, 500) // 500ms delay on initial load
+
+    return () => clearTimeout(initialDelay)
+  }, []) // Remove any dependencies to prevent multiple calls
 
   const handleSwapTokens = () => {
     const tempToken = fromToken
@@ -255,6 +367,12 @@ export default function SolanaSwapPage() {
     }
   }
 
+  // Replace the retry button onClick with this improved handler:
+  const handleRetryTokens = () => {
+    setRetryCount(0) // Reset retry count for manual retry
+    fetchSupportedTokens(true)
+  }
+
   const TokenSelector = ({
     tokens,
     selectedToken,
@@ -262,9 +380,9 @@ export default function SolanaSwapPage() {
     show,
     onToggle,
   }: {
-    tokens: typeof solanaTokenList
-    selectedToken: (typeof solanaTokenList)[0]
-    onSelect: (token: (typeof solanaTokenList)[0]) => void
+    tokens: Token[]
+    selectedToken: Token
+    onSelect: (token: Token) => void
     show: boolean
     onToggle: () => void
   }) => (
@@ -274,37 +392,71 @@ export default function SolanaSwapPage() {
         variant="outline"
         onClick={onToggle}
       >
-        <TokenIcon token={selectedToken.symbol} />
+        <TokenIcon token={selectedToken} />
         {selectedToken.symbol}
         <ChevronDown className="h-4 w-4" />
       </Button>
 
       {show && (
-        <div className="absolute top-full mt-2 right-0 bg-black/90 border border-white/20 rounded-lg p-2 min-w-[200px] z-50 backdrop-blur-sm">
-          <div className="max-h-60 overflow-y-auto">
-            {tokens.map((token) => (
-              <button
-                key={token.symbol}
-                className="w-full flex items-center gap-3 p-2 hover:bg-white/10 rounded text-left text-white"
-                onClick={() => {
-                  onSelect(token)
-                  onToggle()
-                  // Clear results when token changes
-                  setSwapResult(null)
-                  setQuoteResult(null)
-                  setExecuteResult(null)
-                  setToAmount("")
-                }}
-              >
-                <TokenIcon token={token.symbol} />
-                <div>
-                  <div className="font-medium">{token.symbol}</div>
-                  <div className="text-xs text-white/60">{token.name}</div>
-                </div>
-                {selectedToken.symbol === token.symbol && <Check className="h-4 w-4 ml-auto text-green-400" />}
-              </button>
-            ))}
-          </div>
+        <div className="absolute top-full mt-2 right-0 bg-black/90 border border-white/20 rounded-lg p-2 min-w-[250px] z-50 backdrop-blur-sm max-h-80 overflow-y-auto">
+          {loadingTokens ? (
+            <div className="text-center py-6 text-white/60">
+              <RefreshCw className="h-5 w-5 animate-spin mx-auto mb-3" />
+              <div className="text-sm">Loading tokens...</div>
+              <div className="text-xs text-white/40 mt-1">
+                {isRequestInProgress ? "Fetching from OKX API..." : "Please wait..."}
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-1">
+              {tokens.map((token) => (
+                <button
+                  key={token.address}
+                  className="w-full flex items-center gap-3 p-2 hover:bg-white/10 rounded text-left text-white transition-colors"
+                  onClick={() => {
+                    onSelect(token)
+                    onToggle()
+                    // Clear results when token changes
+                    setSwapResult(null)
+                    setQuoteResult(null)
+                    setExecuteResult(null)
+                    setToAmount("")
+                  }}
+                >
+                  <TokenIcon token={token} />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium">{token.symbol}</div>
+                    <div className="text-xs text-white/60 truncate">{token.name}</div>
+                    <div className="text-xs text-white/40 font-mono truncate">
+                      {token.address.slice(0, 8)}...{token.address.slice(-6)}
+                    </div>
+                  </div>
+                  {selectedToken.address === token.address && (
+                    <Check className="h-4 w-4 text-green-400 flex-shrink-0" />
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {tokensError && (
+            <div className="text-center py-4 border-t border-white/10 mt-2">
+              <div className="text-red-400 text-xs mb-3">{tokensError}</div>
+              <div className="flex gap-2 justify-center">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-white/20 hover:bg-white/10 text-white text-xs"
+                  onClick={handleRetryTokens}
+                  disabled={isRequestInProgress}
+                >
+                  <RefreshCw className={`h-3 w-3 mr-1 ${isRequestInProgress ? "animate-spin" : ""}`} />
+                  {isRequestInProgress ? "Retrying..." : "Retry"}
+                </Button>
+                {retryCount > 0 && <div className="text-xs text-white/40 self-center">Attempt {retryCount}</div>}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -317,9 +469,22 @@ export default function SolanaSwapPage() {
           <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 via-blue-400 to-purple-600 text-transparent bg-clip-text mb-1">
             Solana Swap
           </h1>
-          <p className="text-white/60">Trade tokens on Solana with best rates</p>
+          <p className="text-white/60">
+            {loadingTokens
+              ? "Loading supported tokens..."
+              : `Trade tokens on Solana with best rates • ${availableTokens.length} tokens available`}
+          </p>
         </div>
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            className="rounded-full border-white/20 hover:bg-white/10 text-white"
+            onClick={handleRetryTokens}
+            disabled={loadingTokens || isRequestInProgress}
+          >
+            <RefreshCw className={`h-4 w-4 ${loadingTokens ? "animate-spin" : ""}`} />
+          </Button>
           <Button variant="outline" size="icon" className="rounded-full border-white/20 hover:bg-white/10 text-white">
             <Clock className="h-5 w-5" />
           </Button>
@@ -367,7 +532,7 @@ export default function SolanaSwapPage() {
                 MAX
               </Button>
               <TokenSelector
-                tokens={solanaTokenList}
+                tokens={availableTokens}
                 selectedToken={fromToken}
                 onSelect={setFromToken}
                 show={showFromTokens}
@@ -406,7 +571,7 @@ export default function SolanaSwapPage() {
               readOnly
             />
             <TokenSelector
-              tokens={solanaTokenList}
+              tokens={availableTokens}
               selectedToken={toToken}
               onSelect={setToToken}
               show={showToTokens}
@@ -459,6 +624,11 @@ export default function SolanaSwapPage() {
               <span className="text-sm text-white/60">DEX Aggregator</span>
               <span className="text-sm text-white/80 font-medium">OKX</span>
             </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-white/60">Supported Tokens</span>
+              <span className="text-sm text-white/80 font-medium">{availableTokens.length} tokens</span>
+            </div>
           </div>
         </div>
       </div>
@@ -474,15 +644,7 @@ export default function SolanaSwapPage() {
           {quoting ? "Getting..." : "Quote"}
         </Button>
 
-        <Button
-          className="py-6 text-sm gap-2 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 hover:from-blue-500/30 hover:to-cyan-500/30 border border-blue-500/30 hover:border-blue-500/50 text-white shadow-lg backdrop-blur-sm"
-          size="lg"
-          onClick={handleGetSwapInstructions}
-          disabled={loading || !fromAmount || Number.parseFloat(fromAmount) <= 0}
-        >
-          <Zap className="h-4 w-4" />
-          {loading ? "Getting..." : "Instructions"}
-        </Button>
+       
 
         <Button
           className="py-6 text-sm gap-2 bg-gradient-to-r from-green-500/20 to-emerald-500/20 hover:from-green-500/30 hover:to-emerald-500/30 border border-green-500/30 hover:border-green-500/50 text-white shadow-lg backdrop-blur-sm"
@@ -700,7 +862,37 @@ export default function SolanaSwapPage() {
   )
 }
 
-function TokenIcon({ token }: { token: string }) {
+function TokenIcon({ token }: { token: Token }) {
+  // If token has a logo URL, use it
+  if (token.logoUrl && token.hasLogo) {
+    return (
+      <div className="w-5 h-5 rounded-full overflow-hidden bg-white/10 flex items-center justify-center">
+        <img
+          src={token.logoUrl || "/placeholder.svg"}
+          alt={token.symbol}
+          className="w-full h-full object-cover"
+          onError={(e) => {
+            // Fallback to gradient if image fails to load
+            const target = e.target as HTMLImageElement
+            target.style.display = "none"
+            target.parentElement!.innerHTML = `<div class="w-5 h-5 rounded-full ${getTokenGradient(token.symbol)} flex items-center justify-center text-white text-xs font-bold">${token.symbol.slice(0, 2)}</div>`
+          }}
+        />
+      </div>
+    )
+  }
+
+  // Fallback to gradient background with token symbol
+  return (
+    <div
+      className={`w-5 h-5 rounded-full ${getTokenGradient(token.symbol)} flex items-center justify-center text-white text-xs font-bold`}
+    >
+      {token.symbol.slice(0, 2)}
+    </div>
+  )
+}
+
+function getTokenGradient(symbol: string): string {
   const colors: Record<string, string> = {
     SOL: "bg-gradient-to-r from-purple-500 to-blue-500",
     USDC: "bg-blue-500",
@@ -713,5 +905,5 @@ function TokenIcon({ token }: { token: string }) {
     COPE: "bg-gradient-to-r from-red-400 to-pink-500",
     FIDA: "bg-gradient-to-r from-indigo-400 to-purple-500",
   }
-  return <div className={`w-5 h-5 rounded-full ${colors[token] || "bg-gray-500"}`}></div>
+  return colors[symbol] || "bg-gradient-to-r from-gray-500 to-gray-600"
 }
