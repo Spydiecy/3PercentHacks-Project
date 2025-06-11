@@ -9,23 +9,19 @@ import {
   Download,
   Calendar,
   Filter,
-  TrendingUp,
-  TrendingDown,
   DollarSign,
   Coins,
   Activity,
-  Award,
   ChevronDown,
   Search,
   RefreshCw,
   Eye,
   X,
+  BarChart3,
 } from "lucide-react"
 
 // Enhanced chain configuration
-const AVAILABLE_CHAINS = [
-  { id: "501", name: "Solana", label: "SOL", color: "from-purple-500 to-blue-500" },
-]
+const AVAILABLE_CHAINS = [{ id: "501", name: "Solana", label: "SOL", color: "from-purple-500 to-blue-500" }]
 
 const TIME_PERIODS = [
   { label: "24H", value: "24h" },
@@ -35,9 +31,73 @@ const TIME_PERIODS = [
   { label: "1Y", value: "1y" },
 ]
 
+// Rate limiting manager
+class RateLimitManager {
+  private queue: Array<() => Promise<any>> = []
+  private isProcessing = false
+  private minDelay = 3000 // 3 seconds between requests
+  private maxRetries = 3
+
+  async addRequest<T>(requestFn: () => Promise<T>, retries = 0): Promise<T> {
+    return new Promise((resolve, reject) => {
+      this.queue.push(async () => {
+        try {
+          const result = await requestFn()
+          resolve(result)
+        } catch (error: any) {
+          if (error.status === 429 && retries < this.maxRetries) {
+            // Rate limited, retry with exponential backoff
+            const delay = this.minDelay * Math.pow(2, retries)
+            console.log(`Rate limited, retrying in ${delay}ms...`)
+            setTimeout(() => {
+              this.addRequest(requestFn, retries + 1)
+                .then(resolve)
+                .catch(reject)
+            }, delay)
+          } else {
+            reject(error)
+          }
+        }
+      })
+
+      if (!this.isProcessing) {
+        this.processQueue()
+      }
+    })
+  }
+
+  private async processQueue() {
+    if (this.isProcessing || this.queue.length === 0) return
+
+    this.isProcessing = true
+
+    while (this.queue.length > 0) {
+      const request = this.queue.shift()
+      if (request) {
+        try {
+          await request()
+        } catch (error) {
+          console.error("Request failed:", error)
+        }
+
+        // Wait before processing next request
+        if (this.queue.length > 0) {
+          await new Promise((resolve) => setTimeout(resolve, this.minDelay))
+        }
+      }
+    }
+
+    this.isProcessing = false
+  }
+}
+
+const rateLimitManager = new RateLimitManager()
+
 export default function PortfolioPage() {
   const [activeModal, setActiveModal] = useState<null | string>(null)
   const [loading, setLoading] = useState(false)
+  const [loadingStep, setLoadingStep] = useState("")
+  const [loadingProgress, setLoadingProgress] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
   const [history, setHistory] = useState<any[]>([])
   const [tokenBalances, setTokenBalances] = useState<any[]>([])
@@ -49,14 +109,15 @@ export default function PortfolioPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [showChainDropdown, setShowChainDropdown] = useState(false)
   const [showPeriodDropdown, setShowPeriodDropdown] = useState(false)
+  const [requestCount, setRequestCount] = useState(0)
   const [portfolioStats, setPortfolioStats] = useState({
     totalValue: "0",
-    dayChange: "0",
-    aiProfit: "0",
-    stakingRewards: "0",
+    tokenCount: "0",
+    transactionCount: "0",
+    portfolioDiversity: "0",
     dayChangePercent: "0",
-    aiProfitPercent: "0",
-    stakingPercent: "0",
+    diversityScore: "0",
+    activeTokens: "0",
   })
 
   // Toggle chain selection for multi-select
@@ -64,88 +125,138 @@ export default function PortfolioPage() {
     setSelectedChains((prev) => (prev.includes(chainId) ? prev.filter((c) => c !== chainId) : [...prev, chainId]))
   }
 
-  // Calculate portfolio statistics
-  const calculateStats = (balances: any[], totalVal: string) => {
+  // Calculate real portfolio statistics from actual data
+  const calculateRealStats = (balances: any[], transactions: any[], totalVal: string) => {
     const total = Number(totalVal)
-    const dayChange = total * 0.0192 // Mock 1.92% change
-    const aiProfit = total * 0.0468 // Mock 4.68% AI profit
-    const staking = total * 0.0073 // Mock 0.73% staking
+    const tokenCount = balances.length
+    const transactionCount = transactions.length
+
+    // Calculate portfolio diversity (number of different tokens with value > $1)
+    const activeTokens = balances.filter((token) => {
+      const value = Number(token.balance || 0) * Number(token.tokenPrice || 0)
+      return value > 1
+    }).length
+
+    // Calculate diversity score (0-100 based on token distribution)
+    const diversityScore = Math.min(100, (activeTokens / Math.max(tokenCount, 1)) * 100)
+
+    // Calculate recent activity (transactions in last 24h - mock for now)
+    const recentActivity = Math.min(100, (transactionCount / 10) * 100)
 
     setPortfolioStats({
       totalValue: totalVal,
-      dayChange: dayChange.toFixed(2),
-      aiProfit: aiProfit.toFixed(2),
-      stakingRewards: staking.toFixed(2),
-      dayChangePercent: "1.92",
-      aiProfitPercent: "4.68",
-      stakingPercent: "0.73",
+      tokenCount: tokenCount.toString(),
+      transactionCount: transactionCount.toString(),
+      portfolioDiversity: diversityScore.toFixed(1),
+      dayChangePercent: recentActivity.toFixed(1),
+      diversityScore: diversityScore.toFixed(1),
+      activeTokens: activeTokens.toString(),
     })
   }
 
-  // Fetch all portfolio data
+  // Enhanced fetch function with rate limiting
+  const fetchWithRateLimit = async (url: string, options: RequestInit) => {
+    setRequestCount((prev) => prev + 1)
+
+    return rateLimitManager.addRequest(async () => {
+      const response = await fetch(url, options)
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+      return response.json()
+    })
+  }
+
+  // Fetch all portfolio data with sequential loading
   const fetchPortfolioData = async () => {
     setLoading(true)
+    setLoadingProgress(0)
+    setRequestCount(0)
+
     try {
-      const chainsStr = selectedChains.join(",")
+      // Step 1: Fetch transaction history
+      setLoadingStep("Loading transaction history...")
+      setLoadingProgress(25)
 
-      const [historyRes, balancesRes, valueRes, specificRes] = await Promise.all([
-        fetch("/api/portfolio/history_by_add", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            address: "52C9T2T7JRojtxumYnYZhyUmrN7kqzvCLc4Ksvjk7TxD",
-            chains: "501", // Use first selected chain for history
-            limit: "50",
-          }),
+      const historyJson = await fetchWithRateLimit("/api/portfolio/history_by_add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          address: "52C9T2T7JRojtxumYnYZhyUmrN7kqzvCLc4Ksvjk7TxD",
+          chains: "501",
+          limit: "50",
         }),
-        fetch("/api/portfolio/total_token_balances", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            address: "52C9T2T7JRojtxumYnYZhyUmrN7kqzvCLc4Ksvjk7TxD",
-            chains: "501",
-            excludeRiskToken: "0",
-          }),
-        }),
-        fetch("/api/portfolio/token_value", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            address: "52C9T2T7JRojtxumYnYZhyUmrN7kqzvCLc4Ksvjk7TxD",
-            chains: "501",
-            excludeRiskToken: "0",
-          }),
-        }),
-        fetch("/api/portfolio/specific_token_balance", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            address: "52C9T2T7JRojtxumYnYZhyUmrN7kqzvCLc4Ksvjk7TxD",
-            tokenContractAddresses: "So11111111111111111111111111111111111111112", // USDCx
-            excludeRiskToken: "0",
-          }),
-        }),
-      ])
-
-      const historyJson = await historyRes.json()
-      const balancesJson = await balancesRes.json()
-      const valueJson = await valueRes.json()
-      const specificJson = await specificRes.json()
+      })
 
       const transactions = historyJson?.data?.[0]?.transactionList || historyJson?.data?.[0]?.transactions || []
-      const balances = balancesJson?.data?.[0]?.tokenAssets || []
-      const value = valueJson?.data?.[0]?.totalValue || "0"
-      const specific = specificJson?.data?.[0]?.tokenAssets || []
-
       setHistory(transactions)
+
+      // Step 2: Fetch token balances
+      setLoadingStep("Loading token balances...")
+      setLoadingProgress(50)
+
+      const balancesJson = await fetchWithRateLimit("/api/portfolio/total_token_balances", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          address: "52C9T2T7JRojtxumYnYZhyUmrN7kqzvCLc4Ksvjk7TxD",
+          chains: "501",
+          excludeRiskToken: "0",
+        }),
+      })
+
+      const balances = balancesJson?.data?.[0]?.tokenAssets || []
       setTokenBalances(balances)
+
+      // Step 3: Fetch total portfolio value
+      setLoadingStep("Calculating portfolio value...")
+      setLoadingProgress(75)
+
+      const valueJson = await fetchWithRateLimit("/api/portfolio/token_value", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          address: "52C9T2T7JRojtxumYnYZhyUmrN7kqzvCLc4Ksvjk7TxD",
+          chains: "501",
+          excludeRiskToken: "0",
+        }),
+      })
+
+      const value = valueJson?.data?.[0]?.totalValue || "0"
       setTotalValue(value)
+
+      // Step 4: Fetch specific token data
+      setLoadingStep("Loading specific token data...")
+      setLoadingProgress(90)
+
+      const specificJson = await fetchWithRateLimit("/api/portfolio/specific_token_balance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+    "address": "52C9T2T7JRojtxumYnYZhyUmrN7kqzvCLc4Ksvjk7TxD",
+    "tokenContractAddresses": [
+    {
+      "chainIndex": "501",
+      "tokenContractAddress": ""
+    }
+  ]
+}),
+      })
+
+      const specific = specificJson?.data?.[0]?.tokenAssets || []
       setSpecificToken(specific)
-      calculateStats(balances, value)
+
+      // Calculate real statistics
+      setLoadingStep("Calculating portfolio statistics...")
+      setLoadingProgress(100)
+      calculateRealStats(balances, transactions, value)
     } catch (error) {
       console.error("Error fetching portfolio data:", error)
+      setLoadingStep("Error loading data. Please try again.")
     } finally {
       setLoading(false)
+      setLoadingStep("")
+      setLoadingProgress(0)
     }
   }
 
@@ -164,6 +275,7 @@ export default function PortfolioPage() {
       transactions: history,
       exportDate: new Date().toISOString(),
       selectedChains,
+      requestCount,
     }
 
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
@@ -196,7 +308,12 @@ export default function PortfolioPage() {
   }
 
   useEffect(() => {
-    fetchPortfolioData()
+    // Add initial delay to prevent immediate API calls
+    const timer = setTimeout(() => {
+      fetchPortfolioData()
+    }, 1000)
+
+    return () => clearTimeout(timer)
   }, [selectedChains])
 
   const getChainInfo = (chainId: string) => {
@@ -211,7 +328,8 @@ export default function PortfolioPage() {
           <h1 className="text-4xl font-bold bg-gradient-to-r from-white to-white/80 text-transparent bg-clip-text mb-2">
             Portfolio
           </h1>
-          <p className="text-white/60">Track and manage your multi-chain assets</p>
+          <p className="text-white/60">Track and manage your Solana assets</p>
+          {requestCount > 0 && <p className="text-white/40 text-sm mt-1">API Requests: {requestCount}</p>}
         </div>
         <div className="flex gap-3">
           <div className="relative">
@@ -220,6 +338,7 @@ export default function PortfolioPage() {
               size="sm"
               className="gap-2 border-white/20 hover:bg-white/10 text-white"
               onClick={() => setShowPeriodDropdown(!showPeriodDropdown)}
+              disabled={loading}
             >
               <Calendar className="h-4 w-4" />
               {TIME_PERIODS.find((p) => p.value === selectedPeriod)?.label}
@@ -247,6 +366,7 @@ export default function PortfolioPage() {
             size="sm"
             className="gap-2 border-white/20 hover:bg-white/10 text-white"
             onClick={handleExport}
+            disabled={loading}
           >
             <Download className="h-4 w-4" />
             Export
@@ -256,13 +376,37 @@ export default function PortfolioPage() {
             size="sm"
             className="gap-2 border-white/20 hover:bg-white/10 text-white"
             onClick={handleRefresh}
-            disabled={refreshing}
+            disabled={refreshing || loading}
           >
             <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
             Refresh
           </Button>
         </div>
       </div>
+
+      {/* Loading Progress */}
+      {loading && (
+        <Card className="bg-black/20 border-white/10">
+          <CardContent className="p-6">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-white/80">{loadingStep}</span>
+                <span className="text-white/60">{loadingProgress}%</span>
+              </div>
+              <div className="w-full bg-white/10 rounded-full h-2">
+                <div
+                  className="bg-gradient-to-r from-purple-500 to-blue-500 h-2 rounded-full transition-all duration-500"
+                  style={{ width: `${loadingProgress}%` }}
+                ></div>
+              </div>
+              <div className="flex items-center gap-2 text-white/60 text-sm">
+                <RefreshCw className="h-4 w-4 animate-spin" />
+                Processing API requests with rate limiting...
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Chain Selection */}
       <Card className="bg-black/20 border-white/10 hover:border-white/20 transition-all">
@@ -279,12 +423,13 @@ export default function PortfolioPage() {
               return (
                 <button
                   key={chain.id}
-                  onClick={() => toggleChain(chain.id)}
+                  onClick={() => !loading && toggleChain(chain.id)}
+                  disabled={loading}
                   className={`relative px-4 py-2 rounded-full border transition-all duration-300 ${
                     isSelected
                       ? "border-white/40 bg-white/10 text-white shadow-lg"
                       : "border-white/20 hover:bg-white/5 text-white/80 hover:text-white"
-                  }`}
+                  } ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
                 >
                   <div
                     className={`absolute inset-0 rounded-full bg-gradient-to-r opacity-20 ${
@@ -299,41 +444,41 @@ export default function PortfolioPage() {
         </CardContent>
       </Card>
 
-      {/* Portfolio Stats Cards */}
+      {/* Real Portfolio Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <PortfolioCard
           title="Total Value"
           value={`$${Number(portfolioStats.totalValue).toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
-          change={`+${portfolioStats.dayChangePercent}%`}
+          change={`${portfolioStats.activeTokens} active tokens`}
           trend="up"
           icon={DollarSign}
           gradientFrom="#8B5CF6"
           gradientTo="#3B82F6"
         />
         <PortfolioCard
-          title="24h Change"
-          value={`$${Number(portfolioStats.dayChange).toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
-          change={`+${portfolioStats.dayChangePercent}%`}
+          title="Token Count"
+          value={portfolioStats.tokenCount}
+          change={`${portfolioStats.diversityScore}% diversity`}
           trend="up"
-          icon={TrendingUp}
+          icon={Coins}
           gradientFrom="#EC4899"
           gradientTo="#8B5CF6"
         />
         <PortfolioCard
-          title="AI Generated Profit"
-          value={`$${Number(portfolioStats.aiProfit).toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
-          change={`+${portfolioStats.aiProfitPercent}%`}
+          title="Transactions"
+          value={portfolioStats.transactionCount}
+          change={`${portfolioStats.dayChangePercent}% activity`}
           trend="up"
           icon={Activity}
           gradientFrom="#F59E0B"
           gradientTo="#EF4444"
         />
         <PortfolioCard
-          title="Staking Rewards"
-          value={`$${Number(portfolioStats.stakingRewards).toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
-          change={`+${portfolioStats.stakingPercent}%`}
+          title="Portfolio Health"
+          value={`${portfolioStats.portfolioDiversity}%`}
+          change={`${portfolioStats.activeTokens}/${portfolioStats.tokenCount} tokens`}
           trend="up"
-          icon={Award}
+          icon={BarChart3}
           gradientFrom="#10B981"
           gradientTo="#3B82F6"
         />
@@ -348,9 +493,10 @@ export default function PortfolioPage() {
                 className="bg-black/50 border border-white/20 rounded-lg px-4 py-2 text-white backdrop-blur-sm hover:border-white/30 transition-colors"
                 value={selectedTable}
                 onChange={(e) => setSelectedTable(e.target.value as any)}
+                disabled={loading}
               >
-                <option value="balances">All Token Balances</option>
-                <option value="history">Transaction History</option>
+                <option value="balances">All Token Balances ({tokenBalances.length})</option>
+                <option value="history">Transaction History ({history.length})</option>
                 <option value="specific">Specific Token Balance</option>
                 <option value="total_value">Total Portfolio Value</option>
               </select>
@@ -359,6 +505,7 @@ export default function PortfolioPage() {
                 variant="outline"
                 size="sm"
                 className="border-white/20 hover:bg-white/10 text-white gap-2"
+                disabled={loading}
               >
                 <Eye className="h-4 w-4" />
                 Show Details
@@ -372,10 +519,16 @@ export default function PortfolioPage() {
                   placeholder="Search tokens or transactions..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="bg-black/50 border border-white/20 rounded-lg pl-10 pr-4 py-2 text-white placeholder:text-white/40 backdrop-blur-sm hover:border-white/30 transition-colors"
+                  disabled={loading}
+                  className="bg-black/50 border border-white/20 rounded-lg pl-10 pr-4 py-2 text-white placeholder:text-white/40 backdrop-blur-sm hover:border-white/30 transition-colors disabled:opacity-50"
                 />
               </div>
-              <Button variant="outline" size="sm" className="border-white/20 hover:bg-white/10 text-white gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-white/20 hover:bg-white/10 text-white gap-2"
+                disabled={loading}
+              >
                 <Filter className="h-4 w-4" />
                 Filter
               </Button>
@@ -388,8 +541,8 @@ export default function PortfolioPage() {
       <Card className="bg-black/20 border-white/10 hover:border-white/20 transition-all hover:shadow-xl">
         <CardHeader>
           <CardTitle className="text-xl font-bold bg-gradient-to-r from-white to-white/80 text-transparent bg-clip-text">
-            {selectedTable === "balances" && "Portfolio Breakdown"}
-            {selectedTable === "history" && "Transaction History"}
+            {selectedTable === "balances" && `Portfolio Breakdown (${tokenBalances.length} tokens)`}
+            {selectedTable === "history" && `Transaction History (${history.length} transactions)`}
             {selectedTable === "specific" && "Specific Token Balance"}
             {selectedTable === "total_value" && "Total Portfolio Value"}
           </CardTitle>
@@ -399,7 +552,13 @@ export default function PortfolioPage() {
             {loading ? (
               <div className="text-center text-white/60 py-12">
                 <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4" />
-                Loading portfolio data...
+                <p className="mb-2">{loadingStep}</p>
+                <div className="w-48 mx-auto bg-white/10 rounded-full h-2">
+                  <div
+                    className="bg-gradient-to-r from-purple-500 to-blue-500 h-2 rounded-full transition-all duration-500"
+                    style={{ width: `${loadingProgress}%` }}
+                  ></div>
+                </div>
               </div>
             ) : selectedTable === "balances" ? (
               <TokenBalancesTable assets={filteredData()} />
@@ -415,7 +574,16 @@ export default function PortfolioPage() {
                     ${Number(totalValue).toLocaleString(undefined, { maximumFractionDigits: 2 })}
                   </div>
                   <div className="text-white/60">Total Portfolio Value</div>
-                  <div className="text-emerald-400 text-sm mt-2">+{portfolioStats.dayChangePercent}% (24h)</div>
+                  <div className="grid grid-cols-2 gap-4 mt-6 text-sm">
+                    <div className="bg-white/5 rounded-lg p-3">
+                      <div className="text-white/60">Tokens</div>
+                      <div className="text-white font-bold">{portfolioStats.tokenCount}</div>
+                    </div>
+                    <div className="bg-white/5 rounded-lg p-3">
+                      <div className="text-white/60">Transactions</div>
+                      <div className="text-white font-bold">{portfolioStats.transactionCount}</div>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
@@ -432,7 +600,7 @@ export default function PortfolioPage() {
             </h2>
             <div className="space-y-4">
               <div className="bg-black/50 p-4 rounded-lg border border-white/10">
-                <h3 className="font-semibold mb-2 text-purple-400">Portfolio Statistics</h3>
+                <h3 className="font-semibold mb-2 text-purple-400">Real Portfolio Statistics</h3>
                 <pre className="text-xs overflow-x-auto text-white/80">{JSON.stringify(portfolioStats, null, 2)}</pre>
               </div>
               <div className="bg-black/50 p-4 rounded-lg border border-white/10">
@@ -446,6 +614,14 @@ export default function PortfolioPage() {
                 <pre className="text-xs overflow-x-auto text-white/80 max-h-40">
                   {JSON.stringify(history.slice(0, 3), null, 2)}
                 </pre>
+              </div>
+              <div className="bg-black/50 p-4 rounded-lg border border-white/10">
+                <h3 className="font-semibold mb-2 text-orange-400">API Request Info</h3>
+                <div className="text-xs text-white/80">
+                  <p>Total Requests: {requestCount}</p>
+                  <p>Rate Limiting: Active (3s delays)</p>
+                  <p>Last Updated: {new Date().toLocaleString()}</p>
+                </div>
               </div>
             </div>
           </div>
@@ -484,12 +660,7 @@ function PortfolioCard({
             <p className="text-sm text-white/60">{title}</p>
             <p className="text-2xl font-bold mt-1 text-white">{value}</p>
             <div className="flex items-center mt-1">
-              <span
-                className={`text-xs flex items-center gap-1 ${trend === "up" ? "text-emerald-400" : "text-rose-400"}`}
-              >
-                {trend === "up" ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                {change}
-              </span>
+              <span className="text-xs text-white/80">{change}</span>
             </div>
           </div>
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/5 backdrop-blur-sm border border-white/5">
@@ -528,6 +699,7 @@ function TokenBalancesTable({ assets }: { assets: any[] }) {
       <tbody>
         {assets.map((asset, idx) => {
           const chainInfo = AVAILABLE_CHAINS.find((c) => c.id === asset.chainIndex) || AVAILABLE_CHAINS[0]
+          const tokenValue = Number(asset.balance || 0) * Number(asset.tokenPrice || 0)
           return (
             <tr key={idx} className="border-b border-white/5 hover:bg-white/5 transition-colors group">
               <td className="py-4">
@@ -557,10 +729,7 @@ function TokenBalancesTable({ assets }: { assets: any[] }) {
                 {Number(asset.balance || 0).toLocaleString(undefined, { maximumFractionDigits: 6 })}
               </td>
               <td className="text-right py-4 text-white font-bold">
-                $
-                {(Number(asset.balance || 0) * Number(asset.tokenPrice || 0)).toLocaleString(undefined, {
-                  maximumFractionDigits: 2,
-                })}
+                ${tokenValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}
               </td>
             </tr>
           )

@@ -8,14 +8,14 @@ interface ApiConfig {
   api_key: string;
   secret_key: string;
   passphrase: string;
-  project:string
+  project: string;
 }
 
-const api_config: any = {
-  api_key: process.env.API_KEY,
-  secret_key: process.env.SECRET_KEY,
-  passphrase: process.env.PASSPHRASE,
-  project: process.env.PROJECT_ID,  // <-- Add your actual Project ID here
+const api_config: ApiConfig = {
+  api_key: process.env.API_KEY!,
+  secret_key: process.env.SECRET_KEY!,
+  passphrase: process.env.PASSPHRASE!,
+  project: process.env.PROJECT_ID!,
 };
 
 // Request query parameters interface
@@ -64,34 +64,41 @@ function createSignature(method: string, request_path: string, params?: Record<s
   return { signature, timestamp };
 }
 
-// Next.js API handler
-export  async function POST(req:any) {
+export  async function POST(req:any, res: NextApiResponse) {
+  if (req.method !== 'POST') {
+    return Response.json({ error: 'Method not allowed, use POST' });
+  }
 
-  const { address} = await req.json();
+  // Parse JSON body
+  const { address, chains, assetType, excludeRiskToken } = await req.json();
 
   if (!address) {
     return Response.json({ error: 'Missing required parameter: address' });
   }
 
   // Prepare params for OKX API
-  const params: Record<string, any> = { accountId:address };
+  const params: Record<string, any> = { accountId:address,chains };
 
-  //if (chains) params.chains = chains;
+  if (chains) params.chains = chains;
+  if (assetType) params.assetType = assetType;
+  if (excludeRiskToken !== undefined) params.excludeRiskToken = excludeRiskToken;
 
   const request_path = '/api/v5/dex/balance/total-value';
 
   // Generate signature and timestamp
   const { signature, timestamp } = createSignature('GET', request_path, params);
 
-  // Setup headers
+  // Prepare headers
   const headers = {
     'OK-ACCESS-KEY': api_config.api_key,
     'OK-ACCESS-SIGN': signature,
     'OK-ACCESS-TIMESTAMP': timestamp,
-    'OK-ACCESS-PROJECT': api_config.project,  // <-- Add this header
     'OK-ACCESS-PASSPHRASE': api_config.passphrase,
+    'OK-ACCESS-PROJECT': api_config.project,
+    'Content-Type': 'application/json',
   };
 
+  // Build the full path with query string
   const fullPath = request_path + '?' + querystring.stringify(params);
 
   const options = {
@@ -100,8 +107,6 @@ export  async function POST(req:any) {
     method: 'GET',
     headers,
   };
-  console.log("My options are::::::::::::",options);
-  
 
   try {
     const data = await new Promise<OkxApiResponse>((resolve, reject) => {
@@ -126,6 +131,6 @@ export  async function POST(req:any) {
 
     return Response.json(data);
   } catch (error: any) {
-    return Response.json({ error: error.message || 'Internal Server Error' });
+   return  Response.json({ error: error.message || 'Internal Server Error' });
   }
 }
