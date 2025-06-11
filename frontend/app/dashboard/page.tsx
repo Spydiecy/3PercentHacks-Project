@@ -13,40 +13,15 @@ import {
   Settings,
   ChevronDown,
   RefreshCw,
+  BarChart3,
+  TrendingDown,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import { LineChart as RechartsLineChart, Line, XAxis, YAxis, ResponsiveContainer } from "recharts"
 import Link from "next/link"
 
 // Types and interfaces
-interface PortfolioValueResponse {
-  code: string
-  data: Array<{ totalValue: string }>
-  msg: string
-}
-
-interface TokenBalancesResponse {
-  code: string
-  data: Array<{ tokenAssets: any[] }>
-  msg: string
-}
-
-interface TransactionsResponse {
-  code: string
-  data: Array<{ transactions: any[] }>
-  msg: string
-}
-
-interface MarketPriceResponse {
-  code: string
-  data: Array<{
-    chainIndex: string
-    price: string
-    time: string
-    tokenContractAddress: string
-  }>
-  msg: string
-}
-
 interface DashboardStats {
   portfolioValue: string
   totalTransactions: number
@@ -54,11 +29,17 @@ interface DashboardStats {
   totalTokens: number
 }
 
-// Chain configuration
-const chainOptions = [
- 
-  { name: "Solana", value: "501", label: "SOL" },
-]
+interface MarketData {
+  data: Array<{
+    prices: Array<{
+      time: string
+      price: string
+    }>
+  }>
+}
+
+// Solana-focused configuration
+const chainOptions = [{ name: "Solana", value: "501", label: "SOL" }]
 
 const quickActions = [
   {
@@ -95,11 +76,166 @@ const quickActions = [
   },
 ]
 
-// Demo addresses for different purposes
-const demoAddresses = {
-  portfolio: "52C9T2T7JRojtxumYnYZhyUmrN7kqzvCLc4Ksvjk7TxD",
-  transactions: "52C9T2T7JRojtxumYnYZhyUmrN7kqzvCLc4Ksvjk7TxD",
-  market: "52C9T2T7JRojtxumYnYZhyUmrN7kqzvCLc4Ksvjk7TxD",
+// Real Solana address for data fetching
+const SOLANA_ADDRESS = "52C9T2T7JRojtxumYnYZhyUmrN7kqzvCLc4Ksvjk7TxD"
+
+// Helper functions from AI chat
+function formatTimestamp(timestamp: string | number): string {
+  const date = new Date(Number(timestamp))
+  return date.toLocaleDateString() + " " + date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+}
+
+function formatPrice(price: string | number): string {
+  return Number(price).toFixed(6)
+}
+
+// Market data API call function (from AI chat)
+async function callMarketDataApi(type: string, tokenName = "SOL") {
+  const tokenContractAddress = "So11111111111111111111111111111111111111112" // SOL token address
+
+  if (type === "total_token_balance") {
+    const body = {
+      address: SOLANA_ADDRESS,
+      chains: "501",
+      excludeRiskToken: "0",
+    }
+    const response = await fetch("/api/portfolio/total_token_balances", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    })
+    return await response.json()
+  }
+
+  if (type === "transaction_history") {
+    const body = {
+      address: SOLANA_ADDRESS,
+      chains: "501",
+      limit: "20",
+    }
+    const response = await fetch("/api/portfolio/history_by_add", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    })
+    return await response.json()
+  }
+
+  if (type === "token_value") {
+    const body = {
+      address: SOLANA_ADDRESS,
+      chains: "501",
+      excludeRiskToken: "0",
+    }
+    const response = await fetch("/api/portfolio/token_value", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    })
+    return await response.json()
+  }
+
+  // Market data calls
+  const body = {
+    method: "GET",
+    path: type === "hist_data" ? "/api/v5/dex/index/historical-price" : "/api/v5/dex/market/price",
+    data: [
+      {
+        chainIndex: "501",
+        tokenContractAddress,
+      },
+    ],
+  }
+
+  const response = await fetch("/api/market_data", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  })
+  return await response.json()
+}
+
+// Chart component for SOL price history
+function SolanaMarketChart({ data, title }: { data: MarketData; title: string }) {
+  if (!data?.data?.[0]?.prices) return null
+
+  const chartData = data.data[0].prices
+    .map((item: any) => ({
+      time: formatTimestamp(item.time),
+      price: Number(item.price),
+      timestamp: Number(item.time),
+    }))
+    .reverse()
+    .slice(-24) // Show last 24 data points
+
+  const currentPrice = chartData[chartData.length - 1]?.price || 0
+  const previousPrice = chartData[chartData.length - 2]?.price || 0
+  const priceChange = currentPrice - previousPrice
+  const isPositive = priceChange >= 0
+
+  return (
+    <Card className="w-full bg-black/40 border-white/20 backdrop-blur-sm">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-white flex items-center gap-2">
+          <BarChart3 className="h-5 w-5" />
+          {title}
+        </CardTitle>
+        <div className="flex items-center gap-2">
+          <span className="text-2xl font-bold text-white">${formatPrice(currentPrice)}</span>
+          <span className={`flex items-center gap-1 text-sm ${isPositive ? "text-green-400" : "text-red-400"}`}>
+            {isPositive ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+            {isPositive ? "+" : ""}
+            {formatPrice(priceChange)}
+          </span>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <ChartContainer
+          config={{
+            price: {
+              label: "Price",
+              color: "hsl(var(--chart-1))",
+            },
+          }}
+          className="h-[200px]"
+        >
+          <ResponsiveContainer width="100%" height="100%">
+            <RechartsLineChart data={chartData}>
+              <XAxis
+                dataKey="time"
+                tick={{ fill: "white", fontSize: 10 }}
+                axisLine={{ stroke: "rgba(255,255,255,0.2)" }}
+                tickLine={{ stroke: "rgba(255,255,255,0.2)" }}
+              />
+              <YAxis
+                tick={{ fill: "white", fontSize: 10 }}
+                axisLine={{ stroke: "rgba(255,255,255,0.2)" }}
+                tickLine={{ stroke: "rgba(255,255,255,0.2)" }}
+                domain={["dataMin - 0.01", "dataMax + 0.01"]}
+              />
+              <ChartTooltip
+                content={<ChartTooltipContent />}
+                contentStyle={{
+                  backgroundColor: "rgba(0,0,0,0.8)",
+                  border: "1px solid rgba(255,255,255,0.2)",
+                  borderRadius: "8px",
+                  color: "white",
+                }}
+              />
+              <Line
+                type="monotone"
+                dataKey="price"
+                stroke="#9333ea"
+                strokeWidth={2}
+                dot={false}
+                activeDot={{ r: 4, fill: "#9333ea" }}
+              />
+            </RechartsLineChart>
+          </ResponsiveContainer>
+        </ChartContainer>
+      </CardContent>
+    </Card>
+  )
 }
 
 export default function DashboardPage() {
@@ -109,146 +245,72 @@ export default function DashboardPage() {
   const [dashboardStats, setDashboardStats] = useState<DashboardStats>({
     portfolioValue: "0",
     totalTransactions: 0,
-    activeChains: 0,
+    activeChains: 1,
     totalTokens: 0,
   })
   const [tokenAssets, setTokenAssets] = useState<any[]>([])
   const [transactions, setTransactions] = useState<any[]>([])
-  const [marketPrices, setMarketPrices] = useState<any[]>([])
+  const [marketChart, setMarketChart] = useState<MarketData | null>(null)
+  const [currentPrice, setCurrentPrice] = useState<string>("0")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
 
-  // Fetch portfolio value
-  const fetchPortfolioValue = async (chains: string) => {
-    try {
-      const response = await fetch("/api/portfolio/token_value", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          address: demoAddresses.portfolio,
-          chains: chains,
-          excludeRiskToken: "0",
-        }),
-      })
-      const data = await response.json()
-      return data?.data?.[0]?.totalValue || "0"
-    } catch (error) {
-      console.error("Error fetching portfolio value:", error)
-      return "0"
-    }
-  }
-
-  // Fetch token balances
-  const fetchTokenBalances = async (chains: string) => {
-    try {
-      const response = await fetch("/api/portfolio/total_token_balances", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          address: demoAddresses.portfolio,
-          chains: chains,
-          excludeRiskToken: "0",
-        }),
-      })
-      const data = await response.json()
-      return data?.data?.[0]?.tokenAssets || []
-    } catch (error) {
-      console.error("Error fetching token balances:", error)
-      return []
-    }
-  }
-
-  // Fetch transaction history
-  const fetchTransactions = async (chainIndex: string) => {
-    try {
-      const response = await fetch("/api/portfolio/history_by_add", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          address: demoAddresses.transactions,
-          chains: chainIndex === "1,56,137,42161,10,43114,250,324,8453" ? "1" : chainIndex.split(",")[0],
-          limit: "20",
-        }),
-      })
-      const data = await response.json()
-      return data?.data?.[0]?.transactions || []
-    } catch (error) {
-      console.error("Error fetching transactions:", error)
-      return []
-    }
-  }
-
-  // Fetch market prices for multiple tokens
-  const fetchMarketPrices = async () => {
-    try {
-      const tokenAddresses = [
-        { chain: "1", address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" }, // USDC
-        { chain: "1", address: "0xdAC17F958D2ee523a2206206994597C13D831ec7" }, // USDT
-        { chain: "56", address: "0x55d398326f99059fF775485246999027B3197955" }, // USDT BSC
-        { chain: "137", address: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174" }, // USDC Polygon
-      ]
-
-      const promises = tokenAddresses.map(async ({ chain, address }) => {
-        try {
-          const response = await fetch("/api/market_data", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              method: "POST",
-              path: "/api/v5/dex/market/price",
-              data: [
-                {
-                  chainIndex: chain,
-                  tokenContractAddress: address,
-                },
-              ],
-            }),
-          })
-          const data = await response.json()
-          return data?.data?.[0] || null
-        } catch (error) {
-          console.error(`Error fetching price for ${address}:`, error)
-          return null
-        }
-      })
-
-      const results = await Promise.all(promises)
-      return results.filter(Boolean)
-    } catch (error) {
-      console.error("Error fetching market prices:", error)
-      return []
-    }
-  }
-
-  // Main data fetching function
+  // Fetch all real data
   const fetchAllData = async () => {
     setLoading(true)
     setError(null)
 
     try {
-      const chains = selectedChain.value
+      console.log("Fetching real Solana data...")
 
       // Fetch all data concurrently
-      const [portfolioValue, tokenBalances, transactionHistory, marketData] = await Promise.all([
-        fetchPortfolioValue(chains),
-        fetchTokenBalances(chains),
-        fetchTransactions(chains),
-        fetchMarketPrices(),
-      ])
+      const [tokenBalancesRes, transactionHistoryRes, portfolioValueRes, marketDataRes, currentPriceRes] =
+        await Promise.all([
+          callMarketDataApi("total_token_balance"),
+          callMarketDataApi("transaction_history"),
+          callMarketDataApi("token_value"),
+          callMarketDataApi("hist_data"),
+          callMarketDataApi("price"),
+        ])
 
-      // Update state with fetched data
+      console.log("Token balances:", tokenBalancesRes)
+      console.log("Transaction history:", transactionHistoryRes)
+      console.log("Portfolio value:", portfolioValueRes)
+      console.log("Market data:", marketDataRes)
+      console.log("Current price:", currentPriceRes)
+
+      // Process token balances
+      const tokenBalances = tokenBalancesRes?.data?.[0]?.tokenAssets || []
+      setTokenAssets(tokenBalances)
+
+      // Process transactions
+      const transactionList =
+        transactionHistoryRes?.data?.[0]?.transactions || transactionHistoryRes?.data?.[0]?.transactionList || []
+      setTransactions(transactionList)
+
+      // Process portfolio value
+      const portfolioValue = portfolioValueRes?.data?.[0]?.totalValue || "0"
+
+      // Process current price
+      const price = currentPriceRes?.data?.[0]?.price || "0"
+      setCurrentPrice(price)
+
+      // Process market chart data
+      if (marketDataRes?.data?.[0]?.prices) {
+        setMarketChart(marketDataRes)
+      }
+
+      // Update dashboard stats
       setDashboardStats({
         portfolioValue: portfolioValue,
-        totalTransactions: transactionHistory.length,
-        activeChains: chains.split(",").length,
+        totalTransactions: transactionList.length,
+        activeChains: 1, // Solana only
         totalTokens: tokenBalances.length,
       })
 
-      setTokenAssets(tokenBalances)
-      setTransactions(transactionHistory)
-      setMarketPrices(marketData)
       setLastUpdated(new Date())
+      console.log("Data fetching completed successfully")
     } catch (error) {
       console.error("Error fetching dashboard data:", error)
       setError("Failed to load dashboard data")
@@ -257,19 +319,19 @@ export default function DashboardPage() {
     }
   }
 
-  // Fetch data on component mount and when chain changes
+  // Fetch data on component mount
   useEffect(() => {
     fetchAllData()
-  }, [selectedChain])
+  }, [])
 
-  // Auto-refresh every 30 seconds
+  // Auto-refresh every 2 minutes
   useEffect(() => {
     const interval = setInterval(() => {
       fetchAllData()
-    }, 1230000)
+    }, 120000)
 
     return () => clearInterval(interval)
-  }, [selectedChain])
+  }, [])
 
   const handleRefresh = () => {
     fetchAllData()
@@ -285,11 +347,6 @@ export default function DashboardPage() {
     return `$${num.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
   }
 
-  const getChainName = (chainIndex: string) => {
-    const chain = chainOptions.find((c) => c.value === chainIndex)
-    return chain?.label || `Chain ${chainIndex}`
-  }
-
   return (
     <div className="space-y-10">
       {/* Header Section */}
@@ -299,7 +356,7 @@ export default function DashboardPage() {
             <h1 className="text-4xl font-bold bg-gradient-to-r from-white to-white/80 text-transparent bg-clip-text mb-2">
               Welcome back
             </h1>
-            <p className="text-white/60">Your DeFi portfolio across multiple chains</p>
+            <p className="text-white/60">Your Solana DeFi portfolio with real-time data</p>
           </div>
 
           {/* Chain Selector and Refresh */}
@@ -310,7 +367,9 @@ export default function DashboardPage() {
                 className="border-white/20 hover:bg-white/10 text-white gap-2"
                 onClick={() => setShowChainDropdown(!showChainDropdown)}
               >
-                {selectedChain.label}
+                <div className="w-3 h-3 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 flex items-center justify-center text-white text-xs font-bold">
+                  {selectedChain.label}
+                </div>
                 <ChevronDown className="h-4 w-4" />
               </Button>
 
@@ -362,22 +421,22 @@ export default function DashboardPage() {
             gradientTo="#3B82F6"
           />
           <DashboardCard
-            id="transactions"
-            title="Total Transactions"
-            value={dashboardStats.totalTransactions.toString()}
-            change="Last 20 transactions"
+            id="sol-price"
+            title="SOL Price"
+            value={`$${Number(currentPrice).toFixed(2)}`}
+            change="Real-time price"
             trend="up"
-            icon={CreditCard}
+            icon={TrendingUp}
             gradientFrom="#EC4899"
             gradientTo="#8B5CF6"
           />
           <DashboardCard
-            id="chains"
-            title="Active Chains"
-            value={dashboardStats.activeChains.toString()}
-            change="Multi-chain portfolio"
+            id="transactions"
+            title="Transactions"
+            value={dashboardStats.totalTransactions.toString()}
+            change="Recent activity"
             trend="up"
-            icon={Sparkles}
+            icon={CreditCard}
             gradientFrom="#F59E0B"
             gradientTo="#EF4444"
           />
@@ -405,6 +464,42 @@ export default function DashboardPage() {
         </Card>
       )}
 
+      {/* Market Chart Section */}
+      {marketChart && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2">
+            <SolanaMarketChart data={marketChart} title="SOL Price History" />
+          </div>
+          <div>
+            <Card className="bg-black/20 border-white/10 hover:border-white/20 transition-all hover:shadow-xl h-full">
+              <CardHeader>
+                <CardTitle className="text-xl font-bold bg-gradient-to-r from-white to-white/80 text-transparent bg-clip-text">
+                  Market Stats
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-white/60">Current Price</span>
+                  <span className="text-white font-bold">${Number(currentPrice).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-white/60">Portfolio Value</span>
+                  <span className="text-white font-bold">{formatCurrency(dashboardStats.portfolioValue)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-white/60">Total Tokens</span>
+                  <span className="text-white font-bold">{dashboardStats.totalTokens}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-white/60">Address</span>
+                  <span className="text-white font-mono text-xs">{SOLANA_ADDRESS.slice(0, 8)}...</span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
+
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-10">
         {/* Recent Transactions */}
@@ -415,7 +510,7 @@ export default function DashboardPage() {
                 <CardTitle className="text-xl font-bold bg-gradient-to-r from-white to-white/80 text-transparent bg-clip-text">
                   Recent Transactions
                 </CardTitle>
-                <Link href="/dashboard/transactions">
+                <Link href="/dashboard/portfolio">
                   <Button variant="ghost" size="sm" className="gap-1 text-white/80 hover:text-white hover:bg-white/10">
                     View All <ArrowRight className="h-4 w-4" />
                   </Button>
@@ -427,7 +522,7 @@ export default function DashboardPage() {
                 {loading ? (
                   <div className="text-white/60 text-center py-8">Loading transactions...</div>
                 ) : transactions.length === 0 ? (
-                  <div className="text-white/60 text-center py-8">No transactions found for selected chain(s).</div>
+                  <div className="text-white/60 text-center py-8">No transactions found.</div>
                 ) : (
                   transactions.slice(0, 5).map((tx, idx) => (
                     <div
@@ -445,16 +540,16 @@ export default function DashboardPage() {
                           {tx.amount && Number(tx.amount) > 0 ? "+" : "-"}
                         </div>
                         <div>
-                          <p className="font-medium text-white/90">{tx.symbol || "Unknown"}</p>
+                          <p className="font-medium text-white/90">{tx.symbol || "SOL"}</p>
                           <p className="text-sm text-white/60">
-                            {tx.txTime ? new Date(Number(tx.txTime) * 1000).toLocaleString() : "Unknown time"}
+                            {tx.txTime ? new Date(Number(tx.txTime) * 1000).toLocaleString() : "Recent"}
                           </p>
                         </div>
                       </div>
                       <div className="text-right">
                         <p className="font-medium text-white/90">{tx.amount || "0"}</p>
                         <p className="text-sm text-white/60">
-                          {tx.txHash ? `${tx.txHash.slice(0, 8)}...${tx.txHash.slice(-6)}` : "No hash"}
+                          {tx.txHash ? `${tx.txHash.slice(0, 8)}...${tx.txHash.slice(-6)}` : "Transaction"}
                         </p>
                       </div>
                     </div>
@@ -504,8 +599,8 @@ export default function DashboardPage() {
                   <h3 className="font-medium text-white">AI Suggestion</h3>
                 </div>
                 <p className="text-sm text-white/70 mb-3">
-                  Your portfolio is well diversified across {dashboardStats.activeChains} chains. Consider rebalancing
-                  based on recent market trends.
+                  Your Solana portfolio shows {dashboardStats.totalTokens} tokens. Current SOL price is $
+                  {Number(currentPrice).toFixed(2)}.
                 </p>
                 <Link href="/dashboard/ai-chat">
                   <Button size="sm" variant="outline" className="w-full border-white/20 hover:bg-white/10 text-white">
@@ -518,12 +613,12 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Portfolio Overview */}
+      {/* Token Holdings */}
       <Card className="bg-black/20 border-white/10 hover:border-white/20 transition-all hover:shadow-xl">
         <CardHeader>
           <div className="flex justify-between items-center">
             <CardTitle className="text-xl font-bold bg-gradient-to-r from-white to-white/80 text-transparent bg-clip-text">
-              Token Holdings
+              Solana Token Holdings
             </CardTitle>
             <div className="flex space-x-2">
               <Button variant="outline" size="sm" className="border-white/20 hover:bg-white/10 text-white">
@@ -540,13 +635,12 @@ export default function DashboardPage() {
             {loading ? (
               <div className="text-white/60 text-center py-8">Loading token balances...</div>
             ) : tokenAssets.length === 0 ? (
-              <div className="text-white/60 text-center py-8">No token balances found for selected chain(s).</div>
+              <div className="text-white/60 text-center py-8">No token balances found.</div>
             ) : (
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-white/10">
                     <th className="text-left pb-3 text-white/60">Token</th>
-                    <th className="text-right pb-3 text-white/60">Chain</th>
                     <th className="text-right pb-3 text-white/60">Balance</th>
                     <th className="text-right pb-3 text-white/60">Price</th>
                     <th className="text-right pb-3 text-white/60">Value</th>
@@ -563,11 +657,6 @@ export default function DashboardPage() {
                           <span className="font-medium text-white">{asset.symbol || "Unknown"}</span>
                         </div>
                       </td>
-                      <td className="text-right py-4">
-                        <span className="px-2 py-1 bg-white/10 rounded text-xs text-white">
-                          {getChainName(asset.chainIndex)}
-                        </span>
-                      </td>
                       <td className="text-right py-4 text-white">
                         {Number(asset.balance || 0).toLocaleString(undefined, { maximumFractionDigits: 6 })}
                       </td>
@@ -579,55 +668,6 @@ export default function DashboardPage() {
                         {(Number(asset.balance || 0) * Number(asset.tokenPrice || 0)).toLocaleString(undefined, {
                           maximumFractionDigits: 2,
                         })}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Market Prices */}
-      <Card className="bg-black/20 border-white/10 hover:border-white/20 transition-all hover:shadow-xl">
-        <CardHeader>
-          <CardTitle className="text-xl font-bold bg-gradient-to-r from-white to-white/80 text-transparent bg-clip-text">
-            Live Market Prices
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            {loading ? (
-              <div className="text-white/60 text-center py-8">Loading market prices...</div>
-            ) : marketPrices.length === 0 ? (
-              <div className="text-white/60 text-center py-8">No market price data available.</div>
-            ) : (
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-white/10">
-                    <th className="text-left pb-3 text-white/60">Chain</th>
-                    <th className="text-left pb-3 text-white/60">Token</th>
-                    <th className="text-right pb-3 text-white/60">Price</th>
-                    <th className="text-right pb-3 text-white/60">Updated</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {marketPrices.map((item, idx) => (
-                    <tr key={idx} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                      <td className="py-4">
-                        <span className="px-2 py-1 bg-white/10 rounded text-xs text-white">
-                          {getChainName(item.chainIndex)}
-                        </span>
-                      </td>
-                      <td className="py-4 text-white font-mono text-sm">
-                        {item.tokenContractAddress?.slice(0, 10)}...{item.tokenContractAddress?.slice(-8)}
-                      </td>
-                      <td className="text-right py-4 text-white font-medium">
-                        ${Number(item.price || 0).toLocaleString(undefined, { maximumFractionDigits: 8 })}
-                      </td>
-                      <td className="text-right py-4 text-white/60 text-sm">
-                        {item.time ? new Date(Number(item.time)).toLocaleTimeString() : "Unknown"}
                       </td>
                     </tr>
                   ))}
