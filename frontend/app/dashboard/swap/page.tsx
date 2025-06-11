@@ -5,105 +5,146 @@ import { Button } from "@/components/ui/button"
 import { ArrowDown, Settings, Clock, Zap, Info, ChevronDown, Check } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
-// Enhanced token list with more details
-const tokenList = [
-  { symbol: "ETH", name: "Ethereum", address: "0xc18360217d8f7ab5e7c516566761ea12ce7f9d72" },
-  { symbol: "USDC", name: "USD Coin", address: "0x3355df6d4c9c3035724fd0e3914de96a5a83aaf4" },
-  { symbol: "USDT", name: "Tether USD", address: "0xdAC17F958D2ee523a2206206994597C13D831ec7" },
-  { symbol: "OP", name: "Optimism", address: "0x4200000000000000000000000000000000000042" },
-  { symbol: "ARB", name: "Arbitrum", address: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" },
-  { symbol: "MATIC", name: "Polygon", address: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" },
-  { symbol: "AVAX", name: "Avalanche", address: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" },
-  { symbol: "SOL", name: "Solana", address: "11111111111111111111111111111111" },
-  { symbol: "BNB", name: "BNB Chain", address: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" },
-  { symbol: "FTM", name: "Fantom", address: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" },
+// Solana-specific token list
+const solanaTokenList = [
+  { symbol: "SOL", name: "Solana", address: "11111111111111111111111111111111", decimals: 9 },
+  { symbol: "USDC", name: "USD Coin", address: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", decimals: 6 },
+  { symbol: "USDT", name: "Tether USD", address: "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB", decimals: 6 },
+  { symbol: "RAY", name: "Raydium", address: "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R", decimals: 6 },
+  { symbol: "SRM", name: "Serum", address: "SRMuApVNdxXokk5GT7XD5cUUgXMBCoAz2LHeuAoKWRt", decimals: 6 },
+  { symbol: "ORCA", name: "Orca", address: "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE", decimals: 6 },
+  { symbol: "MNGO", name: "Mango", address: "MangoCzJ36AjZyKwVj3VnYU4GTonjfVEnJmvvWaxLac", decimals: 6 },
+  { symbol: "STEP", name: "Step Finance", address: "StepAscQoEioFxxWGnh2sLBDFp9d8rvKz2Yp39iDpyT", decimals: 9 },
+  { symbol: "COPE", name: "Cope", address: "8HGyAAB1yoM1ttS7pXjHMa3dukTFGQggnFFH3hJZgzQh", decimals: 6 },
+  { symbol: "FIDA", name: "Bonfida", address: "EchesyfXePKdLtoiZSL8pBe8Myagyy8ZRqsACNCFGnvp", decimals: 6 },
 ]
 
-const chainList = [
-  { name: "Solana", index: "501", id: "501" },
-  { name: "Ethereum", index: "1", id: "1" },
-  { name: "BNB Chain", index: "56", id: "56" },
-  { name: "Polygon", index: "137", id: "137" },
-  { name: "Arbitrum", index: "42161", id: "42161" },
-  { name: "Optimism", index: "10", id: "10" },
-  { name: "Avalanche C", index: "43114", id: "43114" },
-  { name: "Fantom", index: "250", id: "250" },
-  { name: "zkSync Era", index: "324", id: "324" },
-  { name: "Base", index: "8453", id: "8453" },
-]
-
-interface SwapResult {
+interface SolanaSwapResult {
+  success: boolean
+  action: string
+  timestamp: string
+  chainId: string
   code: string
-  data: Array<{
-    fromTokenAmount: string
-    minimumReceived: string
-    toTokenAmount: string
-    orderId: number
-    router?: {
-      bridgeId: number
-      bridgeName: string
-      crossChainFee: string
-      crossChainFeeTokenAddress: string
-      crossChainFeeUsd: string
-      otherNativeFee: string
-      otherNativeFeeUsd: string
-    }
-    tx: {
+  data: {
+    instructionLists: Array<{
+      programId: string
+      accounts: Array<{
+        pubkey: string
+        isSigner: boolean
+        isWritable: boolean
+      }>
       data: string
-      from: string
-      to: string
-      value: string
-      gasLimit: string
-      gasPrice: string
-      maxPriorityFeePerGas?: string
+    }>
+    addressLookupTableAccount: string[]
+    fromToken: {
+      tokenSymbol: string
+      decimal: string
+      tokenUnitPrice: string
     }
-  }>
+    toToken: {
+      tokenSymbol: string
+      decimal: string
+      tokenUnitPrice: string
+    }
+    fromTokenAmount: string
+    toTokenAmount: string
+    minimumReceived: string
+  }
   msg: string
 }
 
-export default function SwapPage() {
-  const [fromToken, setFromToken] = useState(tokenList[0])
-  const [toToken, setToToken] = useState(tokenList[1])
-  const [fromChain, setFromChain] = useState(chainList[3]) // Arbitrum
-  const [toChain, setToChain] = useState(chainList[0]) // Ethereum
-  const [fromAmount, setFromAmount] = useState("1.0")
+export default function SolanaSwapPage() {
+  const [fromToken, setFromToken] = useState(solanaTokenList[0]) // SOL
+  const [toToken, setToToken] = useState(solanaTokenList[1]) // USDC
+  const [fromAmount, setFromAmount] = useState("0.1")
   const [toAmount, setToAmount] = useState("")
   const [slippage, setSlippage] = useState("0.5")
-  const [swapResult, setSwapResult] = useState<SwapResult | null>(null)
+  const [swapResult, setSwapResult] = useState<SolanaSwapResult | null>(null)
+  const [quoteResult, setQuoteResult] = useState<any>(null)
   const [loading, setLoading] = useState(false)
+  const [quoting, setQuoting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showFromTokens, setShowFromTokens] = useState(false)
   const [showToTokens, setShowToTokens] = useState(false)
-  const [showFromChains, setShowFromChains] = useState(false)
-  const [showToChains, setShowToChains] = useState(false)
 
-  // Dummy wallet address
-  const userWalletAddress = "0x22497668Fb12BA21E6A132de7168D0Ecc69cDF7d"
+  // Demo Solana wallet address
+  const userWalletAddress = "DemHwXRcTyc76MuRwXwyhDdVpYLwoDz1T2rVpzaajMsR"
 
   const handleSwapTokens = () => {
     const tempToken = fromToken
-    const tempChain = fromChain
     setFromToken(toToken)
     setToToken(tempToken)
-    setFromChain(toChain)
-    setToChain(tempChain)
     setFromAmount(toAmount)
     setToAmount(fromAmount)
+    // Clear previous results
+    setSwapResult(null)
+    setQuoteResult(null)
   }
 
-  const formatAmount = (amount: string, decimals = 18): string => {
-    // Convert to wei/smallest unit
+  const formatAmount = (amount: string, decimals: number): string => {
     const num = Number.parseFloat(amount || "0")
-    return (num * Math.pow(10, decimals)).toString()
+    return Math.floor(num * Math.pow(10, decimals)).toString()
   }
 
-  const formatDisplayAmount = (amount: string, decimals = 18): string => {
-    // Convert from wei to display amount
+  const formatDisplayAmount = (amount: string, decimals: number): string => {
     const num = Number.parseFloat(amount || "0")
     return (num / Math.pow(10, decimals)).toFixed(6)
   }
 
-  const handleSwap = async () => {
+  // Get quote first
+  const handleGetQuote = async () => {
+    if (!fromAmount || Number.parseFloat(fromAmount) <= 0) {
+      setError("Please enter a valid amount")
+      return
+    }
+
+    setQuoting(true)
+    setError(null)
+    setQuoteResult(null)
+
+    try {
+      const formattedAmount = formatAmount(fromAmount, fromToken.decimals)
+
+      const params = {
+        action: "quote",
+        chainId: "501", // Solana
+        fromTokenAddress: fromToken.address,
+        toTokenAddress: toToken.address,
+        amount: formattedAmount,
+        slippage: slippage,
+        userWalletAddress: userWalletAddress,
+      }
+
+      console.log("Quote params:", params)
+
+      const res = await fetch("/api/dex-swap", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(params),
+      })
+
+      const data = await res.json()
+      console.log("Quote response:", data)
+
+      if (data.error) {
+        setError(data.error)
+      } else if (data.success && data.data && data.data.length > 0) {
+        setQuoteResult(data)
+        // Update estimated receive amount
+        const estimatedAmount = formatDisplayAmount(data.data[0].toTokenAmount, toToken.decimals)
+        setToAmount(estimatedAmount)
+      } else {
+        setError(data.msg || "Failed to get quote")
+      }
+    } catch (e: any) {
+      setError(e.message || "Network error occurred")
+    } finally {
+      setQuoting(false)
+    }
+  }
+
+  // Get swap instructions
+  const handleGetSwapInstructions = async () => {
     if (!fromAmount || Number.parseFloat(fromAmount) <= 0) {
       setError("Please enter a valid amount")
       return
@@ -114,41 +155,44 @@ export default function SwapPage() {
     setSwapResult(null)
 
     try {
-      // Format amount to smallest unit (assuming 18 decimals for most tokens)
-      const formattedAmount = formatAmount(fromAmount, 18)
+      const formattedAmount = formatAmount(fromAmount, fromToken.decimals)
 
       const params = {
-        amount: formattedAmount,
-        fromChainIndex: fromChain.index,
-        toChainIndex: toChain.index,
-        fromChainId: fromChain.id,
-        toChainId: toChain.id,
+        action: "instructions",
+        chainId: "501", // Solana
         fromTokenAddress: fromToken.address,
         toTokenAddress: toToken.address,
-        slippage: (Number.parseFloat(slippage) / 100).toString(), // Convert percentage to decimal
+        amount: formattedAmount,
+        slippage: slippage,
         userWalletAddress: userWalletAddress,
+        feePercent: "1",
+        priceTolerance: "0",
+        autoSlippage: "false",
+        pathNum: "3",
       }
 
-      console.log("Swap params:", params)
+      console.log("Swap instruction params:", params)
 
-      const res = await fetch("/api/okx-crosschain", {
+      const res = await fetch("/api/dex-swap", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(params),
       })
 
       const data = await res.json()
-      console.log("My data coming from my api is:::",data);
-      
+      console.log("Swap instructions response:", data)
+
       if (data.error) {
         setError(data.error)
-      } else if (data.code === "0" && data.data && data.data.length > 0) {
+      } else if (data.success && data.data) {
         setSwapResult(data)
-        // Update estimated receive amount
-        const estimatedAmount = formatDisplayAmount(data.data[0].toTokenAmount, 18)
-        setToAmount(estimatedAmount)
+        // Update estimated receive amount if available
+        if (data.data.toTokenAmount) {
+          const estimatedAmount = formatDisplayAmount(data.data.toTokenAmount, toToken.decimals)
+          setToAmount(estimatedAmount)
+        }
       } else {
-        setError(data.msg || "Swap failed")
+        setError(data.msg || "Failed to get swap instructions")
       }
     } catch (e: any) {
       setError(e.message || "Network error occurred")
@@ -164,9 +208,9 @@ export default function SwapPage() {
     show,
     onToggle,
   }: {
-    tokens: typeof tokenList
-    selectedToken: (typeof tokenList)[0]
-    onSelect: (token: (typeof tokenList)[0]) => void
+    tokens: typeof solanaTokenList
+    selectedToken: (typeof solanaTokenList)[0]
+    onSelect: (token: (typeof solanaTokenList)[0]) => void
     show: boolean
     onToggle: () => void
   }) => (
@@ -191,6 +235,10 @@ export default function SwapPage() {
                 onClick={() => {
                   onSelect(token)
                   onToggle()
+                  // Clear results when token changes
+                  setSwapResult(null)
+                  setQuoteResult(null)
+                  setToAmount("")
                 }}
               >
                 <TokenIcon token={token.symbol} />
@@ -207,60 +255,14 @@ export default function SwapPage() {
     </div>
   )
 
-  const ChainSelector = ({
-    chains,
-    selectedChain,
-    onSelect,
-    show,
-    onToggle,
-  }: {
-    chains: typeof chainList
-    selectedChain: (typeof chainList)[0]
-    onSelect: (chain: (typeof chainList)[0]) => void
-    show: boolean
-    onToggle: () => void
-  }) => (
-    <div className="relative">
-      <Button
-        variant="outline"
-        size="sm"
-        className="border-white/20 hover:bg-white/10 text-white text-xs h-7"
-        onClick={onToggle}
-      >
-        {selectedChain.name}
-        <ChevronDown className="h-3 w-3 ml-1" />
-      </Button>
-
-      {show && (
-        <div className="absolute top-full mt-2 right-0 bg-black/90 border border-white/20 rounded-lg p-2 min-w-[150px] z-50 backdrop-blur-sm">
-          <div className="max-h-48 overflow-y-auto">
-            {chains.map((chain) => (
-              <button
-                key={chain.index}
-                className="w-full flex items-center justify-between p-2 hover:bg-white/10 rounded text-left text-white text-sm"
-                onClick={() => {
-                  onSelect(chain)
-                  onToggle()
-                }}
-              >
-                {chain.name}
-                {selectedChain.index === chain.index && <Check className="h-3 w-3 text-green-400" />}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-
   return (
     <div className="max-w-md mx-auto">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-white to-white/80 text-transparent bg-clip-text mb-1">
-            Cross-Chain Swap
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 via-blue-400 to-purple-600 text-transparent bg-clip-text mb-1">
+            Solana Swap
           </h1>
-          <p className="text-white/60">Trade tokens across different blockchains</p>
+          <p className="text-white/60">Trade tokens on Solana with best rates</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="icon" className="rounded-full border-white/20 hover:bg-white/10 text-white">
@@ -276,19 +278,20 @@ export default function SwapPage() {
         <div className="p-6">
           <div className="flex justify-between items-center mb-2">
             <span className="text-sm text-white/60">From</span>
-            <ChainSelector
-              chains={chainList}
-              selectedChain={fromChain}
-              onSelect={setFromChain}
-              show={showFromChains}
-              onToggle={() => setShowFromChains(!showFromChains)}
-            />
+            <div className="px-3 py-1 bg-gradient-to-r from-purple-500/20 to-blue-500/20 rounded-full border border-purple-500/30">
+              <span className="text-xs text-purple-300 font-medium">Solana</span>
+            </div>
           </div>
           <div className="flex justify-between items-center mb-2">
             <input
               type="text"
               value={fromAmount}
-              onChange={(e) => setFromAmount(e.target.value)}
+              onChange={(e) => {
+                setFromAmount(e.target.value)
+                setSwapResult(null)
+                setQuoteResult(null)
+                setToAmount("")
+              }}
               className="text-2xl font-medium bg-transparent outline-none w-[60%] text-white"
               placeholder="0.0"
             />
@@ -297,12 +300,17 @@ export default function SwapPage() {
                 variant="outline"
                 size="sm"
                 className="border-white/20 hover:bg-white/10 text-white text-xs h-7"
-                onClick={() => setFromAmount("1.0")}
+                onClick={() => {
+                  setFromAmount("1.0")
+                  setSwapResult(null)
+                  setQuoteResult(null)
+                  setToAmount("")
+                }}
               >
                 MAX
               </Button>
               <TokenSelector
-                tokens={tokenList}
+                tokens={solanaTokenList}
                 selectedToken={fromToken}
                 onSelect={setFromToken}
                 show={showFromTokens}
@@ -310,14 +318,16 @@ export default function SwapPage() {
               />
             </div>
           </div>
-          <div className="text-sm text-white/60 mt-1">Balance: 12.45 {fromToken.symbol}</div>
+          <div className="text-sm text-white/60 mt-1">
+            Balance: 12.45 {fromToken.symbol} • ${fromToken.symbol === "SOL" ? "97.35" : "1.00"}
+          </div>
         </div>
 
         <div className="flex justify-center -mt-2 -mb-2 z-10 relative">
           <Button
             onClick={handleSwapTokens}
             size="icon"
-            className="rounded-full h-10 w-10 shadow-md bg-white/10 hover:bg-white/15 border border-white/20 hover:border-white/30"
+            className="rounded-full h-10 w-10 shadow-md bg-gradient-to-r from-purple-500/20 to-blue-500/20 hover:from-purple-500/30 hover:to-blue-500/30 border border-white/20 hover:border-white/30"
           >
             <ArrowDown className="h-5 w-5 text-white" />
           </Button>
@@ -326,32 +336,29 @@ export default function SwapPage() {
         <div className="p-6">
           <div className="flex justify-between items-center mb-2">
             <span className="text-sm text-white/60">To</span>
-            <ChainSelector
-              chains={chainList}
-              selectedChain={toChain}
-              onSelect={setToChain}
-              show={showToChains}
-              onToggle={() => setShowToChains(!showToChains)}
-            />
+            <div className="px-3 py-1 bg-gradient-to-r from-purple-500/20 to-blue-500/20 rounded-full border border-purple-500/30">
+              <span className="text-xs text-purple-300 font-medium">Solana</span>
+            </div>
           </div>
           <div className="flex justify-between items-center mb-2">
             <input
               type="text"
               value={toAmount}
-              onChange={(e) => setToAmount(e.target.value)}
               className="text-2xl font-medium bg-transparent outline-none w-[60%] text-white"
               placeholder="0.0"
               readOnly
             />
             <TokenSelector
-              tokens={tokenList}
+              tokens={solanaTokenList}
               selectedToken={toToken}
               onSelect={setToToken}
               show={showToTokens}
               onToggle={() => setShowToTokens(!showToTokens)}
             />
           </div>
-          <div className="text-sm text-white/60 mt-1">Balance: 350.21 {toToken.symbol}</div>
+          <div className="text-sm text-white/60 mt-1">
+            Balance: 350.21 {toToken.symbol} • ${toToken.symbol === "USDC" ? "350.21" : "1.00"}
+          </div>
         </div>
       </div>
 
@@ -376,7 +383,7 @@ export default function SwapPage() {
                     variant="outline"
                     size="sm"
                     className={`h-7 px-2.5 py-1 border-white/20 text-white text-xs ${
-                      slippage === value ? "bg-white/20" : "hover:bg-white/10"
+                      slippage === value ? "bg-purple-500/20 border-purple-500/40" : "hover:bg-white/10"
                     }`}
                     onClick={() => setSlippage(value)}
                   >
@@ -386,27 +393,40 @@ export default function SwapPage() {
               </div>
             </div>
 
-            {fromChain.index !== toChain.index && (
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-white/60">Cross-Chain Bridge</span>
-                <span className="text-sm text-white/80 font-medium">
-                  {swapResult?.data?.[0]?.router?.bridgeName || "Auto"}
-                </span>
-              </div>
-            )}
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-white/60">Network</span>
+              <span className="text-sm text-white/80 font-medium">Solana Mainnet</span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-white/60">DEX Aggregator</span>
+              <span className="text-sm text-white/80 font-medium">OKX</span>
+            </div>
           </div>
         </div>
       </div>
 
-      <Button
-        className="w-full mt-6 py-6 text-lg gap-2 bg-white/10 hover:bg-white/15 border border-white/10 hover:border-white/20 text-white shadow-lg backdrop-blur-sm"
-        size="lg"
-        onClick={handleSwap}
-        disabled={loading || !fromAmount || Number.parseFloat(fromAmount) <= 0}
-      >
-        <Zap className="h-5 w-5" />
-        {loading ? "Getting Quote..." : "Get Quote & Swap"}
-      </Button>
+      <div className="flex gap-3 mt-6">
+        <Button
+          className="flex-1 py-6 text-lg gap-2 bg-gradient-to-r from-purple-500/20 to-blue-500/20 hover:from-purple-500/30 hover:to-blue-500/30 border border-purple-500/30 hover:border-purple-500/50 text-white shadow-lg backdrop-blur-sm"
+          size="lg"
+          onClick={handleGetQuote}
+          disabled={quoting || !fromAmount || Number.parseFloat(fromAmount) <= 0}
+        >
+          <Info className="h-5 w-5" />
+          {quoting ? "Getting Quote..." : "Get Quote"}
+        </Button>
+
+        <Button
+          className="flex-1 py-6 text-lg gap-2 bg-gradient-to-r from-green-500/20 to-emerald-500/20 hover:from-green-500/30 hover:to-emerald-500/30 border border-green-500/30 hover:border-green-500/50 text-white shadow-lg backdrop-blur-sm"
+          size="lg"
+          onClick={handleGetSwapInstructions}
+          disabled={loading || !fromAmount || Number.parseFloat(fromAmount) <= 0}
+        >
+          <Zap className="h-5 w-5" />
+          {loading ? "Getting Instructions..." : "Get Swap Instructions"}
+        </Button>
+      </div>
 
       {error && (
         <Card className="mt-4 bg-red-900/20 border-red-500/30">
@@ -418,76 +438,40 @@ export default function SwapPage() {
         </Card>
       )}
 
-      {swapResult && !error && (
-        <Card className="mt-4 bg-black/40 border-white/20">
+      {quoteResult && !error && (
+        <Card className="mt-4 bg-gradient-to-r from-purple-900/20 to-blue-900/20 border-purple-500/30">
           <CardHeader>
-            <CardTitle className="text-white text-lg">Swap Quote</CardTitle>
+            <CardTitle className="text-white text-lg flex items-center gap-2">
+              <Info className="h-5 w-5" />
+              Swap Quote
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {swapResult.data.map((quote, index) => (
+            {quoteResult.data.map((quote: any, index: number) => (
               <div key={index} className="space-y-3">
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="text-white/60">You Pay:</span>
                     <div className="text-white font-medium">
-                      {formatDisplayAmount(quote.fromTokenAmount)} {fromToken.symbol}
+                      {formatDisplayAmount(quote.fromTokenAmount, fromToken.decimals)} {fromToken.symbol}
                     </div>
                   </div>
                   <div>
                     <span className="text-white/60">You Receive:</span>
                     <div className="text-white font-medium">
-                      {formatDisplayAmount(quote.toTokenAmount)} {toToken.symbol}
+                      {formatDisplayAmount(quote.toTokenAmount, toToken.decimals)} {toToken.symbol}
                     </div>
                   </div>
                   <div>
-                    <span className="text-white/60">Minimum Received:</span>
+                    <span className="text-white/60">Rate:</span>
                     <div className="text-white font-medium">
-                      {formatDisplayAmount(quote.minimumReceived)} {toToken.symbol}
+                      1 {fromToken.symbol} = {(Number(quote.toTokenAmount) / Number(quote.fromTokenAmount)).toFixed(4)}{" "}
+                      {toToken.symbol}
                     </div>
                   </div>
-                  {quote.router && (
-                    <div>
-                      <span className="text-white/60">Bridge Fee:</span>
-                      <div className="text-white font-medium">${quote.router.crossChainFeeUsd}</div>
-                    </div>
-                  )}
-                </div>
-
-                {quote.router && (
-                  <div className="bg-white/5 rounded-lg p-3">
-                    <div className="text-white/80 font-medium mb-2">Bridge Information</div>
-                    <div className="text-sm space-y-1">
-                      <div className="flex justify-between">
-                        <span className="text-white/60">Bridge:</span>
-                        <span className="text-white">{quote.router.bridgeName}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-white/60">Bridge ID:</span>
-                        <span className="text-white">{quote.router.bridgeId}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-white/60">Cross-chain Fee:</span>
-                        <span className="text-white">{quote.router.crossChainFee}</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <div className="bg-white/5 rounded-lg p-3">
-                  <div className="text-white/80 font-medium mb-2">Transaction Details</div>
-                  <div className="text-sm space-y-1">
-                    <div className="flex justify-between">
-                      <span className="text-white/60">To:</span>
-                      <span className="text-white font-mono text-xs">{quote.tx.to}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-white/60">Gas Limit:</span>
-                      <span className="text-white">{quote.tx.gasLimit}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-white/60">Gas Price:</span>
-                      <span className="text-white">{quote.tx.gasPrice}</span>
-                    </div>
+                  <div>
+                    <span className="text-white/60">Price Impact:</span>
+                    <div className="text-green-400 font-medium">{"< 0.1%"}</div>
                   </div>
                 </div>
               </div>
@@ -496,9 +480,81 @@ export default function SwapPage() {
         </Card>
       )}
 
+      {swapResult && !error && (
+        <Card className="mt-4 bg-gradient-to-r from-green-900/20 to-emerald-900/20 border-green-500/30">
+          <CardHeader>
+            <CardTitle className="text-white text-lg flex items-center gap-2">
+              <Zap className="h-5 w-5" />
+              Swap Instructions Ready
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-white/60">You Pay:</span>
+                  <div className="text-white font-medium">
+                    {formatDisplayAmount(swapResult.data.fromTokenAmount, fromToken.decimals)} {fromToken.symbol}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-white/60">You Receive:</span>
+                  <div className="text-white font-medium">
+                    {formatDisplayAmount(swapResult.data.toTokenAmount, toToken.decimals)} {toToken.symbol}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-white/60">Minimum Received:</span>
+                  <div className="text-white font-medium">
+                    {formatDisplayAmount(swapResult.data.minimumReceived, toToken.decimals)} {toToken.symbol}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-white/60">Instructions:</span>
+                  <div className="text-white font-medium">{swapResult.data.instructionLists.length} steps</div>
+                </div>
+              </div>
+
+              <div className="bg-white/5 rounded-lg p-3">
+                <div className="text-white/80 font-medium mb-2">Solana Transaction Details</div>
+                <div className="text-sm space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-white/60">Instructions:</span>
+                    <span className="text-white">{swapResult.data.instructionLists.length}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-white/60">Lookup Tables:</span>
+                    <span className="text-white">{swapResult.data.addressLookupTableAccount.length}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-white/60">From Token Price:</span>
+                    <span className="text-white">${swapResult.data.fromToken.tokenUnitPrice}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-white/60">To Token Price:</span>
+                    <span className="text-white">${swapResult.data.toToken.tokenUnitPrice}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
+                <div className="text-amber-400 font-medium mb-2 flex items-center gap-2">
+                  <Info className="h-4 w-4" />
+                  Next Steps
+                </div>
+                <div className="text-sm text-amber-200">
+                  Use these instructions with your Solana wallet to execute the swap. The instructions include all
+                  necessary transaction data and lookup tables.
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="mt-5 text-center">
         <p className="text-xs text-white/40">
-          Powered by OKX DEX API. Cross-chain swaps enabled via multiple bridge protocols.
+          Powered by OKX DEX Aggregator on Solana. Best rates across all Solana DEXs.
         </p>
       </div>
     </div>
@@ -510,13 +566,13 @@ function TokenIcon({ token }: { token: string }) {
     SOL: "bg-gradient-to-r from-purple-500 to-blue-500",
     USDC: "bg-blue-500",
     USDT: "bg-green-500",
-    ETH: "bg-purple-700",
-    OP: "bg-red-500",
-    ARB: "bg-blue-600",
-    MATIC: "bg-purple-600",
-    AVAX: "bg-red-600",
-    BNB: "bg-yellow-500",
-    FTM: "bg-blue-400",
+    RAY: "bg-gradient-to-r from-blue-400 to-purple-500",
+    SRM: "bg-gradient-to-r from-cyan-400 to-blue-500",
+    ORCA: "bg-gradient-to-r from-pink-400 to-purple-500",
+    MNGO: "bg-gradient-to-r from-yellow-400 to-orange-500",
+    STEP: "bg-gradient-to-r from-green-400 to-blue-500",
+    COPE: "bg-gradient-to-r from-red-400 to-pink-500",
+    FIDA: "bg-gradient-to-r from-indigo-400 to-purple-500",
   }
   return <div className={`w-5 h-5 rounded-full ${colors[token] || "bg-gray-500"}`}></div>
 }
