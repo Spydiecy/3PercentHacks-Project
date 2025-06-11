@@ -1,44 +1,56 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
-import { Settings, Clock, Info, ChevronDown, Check, Copy, ArrowRightLeft } from "lucide-react"
+import {
+  Info,
+  ChevronDown,
+  Check,
+  Copy,
+  ArrowRightLeft,
+  RefreshCw,
+  AlertTriangle,
+  CheckCircle,
+  Loader2,
+  Link,
+  Shield,
+  Sparkles,
+  Clock,
+} from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
-// Solana tokens
-const solanaTokens = [
-  { symbol: "SOL", name: "Solana", address: "11111111111111111111111111111111", decimals: 9 },
-  { symbol: "USDC", name: "USD Coin", address: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", decimals: 6 },
-  { symbol: "USDT", name: "Tether USD", address: "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB", decimals: 6 },
-  { symbol: "RAY", name: "Raydium", address: "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R", decimals: 6 },
-  { symbol: "ORCA", name: "Orca", address: "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE", decimals: 6 },
-]
+// Interfaces for API responses
+interface Token {
+  symbol: string
+  name: string
+  address: string
+  decimals: number
+  logoUrl?: string
+  chainIndex: string
+  chainId: string
+  hasLogo?: boolean
+}
 
-// Other chain tokens
-const evmTokens = [
-  { symbol: "ETH", name: "Ethereum", address: "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE", decimals: 18 },
-  { symbol: "USDC", name: "USD Coin", address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", decimals: 6 },
-  { symbol: "USDT", name: "Tether USD", address: "0xdAC17F958D2ee523a2206206994597C13D831ec7", decimals: 6 },
-  { symbol: "WBTC", name: "Wrapped Bitcoin", address: "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599", decimals: 8 },
-  { symbol: "DAI", name: "Dai Stablecoin", address: "0x6B175474E89094C44Da98b954EedeAC495271d0F", decimals: 18 },
-]
+interface TokenPair {
+  fromChainIndex: string
+  toChainIndex: string
+  fromChainId: string
+  toChainId: string
+  fromTokenAddress: string
+  toTokenAddress: string
+  fromTokenSymbol: string
+  toTokenSymbol: string
+  pairId: string
+}
 
-const chainList = [
-  { name: "Solana", index: "501", id: "501", color: "from-purple-500 to-blue-500" },
-  { name: "Ethereum", index: "1", id: "1", color: "from-blue-600 to-purple-600" },
-  { name: "BNB Chain", index: "56", id: "56", color: "from-yellow-500 to-orange-500" },
-  { name: "Polygon", index: "137", id: "137", color: "from-purple-600 to-pink-500" },
-  { name: "Arbitrum", index: "42161", id: "42161", color: "from-blue-600 to-cyan-500" },
-  { name: "Optimism", index: "10", id: "10", color: "from-red-500 to-pink-500" },
-  { name: "Avalanche", index: "43114", id: "43114", color: "from-red-600 to-orange-500" },
-  { name: "Fantom", index: "250", id: "250", color: "from-blue-400 to-cyan-400" },
-]
-
-const routeOptions = [
-  { value: "1", label: "Optimal Route", description: "Best balance of cost and speed" },
-  { value: "0", label: "Most Tokens", description: "Maximum tokens received" },
-  { value: "2", label: "Fastest Route", description: "Quickest execution time" },
-]
+interface Bridge {
+  bridgeId: number
+  bridgeName: string
+  requireOtherNativeFee: boolean
+  logoUrl?: string
+  supportedChains: string[]
+  supportsSolana: boolean
+}
 
 interface CrossChainSwapResult {
   success: boolean
@@ -71,11 +83,170 @@ interface CrossChainSwapResult {
   msg: string
 }
 
+interface LoadingState {
+  bridges: boolean
+  pairs: boolean
+  fromTokens: boolean
+  toTokens: boolean
+  currentStep: string
+  progress: number
+  totalSteps: number
+  currentStepIndex: number
+}
+
+interface RequestQueue {
+  url: string
+  name: string
+  delay: number
+  retries: number
+}
+
+const chainList = [
+  { name: "Solana", index: "501", id: "501", color: "from-purple-500 to-blue-500" },
+  { name: "Ethereum", index: "1", id: "1", color: "from-blue-600 to-purple-600" },
+  { name: "BNB Chain", index: "56", id: "56", color: "from-yellow-500 to-orange-500" },
+  { name: "Polygon", index: "137", id: "137", color: "from-purple-600 to-pink-500" },
+  { name: "Arbitrum", index: "42161", id: "42161", color: "from-blue-600 to-cyan-500" },
+  { name: "Optimism", index: "10", id: "10", color: "from-red-500 to-pink-500" },
+  { name: "Avalanche", index: "43114", id: "43114", color: "from-red-600 to-orange-500" },
+  { name: "Fantom", index: "250", id: "250", color: "from-blue-400 to-cyan-400" },
+]
+
+const routeOptions = [
+  { value: "1", label: "Optimal Route", description: "Best balance of cost and speed" },
+  { value: "0", label: "Most Tokens", description: "Maximum tokens received" },
+  { value: "2", label: "Fastest Route", description: "Quickest execution time" },
+]
+
+// Enhanced rate limiting with exponential backoff
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+// Request queue manager
+class RequestQueueManager {
+  private queue: RequestQueue[] = []
+  private isProcessing = false
+  private lastRequestTime = 0
+  private minDelay = 5000 // 5 seconds minimum between requests
+  private maxRetries = 3
+
+  async addRequest(url: string, name: string, initialDelay = 5000): Promise<any> {
+    return new Promise((resolve, reject) => {
+      this.queue.push({
+        url,
+        name,
+        delay: initialDelay,
+        retries: 0,
+      })
+
+      this.processQueue().then(resolve).catch(reject)
+    })
+  }
+
+  private async processQueue(): Promise<any> {
+    if (this.isProcessing || this.queue.length === 0) {
+      return
+    }
+
+    this.isProcessing = true
+
+    while (this.queue.length > 0) {
+      const request = this.queue.shift()!
+
+      try {
+        // Calculate delay since last request
+        const timeSinceLastRequest = Date.now() - this.lastRequestTime
+        const requiredDelay = Math.max(this.minDelay - timeSinceLastRequest, 0)
+
+        if (requiredDelay > 0) {
+          console.log(`⏳ Waiting ${requiredDelay}ms before ${request.name}...`)
+          await delay(requiredDelay)
+        }
+
+        console.log(`🚀 Making request: ${request.name}`)
+        this.lastRequestTime = Date.now()
+
+        const response = await fetch(request.url)
+
+        if (!response.ok) {
+          if (response.status === 429) {
+            // Rate limited - exponential backoff
+            request.retries++
+            if (request.retries <= this.maxRetries) {
+              const backoffDelay = Math.min(request.delay * Math.pow(2, request.retries), 30000) // Max 30s
+              console.log(
+                `⚠️ Rate limited. Retrying ${request.name} in ${backoffDelay}ms (attempt ${request.retries}/${this.maxRetries})`,
+              )
+
+              // Add back to front of queue with increased delay
+              this.queue.unshift({
+                ...request,
+                delay: backoffDelay,
+              })
+
+              await delay(backoffDelay)
+              continue
+            } else {
+              throw new Error(`Rate limit exceeded for ${request.name} after ${this.maxRetries} retries`)
+            }
+          } else {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+          }
+        }
+
+        const data = await response.json()
+        this.isProcessing = false
+        return data
+      } catch (error) {
+        console.error(`❌ Error with ${request.name}:`, error)
+
+        // Retry logic for non-rate-limit errors
+        if (request.retries < this.maxRetries && !error.message.includes("Rate limit exceeded")) {
+          request.retries++
+          const retryDelay = 3000 * request.retries // 3s, 6s, 9s
+          console.log(`🔄 Retrying ${request.name} in ${retryDelay}ms (attempt ${request.retries}/${this.maxRetries})`)
+
+          this.queue.unshift({
+            ...request,
+            delay: retryDelay,
+          })
+
+          await delay(retryDelay)
+          continue
+        }
+
+        this.isProcessing = false
+        throw error
+      }
+    }
+
+    this.isProcessing = false
+  }
+}
+
 export default function CrossChainSwapPage() {
+  // Chain and token state
   const [fromChain, setFromChain] = useState(chainList[0]) // Solana
   const [toChain, setToChain] = useState(chainList[1]) // Ethereum
-  const [fromToken, setFromToken] = useState(solanaTokens[0]) // SOL
-  const [toToken, setToToken] = useState(evmTokens[1]) // USDC
+  const [fromTokens, setFromTokens] = useState<Token[]>([])
+  const [toTokens, setToTokens] = useState<Token[]>([])
+  const [fromToken, setFromToken] = useState<Token | null>(null)
+  const [toToken, setToToken] = useState<Token | null>(null)
+
+  // API data state
+  const [supportedPairs, setSupportedPairs] = useState<TokenPair[]>([])
+  const [supportedBridges, setSupportedBridges] = useState<Bridge[]>([])
+  const [loadingState, setLoadingState] = useState<LoadingState>({
+    bridges: false,
+    pairs: false,
+    fromTokens: false,
+    toTokens: false,
+    currentStep: "",
+    progress: 0,
+    totalSteps: 4,
+    currentStepIndex: 0,
+  })
+
+  // Swap state
   const [fromAmount, setFromAmount] = useState("0.1")
   const [toAmount, setToAmount] = useState("")
   const [slippage, setSlippage] = useState("0.01")
@@ -84,23 +255,318 @@ export default function CrossChainSwapPage() {
   const [swapResult, setSwapResult] = useState<CrossChainSwapResult | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // UI state
   const [showFromChains, setShowFromChains] = useState(false)
   const [showToChains, setShowToChains] = useState(false)
   const [showFromTokens, setShowFromTokens] = useState(false)
   const [showToTokens, setShowToTokens] = useState(false)
   const [showRouteOptions, setShowRouteOptions] = useState(false)
+  const [showSupportedPairs, setShowSupportedPairs] = useState(false)
+
+  // Rate limiting state
+  const [rateLimitInfo, setRateLimitInfo] = useState({
+    isRateLimited: false,
+    nextRequestTime: 0,
+    requestCount: 0,
+  })
+
+  // Request queue manager
+  const requestQueueRef = useRef(new RequestQueueManager())
+
+  // Validation state
+  const [pairValidation, setPairValidation] = useState<{
+    isValid: boolean
+    message: string
+    availableBridges: Bridge[]
+  }>({
+    isValid: false,
+    message: "",
+    availableBridges: [],
+  })
 
   // Demo wallet addresses
   const solanaWallet = "DemHwXRcTyc76MuRwXwyhDdVpYLwoDz1T2rVpzaajMsR"
   const evmWallet = "0x22497668Fb12BA21E6A132de7168D0Ecc69cDF7d"
 
-  const getCurrentTokens = (chain: (typeof chainList)[0]) => {
-    return chain.index === "501" ? solanaTokens : evmTokens
-  }
-
   const getCurrentWallet = (chain: (typeof chainList)[0]) => {
     return chain.index === "501" ? solanaWallet : evmWallet
   }
+
+  // Update loading progress
+  const updateLoadingProgress = (stepIndex: number, stepName: string) => {
+    const progress = Math.round((stepIndex / loadingState.totalSteps) * 100)
+    setLoadingState((prev) => ({
+      ...prev,
+      currentStep: stepName,
+      progress,
+      currentStepIndex: stepIndex,
+    }))
+  }
+
+  // Enhanced API fetching with queue management
+  const fetchWithQueue = async (url: string, stepName: string, stepIndex: number) => {
+    updateLoadingProgress(stepIndex, `${stepName}...`)
+
+    try {
+      const data = await requestQueueRef.current.addRequest(url, stepName)
+
+      if (data.success && (data.bridges || data.pairs || data.tokens)) {
+        console.log(`✅ Successfully loaded ${stepName}`)
+        setRateLimitInfo((prev) => ({ ...prev, requestCount: prev.requestCount + 1 }))
+        return data
+      } else {
+        throw new Error(data.error || `Failed to fetch ${stepName}`)
+      }
+    } catch (error: any) {
+      console.error(`❌ Error fetching ${stepName}:`, error)
+
+      if (error.message.includes("429") || error.message.includes("Rate limit")) {
+        setRateLimitInfo((prev) => ({
+          ...prev,
+          isRateLimited: true,
+          nextRequestTime: Date.now() + 30000, // 30 seconds
+        }))
+      }
+
+      throw error
+    }
+  }
+
+  // Fetch supported bridges
+  const fetchSupportedBridges = async () => {
+    try {
+      setLoadingState((prev) => ({ ...prev, bridges: true }))
+
+      const data = await fetchWithQueue("/api/cross-chain-bridges", "Loading bridges", 1)
+
+      if (data.bridges) {
+        setSupportedBridges(data.bridges)
+        console.log(`📊 Loaded ${data.bridges.length} supported bridges`)
+        return data.bridges
+      }
+      return []
+    } catch (error) {
+      console.error("Error fetching supported bridges:", error)
+      return []
+    } finally {
+      setLoadingState((prev) => ({ ...prev, bridges: false }))
+    }
+  }
+
+  // Fetch supported token pairs
+  const fetchSupportedPairs = async () => {
+    try {
+      setLoadingState((prev) => ({ ...prev, pairs: true }))
+
+      const data = await fetchWithQueue("/api/cross-chain-pairs", "Loading token pairs", 2)
+
+      if (data.pairs) {
+        setSupportedPairs(data.pairs)
+        console.log(`🔗 Loaded ${data.pairs.length} supported token pairs`)
+        return data.pairs
+      }
+      return []
+    } catch (error) {
+      console.error("Error fetching supported pairs:", error)
+      return []
+    } finally {
+      setLoadingState((prev) => ({ ...prev, pairs: false }))
+    }
+  }
+
+  // Fetch tokens for a specific chain
+  const fetchTokensForChain = async (chainIndex: string, chainName: string, stepIndex: number) => {
+    try {
+      const stepName = `Loading ${chainName} tokens`
+      const data = await fetchWithQueue(
+        `/api/cross-chain-tokens?chainIndex=${chainIndex}&type=chain-tokens`,
+        stepName,
+        stepIndex,
+      )
+
+      if (data.tokens) {
+        console.log(`🪙 Loaded ${data.tokens.length} tokens for ${chainName}`)
+        return data.tokens
+      }
+      return []
+    } catch (error) {
+      console.error(`Error fetching tokens for ${chainName}:`, error)
+      return []
+    }
+  }
+
+  // Load tokens for both chains sequentially
+  const loadTokensForChains = async () => {
+    try {
+      setLoadingState((prev) => ({ ...prev, fromTokens: true }))
+
+      // Load from chain tokens
+      const fromTokensData = await fetchTokensForChain(fromChain.index, fromChain.name, 3)
+      setFromTokens(fromTokensData)
+
+      // Set default from token
+      if (fromTokensData.length > 0 && !fromToken) {
+        const defaultFromToken = fromTokensData.find((t: Token) => t.symbol === "SOL") || fromTokensData[0]
+        setFromToken(defaultFromToken)
+      }
+
+      setLoadingState((prev) => ({ ...prev, fromTokens: false, toTokens: true }))
+
+      // Load to chain tokens
+      const toTokensData = await fetchTokensForChain(toChain.index, toChain.name, 4)
+      setToTokens(toTokensData)
+
+      // Set default to token
+      if (toTokensData.length > 0 && !toToken) {
+        const defaultToToken = toTokensData.find((t: Token) => t.symbol === "USDC") || toTokensData[0]
+        setToToken(defaultToToken)
+      }
+
+      updateLoadingProgress(4, "✅ All data loaded successfully!")
+
+      // Clear loading state after success
+      setTimeout(() => {
+        setLoadingState((prev) => ({
+          ...prev,
+          currentStep: "",
+          progress: 0,
+          currentStepIndex: 0,
+          toTokens: false,
+        }))
+      }, 2000)
+    } catch (error) {
+      console.error("Error loading tokens:", error)
+      setError(`Failed to load tokens: ${error.message}`)
+    } finally {
+      setLoadingState((prev) => ({ ...prev, fromTokens: false, toTokens: false }))
+    }
+  }
+
+  // Sequential data loading with enhanced error handling
+  const loadAllData = async () => {
+    try {
+      setError(null)
+      setRateLimitInfo({ isRateLimited: false, nextRequestTime: 0, requestCount: 0 })
+
+      setLoadingState({
+        bridges: false,
+        pairs: false,
+        fromTokens: false,
+        toTokens: false,
+        currentStep: "🚀 Starting data load...",
+        progress: 0,
+        totalSteps: 4,
+        currentStepIndex: 0,
+      })
+
+      console.log("🔄 Starting sequential API loading...")
+
+      // Step 1: Load bridges (5s delay)
+      await fetchSupportedBridges()
+
+      // Step 2: Load pairs (5s delay)
+      await fetchSupportedPairs()
+
+      // Step 3 & 4: Load tokens for both chains (5s delay each)
+      await loadTokensForChains()
+
+      console.log("🎉 All data loaded successfully!")
+    } catch (error: any) {
+      console.error("❌ Error loading data:", error)
+      setError(`Failed to load data: ${error.message}`)
+
+      setLoadingState((prev) => ({
+        ...prev,
+        currentStep: "❌ Error occurred",
+        progress: 0,
+        bridges: false,
+        pairs: false,
+        fromTokens: false,
+        toTokens: false,
+      }))
+    }
+  }
+
+  // Validate token pair
+  const validateTokenPair = () => {
+    if (!fromToken || !toToken || !fromChain || !toChain) {
+      setPairValidation({
+        isValid: false,
+        message: "Please select both tokens",
+        availableBridges: [],
+      })
+      return
+    }
+
+    // Check if the pair is supported
+    const supportedPair = supportedPairs.find(
+      (pair) =>
+        pair.fromChainIndex === fromChain.index &&
+        pair.toChainIndex === toChain.index &&
+        pair.fromTokenSymbol === fromToken.symbol &&
+        pair.toTokenSymbol === toToken.symbol,
+    )
+
+    if (supportedPair) {
+      // Find bridges that support this chain combination
+      const availableBridges = supportedBridges.filter(
+        (bridge) => bridge.supportedChains.includes(fromChain.index) && bridge.supportedChains.includes(toChain.index),
+      )
+
+      setPairValidation({
+        isValid: true,
+        message: `✅ Supported pair with ${availableBridges.length} available bridge(s)`,
+        availableBridges,
+      })
+    } else {
+      // Check if there are any pairs for this chain combination
+      const chainPairs = supportedPairs.filter(
+        (pair) => pair.fromChainIndex === fromChain.index && pair.toChainIndex === toChain.index,
+      )
+
+      if (chainPairs.length > 0) {
+        const availableTokens = chainPairs.map((p) => `${p.fromTokenSymbol} → ${p.toTokenSymbol}`).join(", ")
+        setPairValidation({
+          isValid: false,
+          message: `⚠️ This token pair is not supported. Available pairs: ${availableTokens}`,
+          availableBridges: [],
+        })
+      } else {
+        setPairValidation({
+          isValid: false,
+          message: `❌ No supported pairs between ${fromChain.name} and ${toChain.name}`,
+          availableBridges: [],
+        })
+      }
+    }
+  }
+
+  // Load initial data with delay
+  useEffect(() => {
+    // Add initial delay to prevent immediate API calls
+    const timer = setTimeout(() => {
+      loadAllData()
+    }, 1000)
+
+    return () => clearTimeout(timer)
+  }, [])
+
+  // Load tokens when chains change (with debouncing)
+  useEffect(() => {
+    if (supportedPairs.length > 0) {
+      const timer = setTimeout(() => {
+        loadTokensForChains()
+      }, 500)
+
+      return () => clearTimeout(timer)
+    }
+  }, [fromChain, toChain])
+
+  // Validate pair when tokens or chains change
+  useEffect(() => {
+    validateTokenPair()
+  }, [fromToken, toToken, fromChain, toChain, supportedPairs, supportedBridges])
 
   const handleSwapChains = () => {
     const tempChain = fromChain
@@ -134,9 +600,20 @@ export default function CrossChainSwapPage() {
       return
     }
 
+    if (!fromToken || !toToken) {
+      setError("Please select both tokens")
+      return
+    }
+
     // Validate that at least one chain is Solana
     if (fromChain.index !== "501" && toChain.index !== "501") {
       setError("At least one chain must be Solana for cross-chain swaps")
+      return
+    }
+
+    // Check if pair is valid
+    if (!pairValidation.isValid) {
+      setError(`Invalid token pair: ${pairValidation.message}`)
       return
     }
 
@@ -192,6 +669,51 @@ export default function CrossChainSwapPage() {
     }
   }
 
+  const handleRefreshData = async () => {
+    // Prevent refresh if currently loading or rate limited
+    if (isLoading || rateLimitInfo.isRateLimited) {
+      return
+    }
+
+    await loadAllData()
+  }
+
+  // Get supported pairs for current chain combination
+  const getCurrentChainPairs = () => {
+    return supportedPairs.filter(
+      (pair) => pair.fromChainIndex === fromChain.index && pair.toChainIndex === toChain.index,
+    )
+  }
+
+  // Get all unique chain combinations
+  const getChainCombinations = () => {
+    const combinations = new Map()
+    supportedPairs.forEach((pair) => {
+      const key = `${pair.fromChainIndex}-${pair.toChainIndex}`
+      if (!combinations.has(key)) {
+        const fromChainInfo = chainList.find((c) => c.index === pair.fromChainIndex)
+        const toChainInfo = chainList.find((c) => c.index === pair.toChainIndex)
+        if (fromChainInfo && toChainInfo) {
+          combinations.set(key, {
+            from: fromChainInfo,
+            to: toChainInfo,
+            pairs: [],
+          })
+        }
+      }
+      combinations.get(key)?.pairs.push(pair)
+    })
+    return Array.from(combinations.values())
+  }
+
+  const isLoading = loadingState.bridges || loadingState.pairs || loadingState.fromTokens || loadingState.toTokens
+
+  // Rate limit countdown
+  const getRateLimitCountdown = () => {
+    if (!rateLimitInfo.isRateLimited) return 0
+    return Math.max(0, Math.ceil((rateLimitInfo.nextRequestTime - Date.now()) / 1000))
+  }
+
   const ChainSelector = ({
     chains,
     selectedChain,
@@ -211,6 +733,7 @@ export default function CrossChainSwapPage() {
         size="sm"
         className="border-white/20 hover:bg-white/10 text-white text-xs h-8 gap-2"
         onClick={onToggle}
+        disabled={isLoading}
       >
         <div className={`w-3 h-3 rounded-full bg-gradient-to-r ${selectedChain.color}`}></div>
         {selectedChain.name}
@@ -248,263 +771,558 @@ export default function CrossChainSwapPage() {
     onSelect,
     show,
     onToggle,
+    loading,
   }: {
-    tokens: any[]
-    selectedToken: any
-    onSelect: (token: any) => void
+    tokens: Token[]
+    selectedToken: Token | null
+    onSelect: (token: Token) => void
     show: boolean
     onToggle: () => void
+    loading: boolean
   }) => (
     <div className="relative">
       <Button
         className="bg-white/10 hover:bg-white/20 text-white gap-2 font-medium border-none h-9"
         variant="outline"
         onClick={onToggle}
+        disabled={loading}
       >
-        <TokenIcon token={selectedToken.symbol} />
-        {selectedToken.symbol}
+        {selectedToken ? <TokenIcon token={selectedToken} /> : <div className="w-5 h-5 rounded-full bg-gray-500" />}
+        {selectedToken?.symbol || "Select"}
         <ChevronDown className="h-4 w-4" />
       </Button>
 
       {show && (
-        <div className="absolute top-full mt-2 right-0 bg-black/90 border border-white/20 rounded-lg p-2 min-w-[200px] z-50 backdrop-blur-sm">
-          <div className="max-h-60 overflow-y-auto">
-            {tokens.map((token) => (
-              <button
-                key={token.symbol}
-                className="w-full flex items-center gap-3 p-2 hover:bg-white/10 rounded text-left text-white"
-                onClick={() => {
-                  onSelect(token)
-                  onToggle()
-                  setSwapResult(null)
-                  setToAmount("")
-                }}
-              >
-                <TokenIcon token={token.symbol} />
-                <div>
-                  <div className="font-medium">{token.symbol}</div>
-                  <div className="text-xs text-white/60">{token.name}</div>
-                </div>
-                {selectedToken.symbol === token.symbol && <Check className="h-4 w-4 ml-auto text-green-400" />}
-              </button>
-            ))}
-          </div>
+        <div className="absolute top-full mt-2 right-0 bg-black/90 border border-white/20 rounded-lg p-2 min-w-[250px] z-50 backdrop-blur-sm max-h-80 overflow-y-auto">
+          {loading ? (
+            <div className="text-center py-6 text-white/60">
+              <Loader2 className="h-5 w-5 animate-spin mx-auto mb-3" />
+              <div className="text-sm">Loading tokens...</div>
+            </div>
+          ) : tokens.length === 0 ? (
+            <div className="text-center py-4 text-white/60">
+              <div className="text-sm">No tokens available</div>
+            </div>
+          ) : (
+            <div className="space-y-1">
+              {tokens.map((token) => (
+                <button
+                  key={token.address}
+                  className="w-full flex items-center gap-3 p-2 hover:bg-white/10 rounded text-left text-white transition-colors"
+                  onClick={() => {
+                    onSelect(token)
+                    onToggle()
+                    setSwapResult(null)
+                    setToAmount("")
+                  }}
+                >
+                  <TokenIcon token={token} />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium">{token.symbol}</div>
+                    <div className="text-xs text-white/60 truncate">{token.name}</div>
+                    <div className="text-xs text-white/40 font-mono truncate">
+                      {token.address.slice(0, 8)}...{token.address.slice(-6)}
+                    </div>
+                  </div>
+                  {selectedToken?.address === token.address && (
+                    <Check className="h-4 w-4 text-green-400 flex-shrink-0" />
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
   )
 
   return (
-    <div className="max-w-md mx-auto">
+    <div className="max-w-4xl mx-auto">
+      {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 text-transparent bg-clip-text mb-1">
             Cross-Chain Swap
           </h1>
-          <p className="text-white/60">Bridge tokens across different blockchains</p>
+          <p className="text-white/60">
+            Bridge tokens across different blockchains • {supportedPairs.length} pairs • {supportedBridges.length}{" "}
+            bridges
+          </p>
+          {rateLimitInfo.requestCount > 0 && (
+            <p className="text-xs text-white/40 mt-1">
+              API Requests made: {rateLimitInfo.requestCount} • Rate limit protection active
+            </p>
+          )}
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="icon" className="rounded-full border-white/20 hover:bg-white/10 text-white">
-            <Clock className="h-5 w-5" />
-          </Button>
-          <Button variant="outline" size="icon" className="rounded-full border-white/20 hover:bg-white/10 text-white">
-            <Settings className="h-5 w-5" />
-          </Button>
-        </div>
-      </div>
-
-      <div className="backdrop-blur-sm bg-black/20 border border-white/10 rounded-xl overflow-hidden hover:border-white/20 transition-all hover:shadow-xl">
-        <div className="p-6">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-sm text-white/60">From</span>
-            <ChainSelector
-              chains={chainList}
-              selectedChain={fromChain}
-              onSelect={(chain) => {
-                setFromChain(chain)
-                const tokens = getCurrentTokens(chain)
-                setFromToken(tokens[0])
-              }}
-              show={showFromChains}
-              onToggle={() => setShowFromChains(!showFromChains)}
-            />
-          </div>
-          <div className="flex justify-between items-center mb-2">
-            <input
-              type="text"
-              value={fromAmount}
-              onChange={(e) => {
-                setFromAmount(e.target.value)
-                setSwapResult(null)
-                setToAmount("")
-              }}
-              className="text-2xl font-medium bg-transparent outline-none w-[60%] text-white"
-              placeholder="0.0"
-            />
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-white/20 hover:bg-white/10 text-white text-xs h-7"
-                onClick={() => {
-                  setFromAmount("1.0")
-                  setSwapResult(null)
-                  setToAmount("")
-                }}
-              >
-                MAX
-              </Button>
-              <TokenSelector
-                tokens={getCurrentTokens(fromChain)}
-                selectedToken={fromToken}
-                onSelect={setFromToken}
-                show={showFromTokens}
-                onToggle={() => setShowFromTokens(!showFromTokens)}
-              />
-            </div>
-          </div>
-          <div className="text-sm text-white/60 mt-1">
-            Balance: 12.45 {fromToken.symbol} • Wallet: {getCurrentWallet(fromChain).slice(0, 8)}...
-          </div>
-        </div>
-
-        <div className="flex justify-center -mt-2 -mb-2 z-10 relative">
           <Button
-            onClick={handleSwapChains}
-            size="icon"
-            className="rounded-full h-10 w-10 shadow-md bg-gradient-to-r from-purple-500/20 to-pink-500/20 hover:from-purple-500/30 hover:to-pink-500/30 border border-white/20 hover:border-white/30"
+            variant="outline"
+            size="sm"
+            className="border-white/20 hover:bg-white/10 text-white gap-2"
+            onClick={() => setShowSupportedPairs(!showSupportedPairs)}
+            disabled={supportedPairs.length === 0}
           >
-            <ArrowRightLeft className="h-5 w-5 text-white" />
+            <Sparkles className="h-4 w-4" />
+            View Supported Pairs
           </Button>
-        </div>
-
-        <div className="p-6">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-sm text-white/60">To</span>
-            <ChainSelector
-              chains={chainList}
-              selectedChain={toChain}
-              onSelect={(chain) => {
-                setToChain(chain)
-                const tokens = getCurrentTokens(chain)
-                setToToken(tokens[0])
-              }}
-              show={showToChains}
-              onToggle={() => setShowToChains(!showToChains)}
-            />
-          </div>
-          <div className="flex justify-between items-center mb-2">
-            <input
-              type="text"
-              value={toAmount}
-              className="text-2xl font-medium bg-transparent outline-none w-[60%] text-white"
-              placeholder="0.0"
-              readOnly
-            />
-            <TokenSelector
-              tokens={getCurrentTokens(toChain)}
-              selectedToken={toToken}
-              onSelect={setToToken}
-              show={showToTokens}
-              onToggle={() => setShowToTokens(!showToTokens)}
-            />
-          </div>
-          <div className="text-sm text-white/60 mt-1">
-            Balance: 350.21 {toToken.symbol} • Wallet: {getCurrentWallet(toChain).slice(0, 8)}...
-          </div>
+          <Button
+            variant="outline"
+            size="icon"
+            className="rounded-full border-white/20 hover:bg-white/10 text-white"
+            onClick={handleRefreshData}
+            disabled={isLoading || rateLimitInfo.isRateLimited}
+          >
+            {rateLimitInfo.isRateLimited ? (
+              <Clock className="h-4 w-4" />
+            ) : (
+              <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+            )}
+          </Button>
         </div>
       </div>
 
-      <div className="mt-6 space-y-4">
-        <div className="backdrop-blur-sm bg-black/20 border border-white/10 rounded-xl p-5 hover:border-white/20 transition-all hover:shadow-xl">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-sm text-white/80 font-medium">Bridge Settings</span>
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1">
-                <span className="text-sm text-white/60">Slippage Tolerance</span>
-                <button className="text-white/40 hover:text-white/60">
-                  <Info className="h-3.5 w-3.5" />
-                </button>
+      {/* Rate Limit Warning */}
+      {rateLimitInfo.isRateLimited && (
+        <Card className="mb-6 bg-amber-900/20 border-amber-500/30">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <Clock className="h-5 w-5 text-amber-400" />
+              <div>
+                <div className="text-amber-400 font-medium">Rate Limit Active</div>
+                <div className="text-sm text-amber-200">
+                  Please wait {getRateLimitCountdown()} seconds before making more requests
+                </div>
               </div>
-              <div className="flex items-center gap-1.5">
-                {["0.002", "0.01", "0.025", "0.05"].map((value) => (
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Enhanced Loading Progress */}
+      {isLoading && (
+        <Card className="mb-6 bg-gradient-to-r from-purple-900/20 to-blue-900/20 border-purple-500/30">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <Loader2 className="h-6 w-6 animate-spin text-purple-400" />
+              <div className="flex-1">
+                <div className="text-white font-medium mb-2">{loadingState.currentStep}</div>
+                <div className="w-full bg-white/10 rounded-full h-3">
+                  <div
+                    className="bg-gradient-to-r from-purple-500 to-blue-500 h-3 rounded-full transition-all duration-1000 ease-out"
+                    style={{ width: `${loadingState.progress}%` }}
+                  ></div>
+                </div>
+                <div className="flex justify-between text-xs text-white/60 mt-2">
+                  <span>
+                    Step {loadingState.currentStepIndex} of {loadingState.totalSteps}
+                  </span>
+                  <span>{loadingState.progress}% complete</span>
+                </div>
+              </div>
+            </div>
+            <div className="mt-4 text-xs text-white/40">
+              ⏳ Using 5-second delays between requests to prevent rate limiting
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Main Swap Interface */}
+        <div className="lg:col-span-2">
+          {/* Pair Validation Status */}
+          {fromToken && toToken && (
+            <Card
+              className={`mb-4 ${pairValidation.isValid ? "bg-green-900/20 border-green-500/30" : "bg-amber-900/20 border-amber-500/30"}`}
+            >
+              <CardContent className="p-4">
+                <div
+                  className={`flex items-center gap-2 text-sm ${pairValidation.isValid ? "text-green-400" : "text-amber-400"}`}
+                >
+                  {pairValidation.isValid ? <CheckCircle className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
+                  <span>{pairValidation.message}</span>
+                </div>
+                {pairValidation.availableBridges.length > 0 && (
+                  <div className="mt-2 text-xs text-white/60">
+                    Available bridges: {pairValidation.availableBridges.map((b) => b.bridgeName).join(", ")}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Swap Interface */}
+          <div className="backdrop-blur-sm bg-black/20 border border-white/10 rounded-xl overflow-hidden hover:border-white/20 transition-all hover:shadow-xl">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm text-white/60">From</span>
+                <ChainSelector
+                  chains={chainList}
+                  selectedChain={fromChain}
+                  onSelect={(chain) => {
+                    setFromChain(chain)
+                    setFromToken(null) // Reset token selection
+                  }}
+                  show={showFromChains}
+                  onToggle={() => setShowFromChains(!showFromChains)}
+                />
+              </div>
+              <div className="flex justify-between items-center mb-2">
+                <input
+                  type="text"
+                  value={fromAmount}
+                  onChange={(e) => {
+                    setFromAmount(e.target.value)
+                    setSwapResult(null)
+                    setToAmount("")
+                  }}
+                  className="text-2xl font-medium bg-transparent outline-none w-[60%] text-white"
+                  placeholder="0.0"
+                />
+                <div className="flex gap-2">
                   <Button
-                    key={value}
                     variant="outline"
                     size="sm"
-                    className={`h-7 px-2.5 py-1 border-white/20 text-white text-xs ${
-                      slippage === value ? "bg-purple-500/20 border-purple-500/40" : "hover:bg-white/10"
-                    }`}
-                    onClick={() => setSlippage(value)}
+                    className="border-white/20 hover:bg-white/10 text-white text-xs h-7"
+                    onClick={() => {
+                      setFromAmount("1.0")
+                      setSwapResult(null)
+                      setToAmount("")
+                    }}
                   >
-                    {Number.parseFloat(value) * 100}%
+                    MAX
                   </Button>
+                  <TokenSelector
+                    tokens={fromTokens}
+                    selectedToken={fromToken}
+                    onSelect={setFromToken}
+                    show={showFromTokens}
+                    onToggle={() => setShowFromTokens(!showFromTokens)}
+                    loading={loadingState.fromTokens}
+                  />
+                </div>
+              </div>
+              <div className="text-sm text-white/60 mt-1">
+                Balance: 12.45 {fromToken?.symbol || "TOKEN"} • Wallet: {getCurrentWallet(fromChain).slice(0, 8)}...
+              </div>
+            </div>
+
+            <div className="flex justify-center -mt-2 -mb-2 z-10 relative">
+              <Button
+                onClick={handleSwapChains}
+                size="icon"
+                className="rounded-full h-10 w-10 shadow-md bg-gradient-to-r from-purple-500/20 to-pink-500/20 hover:from-purple-500/30 hover:to-pink-500/30 border border-white/20 hover:border-white/30"
+                disabled={isLoading}
+              >
+                <ArrowRightLeft className="h-5 w-5 text-white" />
+              </Button>
+            </div>
+
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm text-white/60">To</span>
+                <ChainSelector
+                  chains={chainList}
+                  selectedChain={toChain}
+                  onSelect={(chain) => {
+                    setToChain(chain)
+                    setToToken(null) // Reset token selection
+                  }}
+                  show={showToChains}
+                  onToggle={() => setShowToChains(!showToChains)}
+                />
+              </div>
+              <div className="flex justify-between items-center mb-2">
+                <input
+                  type="text"
+                  value={toAmount}
+                  className="text-2xl font-medium bg-transparent outline-none w-[60%] text-white"
+                  placeholder="0.0"
+                  readOnly
+                />
+                <TokenSelector
+                  tokens={toTokens}
+                  selectedToken={toToken}
+                  onSelect={setToToken}
+                  show={showToTokens}
+                  onToggle={() => setShowToTokens(!showToTokens)}
+                  loading={loadingState.toTokens}
+                />
+              </div>
+              <div className="text-sm text-white/60 mt-1">
+                Balance: 350.21 {toToken?.symbol || "TOKEN"} • Wallet: {getCurrentWallet(toChain).slice(0, 8)}...
+              </div>
+            </div>
+          </div>
+
+          {/* Bridge Settings */}
+          <div className="mt-6 space-y-4">
+            <div className="backdrop-blur-sm bg-black/20 border border-white/10 rounded-xl p-5 hover:border-white/20 transition-all hover:shadow-xl">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-sm text-white/80 font-medium">Bridge Settings</span>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm text-white/60">Slippage Tolerance</span>
+                    <button className="text-white/40 hover:text-white/60">
+                      <Info className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    {["0.002", "0.01", "0.025", "0.05"].map((value) => (
+                      <Button
+                        key={value}
+                        variant="outline"
+                        size="sm"
+                        className={`h-7 px-2.5 py-1 border-white/20 text-white text-xs ${
+                          slippage === value ? "bg-purple-500/20 border-purple-500/40" : "hover:bg-white/10"
+                        }`}
+                        onClick={() => setSlippage(value)}
+                      >
+                        {Number.parseFloat(value) * 100}%
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-white/60">Route Optimization</span>
+                  <div className="relative">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="border-white/20 hover:bg-white/10 text-white text-xs h-7 gap-2"
+                      onClick={() => setShowRouteOptions(!showRouteOptions)}
+                    >
+                      {routeOptions.find((r) => r.value === routeSort)?.label}
+                      <ChevronDown className="h-3 w-3" />
+                    </Button>
+                    {showRouteOptions && (
+                      <div className="absolute top-full mt-2 right-0 bg-black/90 border border-white/20 rounded-lg p-2 min-w-[200px] z-50 backdrop-blur-sm">
+                        {routeOptions.map((option) => (
+                          <button
+                            key={option.value}
+                            className="w-full text-left p-2 hover:bg-white/10 rounded text-white text-sm"
+                            onClick={() => {
+                              setRouteSort(option.value)
+                              setShowRouteOptions(false)
+                            }}
+                          >
+                            <div className="font-medium">{option.label}</div>
+                            <div className="text-xs text-white/60">{option.description}</div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-white/60">Bridge Fee</span>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={feePercent}
+                      onChange={(e) => setFeePercent(e.target.value)}
+                      className="w-16 px-2 py-1 bg-black/50 border border-white/20 rounded text-white text-xs text-right"
+                      placeholder="0.1"
+                    />
+                    <span className="text-xs text-white/60">%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <Button
+            className="w-full mt-6 py-6 text-lg gap-2 bg-gradient-to-r from-purple-500/20 to-pink-500/20 hover:from-purple-500/30 hover:to-pink-500/30 border border-purple-500/30 hover:border-purple-500/50 text-white shadow-lg backdrop-blur-sm"
+            size="lg"
+            onClick={handleBuildTransaction}
+            disabled={
+              loading || !fromAmount || Number.parseFloat(fromAmount) <= 0 || !pairValidation.isValid || isLoading
+            }
+          >
+            <ArrowRightLeft className="h-5 w-5" />
+            {loading ? "Building Transaction..." : "Build Cross-Chain Transaction"}
+          </Button>
+        </div>
+
+        {/* Sidebar - Current Chain Pairs */}
+        <div className="space-y-4">
+          <Card className="bg-black/20 border-white/10 hover:border-white/20 transition-all hover:shadow-xl">
+            <CardHeader>
+              <CardTitle className="text-lg text-white flex items-center gap-2">
+                <Link className="h-5 w-5" />
+                Current Route Pairs
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {getCurrentChainPairs().length === 0 ? (
+                  <div className="text-center py-6 text-white/60">
+                    <AlertTriangle className="h-8 w-8 mx-auto mb-3 text-amber-400" />
+                    <div className="text-sm">No supported pairs for this route</div>
+                    <div className="text-xs text-white/40 mt-1">
+                      {fromChain.name} → {toChain.name}
+                    </div>
+                  </div>
+                ) : (
+                  getCurrentChainPairs().map((pair, index) => (
+                    <div
+                      key={pair.pairId}
+                      className="p-3 bg-gradient-to-r from-purple-500/10 to-blue-500/10 rounded-lg border border-purple-500/20 hover:border-purple-500/40 transition-all duration-300 hover:scale-[1.02]"
+                      style={{ animationDelay: `${index * 100}ms` }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 flex items-center justify-center text-white text-xs font-bold">
+                            {pair.fromTokenSymbol.slice(0, 1)}
+                          </div>
+                          <ArrowRightLeft className="h-3 w-3 text-white/60" />
+                          <div className="w-6 h-6 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 flex items-center justify-center text-white text-xs font-bold">
+                            {pair.toTokenSymbol.slice(0, 1)}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-white font-medium text-sm">
+                            {pair.fromTokenSymbol} → {pair.toTokenSymbol}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Available Bridges */}
+          <Card className="bg-black/20 border-white/10 hover:border-white/20 transition-all hover:shadow-xl">
+            <CardHeader>
+              <CardTitle className="text-lg text-white flex items-center gap-2">
+                <Shield className="h-5 w-5" />
+                Available Bridges
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {pairValidation.availableBridges.length === 0 ? (
+                  <div className="text-center py-4 text-white/60">
+                    <div className="text-sm">No bridges available</div>
+                    <div className="text-xs text-white/40 mt-1">Select a valid token pair</div>
+                  </div>
+                ) : (
+                  pairValidation.availableBridges.map((bridge, index) => (
+                    <div
+                      key={bridge.bridgeId}
+                      className="p-3 bg-gradient-to-r from-green-500/10 to-emerald-500/10 rounded-lg border border-green-500/20 hover:border-green-500/40 transition-all duration-300"
+                      style={{ animationDelay: `${index * 100}ms` }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 flex items-center justify-center text-white text-xs font-bold">
+                            {bridge.bridgeName.slice(0, 2).toUpperCase()}
+                          </div>
+                          <div>
+                            <div className="text-white font-medium text-sm">{bridge.bridgeName}</div>
+                            <div className="text-xs text-white/60">
+                              {bridge.requireOtherNativeFee ? "Requires native fee" : "No native fee"}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-xs text-green-400">#{bridge.bridgeId}</div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Supported Pairs Modal */}
+      {showSupportedPairs && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+          <div className="bg-black/90 rounded-xl shadow-2xl border border-white/20 relative max-w-6xl w-full mx-4 max-h-[80vh] overflow-hidden">
+            <div className="p-6 border-b border-white/10">
+              <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold bg-gradient-to-r from-white to-white/80 text-transparent bg-clip-text">
+                  Supported Token Pairs
+                </h2>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowSupportedPairs(false)}
+                  className="text-white/70 hover:text-white hover:bg-white/10"
+                >
+                  <Copy className="h-5 w-5 rotate-45" />
+                </Button>
+              </div>
+              <p className="text-white/60 mt-2">
+                {supportedPairs.length} supported token pairs across {getChainCombinations().length} chain routes
+              </p>
+            </div>
+
+            <div className="p-6 overflow-y-auto max-h-[60vh]">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {getChainCombinations().map((combination, index) => (
+                  <Card
+                    key={`${combination.from.index}-${combination.to.index}`}
+                    className="bg-gradient-to-br from-purple-900/20 to-blue-900/20 border-purple-500/30 hover:border-purple-500/50 transition-all duration-300 hover:scale-[1.02]"
+                    style={{ animationDelay: `${index * 50}ms` }}
+                  >
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`w-8 h-8 rounded-full bg-gradient-to-r ${combination.from.color} flex items-center justify-center`}
+                          >
+                            <span className="text-white text-xs font-bold">{combination.from.name.slice(0, 2)}</span>
+                          </div>
+                          <ArrowRightLeft className="h-4 w-4 text-white/60" />
+                          <div
+                            className={`w-8 h-8 rounded-full bg-gradient-to-r ${combination.to.color} flex items-center justify-center`}
+                          >
+                            <span className="text-white text-xs font-bold">{combination.to.name.slice(0, 2)}</span>
+                          </div>
+                        </div>
+                        <div className="text-xs text-purple-400 font-medium">{combination.pairs.length} pairs</div>
+                      </div>
+                      <div className="text-white font-medium">
+                        {combination.from.name} → {combination.to.name}
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <div className="space-y-2">
+                        {combination.pairs.slice(0, 3).map((pair: TokenPair) => (
+                          <div
+                            key={pair.pairId}
+                            className="flex items-center justify-between p-2 bg-white/5 rounded text-sm"
+                          >
+                            <span className="text-white/80">
+                              {pair.fromTokenSymbol} → {pair.toTokenSymbol}
+                            </span>
+                          </div>
+                        ))}
+                        {combination.pairs.length > 3 && (
+                          <div className="text-xs text-white/60 text-center py-1">
+                            +{combination.pairs.length - 3} more pairs
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
                 ))}
               </div>
             </div>
-
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-white/60">Route Optimization</span>
-              <div className="relative">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-white/20 hover:bg-white/10 text-white text-xs h-7 gap-2"
-                  onClick={() => setShowRouteOptions(!showRouteOptions)}
-                >
-                  {routeOptions.find((r) => r.value === routeSort)?.label}
-                  <ChevronDown className="h-3 w-3" />
-                </Button>
-                {showRouteOptions && (
-                  <div className="absolute top-full mt-2 right-0 bg-black/90 border border-white/20 rounded-lg p-2 min-w-[200px] z-50 backdrop-blur-sm">
-                    {routeOptions.map((option) => (
-                      <button
-                        key={option.value}
-                        className="w-full text-left p-2 hover:bg-white/10 rounded text-white text-sm"
-                        onClick={() => {
-                          setRouteSort(option.value)
-                          setShowRouteOptions(false)
-                        }}
-                      >
-                        <div className="font-medium">{option.label}</div>
-                        <div className="text-xs text-white/60">{option.description}</div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-white/60">Bridge Fee</span>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={feePercent}
-                  onChange={(e) => setFeePercent(e.target.value)}
-                  className="w-16 px-2 py-1 bg-black/50 border border-white/20 rounded text-white text-xs text-right"
-                  placeholder="0.1"
-                />
-                <span className="text-xs text-white/60">%</span>
-              </div>
-            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      <Button
-        className="w-full mt-6 py-6 text-lg gap-2 bg-gradient-to-r from-purple-500/20 to-pink-500/20 hover:from-purple-500/30 hover:to-pink-500/30 border border-purple-500/30 hover:border-purple-500/50 text-white shadow-lg backdrop-blur-sm"
-        size="lg"
-        onClick={handleBuildTransaction}
-        disabled={loading || !fromAmount || Number.parseFloat(fromAmount) <= 0}
-      >
-        <ArrowRightLeft className="h-5 w-5" />
-        {loading ? "Building Transaction..." : "Build Cross-Chain Transaction"}
-      </Button>
-
+      {/* Error Display */}
       {error && (
         <Card className="mt-4 bg-red-900/20 border-red-500/30">
           <CardContent className="p-4">
@@ -515,6 +1333,7 @@ export default function CrossChainSwapPage() {
         </Card>
       )}
 
+      {/* Swap Result */}
       {swapResult && !error && (
         <Card className="mt-4 bg-gradient-to-r from-purple-900/20 to-pink-900/20 border-purple-500/30">
           <CardHeader>
@@ -530,21 +1349,21 @@ export default function CrossChainSwapPage() {
                   <div>
                     <span className="text-white/60">You Send:</span>
                     <div className="text-white font-medium">
-                      {formatDisplayAmount(quote.fromTokenAmount, fromToken.decimals)} {fromToken.symbol}
+                      {fromToken && formatDisplayAmount(quote.fromTokenAmount, fromToken.decimals)} {fromToken?.symbol}
                     </div>
                     <div className="text-xs text-white/60">on {fromChain.name}</div>
                   </div>
                   <div>
                     <span className="text-white/60">You Receive:</span>
                     <div className="text-white font-medium">
-                      {formatDisplayAmount(quote.toTokenAmount, toToken.decimals)} {toToken.symbol}
+                      {toToken && formatDisplayAmount(quote.toTokenAmount, toToken.decimals)} {toToken?.symbol}
                     </div>
                     <div className="text-xs text-white/60">on {toChain.name}</div>
                   </div>
                   <div>
                     <span className="text-white/60">Minimum Received:</span>
                     <div className="text-white font-medium">
-                      {formatDisplayAmount(quote.minmumReceive, toToken.decimals)} {toToken.symbol}
+                      {toToken && formatDisplayAmount(quote.minmumReceive, toToken.decimals)} {toToken?.symbol}
                     </div>
                   </div>
                   <div>
@@ -636,7 +1455,37 @@ export default function CrossChainSwapPage() {
   )
 }
 
-function TokenIcon({ token }: { token: string }) {
+function TokenIcon({ token }: { token: Token }) {
+  // If token has a logo URL, use it
+  if (token.logoUrl && token.hasLogo) {
+    return (
+      <div className="w-5 h-5 rounded-full overflow-hidden bg-white/10 flex items-center justify-center">
+        <img
+          src={token.logoUrl || "/placeholder.svg"}
+          alt={token.symbol}
+          className="w-full h-full object-cover"
+          onError={(e) => {
+            // Fallback to gradient if image fails to load
+            const target = e.target as HTMLImageElement
+            target.style.display = "none"
+            target.parentElement!.innerHTML = `<div class="w-5 h-5 rounded-full ${getTokenGradient(token.symbol)} flex items-center justify-center text-white text-xs font-bold">${token.symbol.slice(0, 2)}</div>`
+          }}
+        />
+      </div>
+    )
+  }
+
+  // Fallback to gradient background with token symbol
+  return (
+    <div
+      className={`w-5 h-5 rounded-full ${getTokenGradient(token.symbol)} flex items-center justify-center text-white text-xs font-bold`}
+    >
+      {token.symbol.slice(0, 2)}
+    </div>
+  )
+}
+
+function getTokenGradient(symbol: string): string {
   const colors: Record<string, string> = {
     SOL: "bg-gradient-to-r from-purple-500 to-blue-500",
     ETH: "bg-gradient-to-r from-blue-600 to-purple-600",
@@ -646,6 +1495,10 @@ function TokenIcon({ token }: { token: string }) {
     ORCA: "bg-gradient-to-r from-pink-400 to-purple-500",
     WBTC: "bg-orange-500",
     DAI: "bg-yellow-500",
+    BNB: "bg-gradient-to-r from-yellow-500 to-orange-500",
+    MATIC: "bg-gradient-to-r from-purple-600 to-pink-500",
+    AVAX: "bg-gradient-to-r from-red-600 to-orange-500",
+    FTM: "bg-gradient-to-r from-blue-400 to-cyan-400",
   }
-  return <div className={`w-5 h-5 rounded-full ${colors[token] || "bg-gray-500"}`}></div>
+  return colors[symbol] || "bg-gradient-to-r from-gray-500 to-gray-600"
 }
