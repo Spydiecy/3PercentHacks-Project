@@ -108,7 +108,7 @@ async function callMarketDataApi(type: string, tokenName: string, address: strin
   let notReq = false
   if (type == "total_value") {
     const body = {
-      address: "0xEd0C6079229E2d407672a117c22b62064f4a4312", //dummy address
+      address: "52C9T2T7JRojtxumYnYZhyUmrN7kqzvCLc4Ksvjk7TxD", //dummy address
       chains: "1,56",
       excludeRiskToken: "0",
     }
@@ -123,7 +123,7 @@ async function callMarketDataApi(type: string, tokenName: string, address: strin
   if (type == "total_token_balance") {
     //dummy address
     const body = {
-      address: "0xEd0C6079229E2d407672a117c22b62064f4a4312",
+      address: "52C9T2T7JRojtxumYnYZhyUmrN7kqzvCLc4Ksvjk7TxD",
       chains: "1,56",
       excludeRiskToken: "0",
     }
@@ -137,7 +137,7 @@ async function callMarketDataApi(type: string, tokenName: string, address: strin
   }
   if (type == "specific_token_balance") {
     const body = {
-      address: "0xEd0C6079229E2d407672a117c22b62064f4a4312", //dummy address
+      address: "52C9T2T7JRojtxumYnYZhyUmrN7kqzvCLc4Ksvjk7TxD", //dummy address
       tokenContractAddresses: getTokenContractAddress(tokenName),
       excludeRiskToken: "0",
     }
@@ -151,7 +151,7 @@ async function callMarketDataApi(type: string, tokenName: string, address: strin
   }
   if (type == "transaction_history") {
     const body = {
-      address: "0x50c476a139aab23fdaf9bca12614cdd54a4244e4",
+      address: "52C9T2T7JRojtxumYnYZhyUmrN7kqzvCLc4Ksvjk7TxD",
       chains: chainIndexMap[tokenName],
       limit: "20",
     }

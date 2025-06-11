@@ -93,8 +93,8 @@ export default function PortfolioPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            address: "0x50c476a139aab23fdaf9bca12614cdd54a4244e4",
-            chains: selectedChains[0], // Use first selected chain for history
+            address: "52C9T2T7JRojtxumYnYZhyUmrN7kqzvCLc4Ksvjk7TxD",
+            chains: "501", // Use first selected chain for history
             limit: "50",
           }),
         }),
@@ -102,8 +102,8 @@ export default function PortfolioPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            address: "0xEd0C6079229E2d407672a117c22b62064f4a4312",
-            chains: chainsStr,
+            address: "52C9T2T7JRojtxumYnYZhyUmrN7kqzvCLc4Ksvjk7TxD",
+            chains: "501",
             excludeRiskToken: "0",
           }),
         }),
@@ -111,8 +111,8 @@ export default function PortfolioPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            address: "0xEd0C6079229E2d407672a117c22b62064f4a4312",
-            chains: chainsStr,
+            address: "52C9T2T7JRojtxumYnYZhyUmrN7kqzvCLc4Ksvjk7TxD",
+            chains: "501",
             excludeRiskToken: "0",
           }),
         }),
@@ -120,8 +120,8 @@ export default function PortfolioPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            address: "0xEd0C6079229E2d407672a117c22b62064f4a4312",
-            tokenContractAddresses: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", // USDC
+            address: "52C9T2T7JRojtxumYnYZhyUmrN7kqzvCLc4Ksvjk7TxD",
+            tokenContractAddresses: "So11111111111111111111111111111111111111112", // USDCx
             excludeRiskToken: "0",
           }),
         }),

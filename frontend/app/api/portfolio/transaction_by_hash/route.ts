@@ -2,12 +2,7 @@ import https from 'https';
 import crypto from 'crypto';
 import querystring from 'querystring';
 
-interface ApiConfig {
-  api_key: string;
-  secret_key: string;
-  passphrase: string;
-  project: string;
-}
+
 
 const api_config: any = {
   api_key: process.env.API_KEY,
