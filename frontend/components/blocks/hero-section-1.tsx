@@ -167,14 +167,14 @@ export function HeroSection() {
                                 <div className="inset-shadow-2xs ring-background dark:inset-shadow-white/20 bg-background relative mx-auto max-w-6xl overflow-hidden rounded-2xl border p-4 shadow-lg shadow-zinc-950/15 ring-1">
                                     <img
                                         className="bg-background aspect-15/8 relative hidden rounded-2xl dark:block"
-                                        src="https://images.unsplash.com/photo-1639762681485-074b7f938ba0?q=80&w=2832&auto=format&fit=crop"
+                                        src="https://raw.githubusercontent.com/Spydiecy/Astra/refs/heads/main/frontend/public/hero.png"
                                         alt="app screen"
                                         width="2700"
                                         height="1440"
                                     />
                                     <img
                                         className="z-2 border-border/25 aspect-15/8 relative rounded-2xl border dark:hidden"
-                                        src="https://images.unsplash.com/photo-1639762681485-074b7f938ba0?q=80&w=2832&auto=format&fit=crop"
+                                        src="https://raw.githubusercontent.com/Spydiecy/Astra/refs/heads/main/frontend/public/hero.png"
                                         alt="app screen"
                                         width="2700"
                                         height="1440"
@@ -339,9 +339,9 @@ export function HeroSection() {
                             
                             <div className="rounded-xl border p-4">
                                 <img 
-                                    src="https://images.unsplash.com/photo-1639762681485-074b7f938ba0?q=80&w=2832&auto=format&fit=crop" 
+                                    src="https://raw.githubusercontent.com/Spydiecy/Astra/refs/heads/main/frontend/public/ai.png" 
                                     alt="Blockchain Technology" 
-                                    className="rounded-lg object-cover h-96 w-full" 
+                                    className="rounded-lg w-full object-contain mx-auto" 
                                 />
                             </div>
                         </div>
