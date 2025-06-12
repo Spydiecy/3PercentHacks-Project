@@ -18,6 +18,7 @@ interface Message {
   chartTitle?: string
   tokenName?: string
   transactionData?: any[] // Add transaction data field
+  balanceData?: any[] // Add balance data field
 }
 
 interface GeminiResponse {
@@ -116,6 +117,129 @@ function TransactionHistoryDisplay({ transactions, title }: { transactions: any[
                         }`}
                       >
                         {tx.txStatus || "Unknown"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+// Token Balance Display Component
+function TokenBalanceDisplay({ balances, title }: { balances: any[]; title: string }) {
+  if (!balances || balances.length === 0) {
+    return (
+      <Card className="w-full bg-black/40 border-white/20 backdrop-blur-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-white flex items-center gap-2">
+            <BarChart3 className="h-5 w-5" />
+            {title}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8">
+            <BarChart3 className="h-12 w-12 mx-auto mb-4 text-white/40" />
+            <p className="text-white/60">No token balances found</p>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // Filter and sort tokens by value, take top 10
+  const validBalances = balances
+    .filter((token) => {
+      try {
+        const balance = Number(token?.balance || 0)
+        const price = Number(token?.tokenPrice || 0)
+        const value = balance * price
+        return value > 0.01 // Only show tokens worth more than $0.01
+      } catch {
+        return false
+      }
+    })
+    .sort((a, b) => {
+      const valueA = Number(a?.balance || 0) * Number(a?.tokenPrice || 0)
+      const valueB = Number(b?.balance || 0) * Number(b?.tokenPrice || 0)
+      return valueB - valueA
+    })
+    .slice(0, 10)
+
+  // Calculate total portfolio value
+  const totalValue = validBalances.reduce((sum, token) => {
+    const balance = Number(token?.balance || 0)
+    const price = Number(token?.tokenPrice || 0)
+    return sum + (balance * price)
+  }, 0)
+
+  return (
+    <Card className="w-full bg-black/40 border-white/20 backdrop-blur-sm">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-white flex items-center gap-2">
+          <BarChart3 className="h-5 w-5" />
+          {title}
+        </CardTitle>
+        <p className="text-white/60 text-sm">
+          Total Portfolio Value: <span className="text-emerald-400 font-semibold">${totalValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+        </p>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          {validBalances.map((token, idx) => {
+            const balance = Number(token.balance || 0)
+            const price = Number(token.tokenPrice || 0)
+            const value = balance * price
+            const symbol = token.symbol || "Unknown"
+            
+            // Create a gradient based on the token symbol
+            const getTokenGradient = (symbol: string) => {
+              const gradients = [
+                "from-purple-500 to-blue-500",
+                "from-emerald-500 to-teal-500", 
+                "from-orange-500 to-red-500",
+                "from-pink-500 to-violet-500",
+                "from-cyan-500 to-blue-500",
+                "from-yellow-500 to-orange-500",
+                "from-green-500 to-emerald-500",
+                "from-red-500 to-pink-500"
+              ]
+              return gradients[symbol.charCodeAt(0) % gradients.length]
+            }
+            
+            return (
+              <div key={idx} className="p-4 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-full bg-gradient-to-r ${getTokenGradient(symbol)} flex items-center justify-center border border-white/20`}>
+                      <span className="text-white text-sm font-bold">
+                        {symbol.slice(0, 2)}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="font-medium text-white">{symbol}</p>
+                      <p className="text-xs text-white/60">
+                        {token.tokenContractAddress ? 
+                          `${token.tokenContractAddress.slice(0, 6)}...${token.tokenContractAddress.slice(-4)}` : 
+                          "Native Token"
+                        }
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-medium text-white">
+                      {balance.toLocaleString(undefined, { maximumFractionDigits: 6 })} {symbol}
+                    </p>
+                    <div className="flex items-center gap-2 justify-end">
+                      <span className="text-xs text-white/60">
+                        ${price.toLocaleString(undefined, { maximumFractionDigits: 6 })}
+                      </span>
+                      <span className="px-2 py-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded text-xs font-medium">
+                        ${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                       </span>
                     </div>
                   </div>
@@ -235,6 +359,22 @@ async function callMarketDataApi(type: string, tokenName: string, address: strin
     const m = await response.json()
     console.log("my m value is:::",m);
     
+    return m
+  }
+  if (type == "token_balance") {
+    // Handle token balance requests for AI chat
+    const body = {
+      address: "52C9T2T7JRojtxumYnYZhyUmrN7kqzvCLc4Ksvjk7TxD",
+      chains: "501",
+      excludeRiskToken: "0",
+    }
+    const response = await fetch("/api/portfolio/total_token_balances", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    })
+    const m = await response.json()
+    console.log("token_balance response:", m);
     return m
   }
   if (type == "specific_token_balance") {
@@ -784,6 +924,9 @@ Volume: ${item.volume.toLocaleString()}`}
 const suggestions = [
   "Show me my transaction history",
   "What are my recent transactions?",
+  "Show me my token balance",
+  "What's my balance?",
+  "Display my wallet balance",
   "Explain the current SOL market conditions",
   "How does Astra's AI trading work?",
   "What's the best DeFi strategy for beginners?",
@@ -842,6 +985,23 @@ export default function AiChatPage() {
                 content: "TRANSACTION_DATA",
                 transactionData: transactions,
                 chartTitle: "Recent Transaction History",
+              } as any,
+            ])
+          } else if (geminiResponse.type === "token_balance") {
+            // Extract balance data from the API response
+            const balances = marketData?.data?.[0]?.tokenAssets || []
+            
+            // Add AI response message
+            const aiMessage = "Here are your token balances:"
+            
+            setMessages((prev) => [
+              ...prev,
+              { role: "system", content: aiMessage },
+              {
+                role: "system",
+                content: "TOKEN_BALANCE",
+                balanceData: balances,
+                chartTitle: "Token Balances",
               } as any,
             ])
           } else {
@@ -1012,6 +1172,13 @@ export default function AiChatPage() {
                   <TransactionHistoryDisplay 
                     transactions={message.transactionData || []} 
                     title={message.chartTitle || "Recent Transaction History"} 
+                  />
+                </div>
+              ) : message.content === "TOKEN_BALANCE" ? (
+                <div className="w-full max-w-4xl">
+                  <TokenBalanceDisplay 
+                    balances={message.balanceData || []} 
+                    title={message.chartTitle || "Token Balances"} 
                   />
                 </div>
               ) : (
