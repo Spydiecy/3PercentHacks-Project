@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useWallet } from "@/contexts/WalletContext"
 import { Button } from "@/components/ui/button"
 import {
   ArrowRight,
@@ -19,7 +20,7 @@ import {
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
-import { LineChart as RechartsLineChart, Line, XAxis, YAxis, ResponsiveContainer } from "recharts"
+import { ResponsiveContainer } from "recharts"
 import Link from "next/link"
 
 // Types and interfaces
@@ -28,15 +29,6 @@ interface DashboardStats {
   totalTransactions: number
   activeChains: number
   totalTokens: number
-}
-
-interface MarketData {
-  data: Array<{
-    prices: Array<{
-      time: string
-      price: string
-    }>
-  }>
 }
 
 interface LoadingStep {
@@ -85,6 +77,11 @@ const quickActions = [
 
 // Real Solana address for data fetching
 const SOLANA_ADDRESS = "52C9T2T7JRojtxumYnYZhyUmrN7kqzvCLc4Ksvjk7TxD"
+
+// Get dynamic address - use connected wallet address or fall back to dummy address
+const getDynamicAddress = (walletAddress?: string | null): string => {
+  return walletAddress || SOLANA_ADDRESS
+}
 
 // Rate limiting manager
 class DashboardRateLimitManager {
@@ -194,12 +191,13 @@ function filterNonZeroTransactions(transactions: any[]): any[] {
 }
 
 // Market data API call function with error handling
-async function callMarketDataApi(type: string, tokenName = "SOL") {
+async function callMarketDataApi(type: string, tokenName = "SOL", dynamicAddress?: string) {
   const tokenContractAddress = "So11111111111111111111111111111111111111112" // SOL token address
+  const addressToUse = dynamicAddress || SOLANA_ADDRESS
 
   if (type === "total_token_balance") {
     const body = {
-      address: SOLANA_ADDRESS,
+      address: addressToUse,
       chains: "501",
       excludeRiskToken: "0",
     }
@@ -217,7 +215,7 @@ async function callMarketDataApi(type: string, tokenName = "SOL") {
 
   if (type === "transaction_history") {
     const body = {
-      address: SOLANA_ADDRESS,
+      address: addressToUse,
       chains: "501",
       limit: "20",
     }
@@ -235,7 +233,7 @@ async function callMarketDataApi(type: string, tokenName = "SOL") {
 
   if (type === "token_value") {
     const body = {
-      address: SOLANA_ADDRESS,
+      address: addressToUse,
       chains: "501",
       excludeRiskToken: "0",
     }
@@ -251,16 +249,38 @@ async function callMarketDataApi(type: string, tokenName = "SOL") {
     return await response.json()
   }
 
-  // Market data calls
+  // Market data calls (candlestick and price data) - Fixed parameter structure
+  let path = ""
+  let method = "POST"
+  let requestData = {}
+  
+  if (type === "candlestick") {
+    method = "GET"
+    path = "/api/v5/dex/market/candles"
+    requestData = {
+      chainIndex: "501",
+      tokenContractAddress: tokenContractAddress,
+    }
+  } else if (type === "price") {
+    method = "POST"
+    path = "/api/v5/dex/market/price"
+    requestData = {
+      chainIndex: "501",
+      tokenContractAddress: tokenContractAddress,
+    }
+  } else {
+    method = "POST"
+    path = "/api/v5/dex/market/price"
+    requestData = {
+      chainIndex: "501",
+      tokenContractAddress: tokenContractAddress,
+    }
+  }
+
   const body = {
-    method: "GET",
-    path: type === "hist_data" ? "/api/v5/dex/index/historical-price" : "/api/v5/dex/market/price",
-    data: [
-      {
-        chainIndex: "501",
-        tokenContractAddress,
-      },
-    ],
+    method: method,
+    path: path,
+    data: requestData
   }
 
   const response = await fetch("/api/market_data", {
@@ -275,23 +295,46 @@ async function callMarketDataApi(type: string, tokenName = "SOL") {
   return await response.json()
 }
 
-// Chart component for SOL price history
-function SolanaMarketChart({ data, title }: { data: MarketData; title: string }) {
-  if (!data?.data?.[0]?.prices) return null
+// Candlestick Chart component for SOL OHLC data
+function SolanaCandlestickChart({ data, title }: { data: any; title: string }) {
+  if (!data?.data || !Array.isArray(data.data) || data.data.length === 0) return null
 
-  const chartData = data.data[0].prices
-    .map((item: any) => ({
-      time: formatTimestamp(item.time),
-      price: Number(item.price),
-      timestamp: Number(item.time),
-    }))
-    .reverse()
-    .slice(-24) // Show last 24 data points
+  let chartData: any[] = []
+  
+  // Handle different data formats for candlestick data
+  if (Array.isArray(data.data)) {
+    // Format: [[timestamp, open, high, low, close, volume], ...]
+    chartData = data.data
+      .map((item: any) => ({
+        time: formatTimestamp(item[0]),
+        open: Number(item[1]),
+        high: Number(item[2]),
+        low: Number(item[3]),
+        close: Number(item[4]),
+        volume: Number(item[5]) || 0,
+        timestamp: Number(item[0]),
+      }))
+      .reverse()
+      .slice(-12) // Show last 12 data points for better visibility
+  }
 
-  const currentPrice = chartData[chartData.length - 1]?.price || 0
-  const previousPrice = chartData[chartData.length - 2]?.price || 0
+  if (chartData.length === 0) {
+    return null
+  }
+
+  const currentPrice = chartData[chartData.length - 1]?.close || 0
+  const previousPrice = chartData[chartData.length - 2]?.close || 0
   const priceChange = currentPrice - previousPrice
   const isPositive = priceChange >= 0
+
+  // Calculate price range for the entire dataset
+  const allPrices = chartData.flatMap((item: any) => [item.open, item.high, item.low, item.close])
+  const minPrice = Math.min(...allPrices)
+  const maxPrice = Math.max(...allPrices)
+  const priceRange = maxPrice - minPrice || 1
+  const padding = priceRange * 0.1
+  const yMin = minPrice - padding
+  const yMax = maxPrice + padding
 
   return (
     <Card className="w-full bg-black/40 border-white/20 backdrop-blur-sm">
@@ -312,45 +355,142 @@ function SolanaMarketChart({ data, title }: { data: MarketData; title: string })
       <CardContent>
         <ChartContainer
           config={{
-            price: {
-              label: "Price",
-              color: "hsl(var(--chart-1))",
-            },
+            high: { label: "High", color: "#22c55e" },
+            low: { label: "Low", color: "#ef4444" },
+            open: { label: "Open", color: "#3b82f6" },
+            close: { label: "Close", color: "#8b5cf6" },
           }}
           className="h-[200px]"
         >
           <ResponsiveContainer width="100%" height="100%">
-            <RechartsLineChart data={chartData}>
-              <XAxis
-                dataKey="time"
-                tick={{ fill: "white", fontSize: 10 }}
-                axisLine={{ stroke: "rgba(255,255,255,0.2)" }}
-                tickLine={{ stroke: "rgba(255,255,255,0.2)" }}
-              />
-              <YAxis
-                tick={{ fill: "white", fontSize: 10 }}
-                axisLine={{ stroke: "rgba(255,255,255,0.2)" }}
-                tickLine={{ stroke: "rgba(255,255,255,0.2)" }}
-                domain={["dataMin - 0.01", "dataMax + 0.01"]}
-              />
-              <ChartTooltip
-                content={<ChartTooltipContent />}
-                contentStyle={{
-                  backgroundColor: "rgba(0,0,0,0.8)",
-                  border: "1px solid rgba(255,255,255,0.2)",
-                  borderRadius: "8px",
-                  color: "white",
-                }}
-              />
-              <Line
-                type="monotone"
-                dataKey="price"
-                stroke="#9333ea"
-                strokeWidth={2}
-                dot={false}
-                activeDot={{ r: 4, fill: "#9333ea" }}
-              />
-            </RechartsLineChart>
+            <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+              <svg width="100%" height="100%" className="candlestick-chart">
+                <defs>
+                  <linearGradient id="bgGradientDash" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor="rgba(255,255,255,0.05)" />
+                    <stop offset="100%" stopColor="rgba(255,255,255,0.01)" />
+                  </linearGradient>
+                </defs>
+                
+                {/* Background */}
+                <rect width="100%" height="100%" fill="url(#bgGradientDash)" />
+                
+                {/* Grid lines */}
+                {[0, 25, 50, 75, 100].map((percent: number) => (
+                  <line
+                    key={percent}
+                    x1="40"
+                    y1={40 + (percent / 100) * 120}
+                    x2="100%"
+                    y2={40 + (percent / 100) * 120}
+                    stroke="rgba(255,255,255,0.1)"
+                    strokeWidth={0.5}
+                  />
+                ))}
+                
+                {/* Y-axis labels */}
+                {[0, 25, 50, 75, 100].map((percent: number) => {
+                  const price = yMax - (percent / 100) * (yMax - yMin)
+                  return (
+                    <text
+                      key={percent}
+                      x="35"
+                      y={45 + (percent / 100) * 120}
+                      fill="white"
+                      fontSize="8"
+                      textAnchor="end"
+                    >
+                      ${price.toFixed(2)}
+                    </text>
+                  )
+                })}
+                
+                {/* Candlesticks */}
+                {chartData.map((item: any, index: number) => {
+                  const chartWidth = 400 // Approximate chart width
+                  const x = 50 + (index / Math.max(chartData.length - 1, 1)) * (chartWidth - 100)
+                  const candleWidth = Math.max((chartWidth - 100) / chartData.length * 0.8, 3)
+                  
+                  // Calculate positions
+                  const priceToY = (price: number) => 40 + ((yMax - price) / (yMax - yMin)) * 120
+                  
+                  const highY = priceToY(item.high)
+                  const lowY = priceToY(item.low)
+                  const openY = priceToY(item.open)
+                  const closeY = priceToY(item.close)
+                  
+                  const isPositive = item.close >= item.open
+                  const bodyColor = isPositive ? "#22c55e" : "#ef4444"
+                  const wickColor = isPositive ? "#16a34a" : "#dc2626"
+                  
+                  const bodyTop = Math.min(openY, closeY)
+                  const bodyHeight = Math.abs(closeY - openY) || 1
+                  const bodyX = x - candleWidth / 2
+                  
+                  return (
+                    <g key={index}>
+                      {/* Wick */}
+                      <line
+                        x1={x}
+                        y1={highY}
+                        x2={x}
+                        y2={lowY}
+                        stroke={wickColor}
+                        strokeWidth={1}
+                      />
+                      {/* Body */}
+                      <rect
+                        x={bodyX}
+                        y={bodyTop}
+                        width={candleWidth}
+                        height={bodyHeight}
+                        fill={isPositive ? bodyColor : "transparent"}
+                        stroke={bodyColor}
+                        strokeWidth={isPositive ? 0 : 1}
+                      />
+                      
+                      {/* Tooltip trigger area */}
+                      <rect
+                        x={bodyX - 2}
+                        y={Math.min(highY, lowY) - 2}
+                        width={candleWidth + 4}
+                        height={Math.abs(highY - lowY) + 4}
+                        fill="transparent"
+                        className="cursor-pointer"
+                      >
+                        <title>
+                          {`Time: ${item.time}
+Open: $${item.open.toFixed(4)}
+High: $${item.high.toFixed(4)}
+Low: $${item.low.toFixed(4)}
+Close: $${item.close.toFixed(4)}
+Volume: ${item.volume.toLocaleString()}`}
+                        </title>
+                      </rect>
+                    </g>
+                  )
+                })}
+                
+                {/* X-axis labels */}
+                {chartData.filter((_: any, index: number) => index % Math.ceil(chartData.length / 4) === 0).map((item: any, filteredIndex: number) => {
+                  const originalIndex = filteredIndex * Math.ceil(chartData.length / 4)
+                  const chartWidth = 400
+                  const x = 50 + (originalIndex / Math.max(chartData.length - 1, 1)) * (chartWidth - 100)
+                  return (
+                    <text
+                      key={filteredIndex}
+                      x={x}
+                      y="175"
+                      fill="white"
+                      fontSize="8"
+                      textAnchor="middle"
+                    >
+                      {item.time.split(' ')[0]}
+                    </text>
+                  )
+                })}
+              </svg>
+            </div>
           </ResponsiveContainer>
         </ChartContainer>
       </CardContent>
@@ -413,6 +553,7 @@ function DashboardCard({
 }
 
 export default function DashboardPage() {
+  const { connected, publicKey } = useWallet()
   const [isHovering, setIsHovering] = useState<string | null>(null)
   const [selectedChain, setSelectedChain] = useState(chainOptions[0])
   const [showChainDropdown, setShowChainDropdown] = useState(false)
@@ -424,7 +565,7 @@ export default function DashboardPage() {
   })
   const [tokenAssets, setTokenAssets] = useState<any[]>([])
   const [transactions, setTransactions] = useState<any[]>([])
-  const [marketChart, setMarketChart] = useState<MarketData | null>(null)
+  const [candlestickChart, setCandlestickChart] = useState<any | null>(null)
   const [currentPrice, setCurrentPrice] = useState<string>("0")
   const [portfolioValue, setPortfolioValue] = useState<string>("0")
   const [loading, setLoading] = useState(true)
@@ -434,12 +575,15 @@ export default function DashboardPage() {
     { name: "Token Balances", status: "pending", message: "Preparing to fetch token balances..." },
     { name: "Transaction History", status: "pending", message: "Preparing to fetch transaction history..." },
     { name: "Portfolio Value", status: "pending", message: "Preparing to fetch portfolio value..." },
-    { name: "Market Data", status: "pending", message: "Preparing to fetch market data..." },
+    { name: "Candlestick Data", status: "pending", message: "Preparing to fetch candlestick data..." },
     { name: "Current Price", status: "pending", message: "Preparing to fetch current SOL price..." },
   ])
   const [progress, setProgress] = useState(0)
 
   const rateLimitManager = new DashboardRateLimitManager()
+
+  // Get dynamic address based on wallet connection
+  const currentAddress = getDynamicAddress(publicKey)
 
   const updateLoadingStep :any= (
     stepName: string,
@@ -484,15 +628,16 @@ export default function DashboardPage() {
 
     try {
       console.log("Starting sequential Solana data fetch with rate limiting...")
+      console.log("Using address:", currentAddress, connected ? "(Connected wallet)" : "(Dummy address)")
 
       // Add initial delay to prevent immediate API bombardment
       await new Promise((resolve) => setTimeout(resolve, 1000))
 
-      let tokenBalancesRes, transactionHistoryRes, portfolioValueRes, marketDataRes, currentPriceRes
+      let tokenBalancesRes, transactionHistoryRes, portfolioValueRes, candlestickDataRes, currentPriceRes
 
       try {
         tokenBalancesRes = await rateLimitManager.makeRequest(
-          () => callMarketDataApi("total_token_balance"),
+          () => callMarketDataApi("total_token_balance", "SOL", currentAddress),
           "Token Balances",
           updateLoadingStep,
         )
@@ -503,7 +648,7 @@ export default function DashboardPage() {
 
       try {
         transactionHistoryRes = await rateLimitManager.makeRequest(
-          () => callMarketDataApi("transaction_history"),
+          () => callMarketDataApi("transaction_history", "SOL", currentAddress),
           "Transaction History",
           updateLoadingStep,
         )
@@ -514,7 +659,7 @@ export default function DashboardPage() {
 
       try {
         portfolioValueRes = await rateLimitManager.makeRequest(
-          () => callMarketDataApi("token_value"),
+          () => callMarketDataApi("token_value", "SOL", currentAddress),
           "Portfolio Value",
           updateLoadingStep,
         )
@@ -524,14 +669,14 @@ export default function DashboardPage() {
       }
 
       try {
-        marketDataRes = await rateLimitManager.makeRequest(
-          () => callMarketDataApi("hist_data"),
-          "Market Data",
+        candlestickDataRes = await rateLimitManager.makeRequest(
+          () => callMarketDataApi("candlestick"),
+          "Candlestick Data",
           updateLoadingStep,
         )
       } catch (error) {
-        console.warn("Market data failed, using fallback:", error)
-        marketDataRes = { data: [{ prices: [] }] }
+        console.warn("Candlestick data failed, using fallback:", error)
+        candlestickDataRes = { data: [] }
       }
 
       try {
@@ -618,16 +763,18 @@ export default function DashboardPage() {
         processedCurrentPrice = "0"
       }
 
-      // Process market chart data with safe fallbacks
+      // Process candlestick chart data with safe fallbacks
       try {
-        if (marketDataRes?.data?.[0]?.prices && Array.isArray(marketDataRes.data[0].prices)) {
-          setMarketChart(marketDataRes)
+        if (candlestickDataRes?.data && Array.isArray(candlestickDataRes.data) && candlestickDataRes.data.length > 0) {
+          setCandlestickChart(candlestickDataRes)
+          console.log("Candlestick data processed:", candlestickDataRes.data.length, "data points")
         } else {
-          setMarketChart(null)
+          setCandlestickChart(null)
+          console.log("No candlestick data available")
         }
       } catch (error) {
-        console.warn("Error processing market chart:", error)
-        setMarketChart(null)
+        console.warn("Error processing candlestick chart:", error)
+        setCandlestickChart(null)
       }
 
       // Update all states together to prevent race conditions
@@ -697,6 +844,27 @@ export default function DashboardPage() {
 
     return () => clearInterval(interval)
   }, [loading])
+
+  // Watch for wallet connection changes and refresh data
+  useEffect(() => {
+    const refreshDataOnWalletChange = async () => {
+      try {
+        console.log("Wallet connection status changed. Connected:", connected, "PublicKey:", publicKey)
+        
+        // Add a small delay to ensure wallet context has fully updated
+        setTimeout(async () => {
+          await fetchAllData()
+        }, 1000)
+      } catch (error) {
+        console.error("Failed to refresh data on wallet change:", error)
+      }
+    }
+
+    // Only trigger refresh if we've already loaded data once (avoid double loading on initial mount)
+    if (lastUpdated) {
+      refreshDataOnWalletChange()
+    }
+  }, [connected, publicKey]) // Watch for changes in wallet connection status
 
   // Debug logging
   useEffect(() => {
@@ -880,52 +1048,59 @@ export default function DashboardPage() {
       )}
 
       {/* Market Chart Section */}
-      {marketChart && !loading && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2">
-            <SolanaMarketChart data={marketChart} title="SOL Price History" />
-          </div>
-          <div>
-            <Card className="bg-black/20 border-white/10 hover:border-white/20 transition-all hover:shadow-xl h-full">
-              <CardHeader>
-                <CardTitle className="text-xl font-bold bg-gradient-to-r from-white to-white/80 text-transparent bg-clip-text">
-                  Market Stats
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-white/60">Current SOL Price</span>
-                  <span className="text-white font-bold">
-                    {loading
-                      ? "Loading..."
-                      : Number(currentPrice) > 0
-                        ? `$${Number(currentPrice).toFixed(2)}`
-                        : "$0.00"}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-white/60">Portfolio Value</span>
-                  <span className="text-white font-bold">
-                    {loading ? "Loading..." : Number(portfolioValue) > 0 ? formatCurrency(portfolioValue) : "$0.00"}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-white/60">Active Tokens</span>
-                  <span className="text-white font-bold">{loading ? "Loading..." : dashboardStats.totalTokens}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-white/60">Transactions</span>
-                  <span className="text-white font-bold">
-                    {loading ? "Loading..." : dashboardStats.totalTransactions}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-white/60">Address</span>
-                  <span className="text-white font-mono text-xs">{SOLANA_ADDRESS.slice(0, 8)}...</span>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+      {candlestickChart && !loading && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* SOL Candlestick Chart */}
+          <SolanaCandlestickChart data={candlestickChart} title="SOL Candlestick Chart" />
+          
+          {/* Market Stats Card */}
+          <Card className="bg-black/20 border-white/10 hover:border-white/20 transition-all hover:shadow-xl h-full">
+            <CardHeader>
+              <CardTitle className="text-xl font-bold bg-gradient-to-r from-white to-white/80 text-transparent bg-clip-text">
+                Market Stats
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-white/60">Current SOL Price</span>
+                <span className="text-white font-bold">
+                  {loading
+                    ? "Loading..."
+                    : Number(currentPrice) > 0
+                      ? `$${Number(currentPrice).toFixed(2)}`
+                      : "$0.00"}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-white/60">Portfolio Value</span>
+                <span className="text-white font-bold">
+                  {loading ? "Loading..." : Number(portfolioValue) > 0 ? formatCurrency(portfolioValue) : "$0.00"}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-white/60">Active Tokens</span>
+                <span className="text-white font-bold">{loading ? "Loading..." : dashboardStats.totalTokens}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-white/60">Transactions</span>
+                <span className="text-white font-bold">
+                  {loading ? "Loading..." : dashboardStats.totalTransactions}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-white/60">Address</span>
+                <span className="text-white font-mono text-xs">
+                  {connected ? `${currentAddress.slice(0, 8)}... (Connected)` : `${SOLANA_ADDRESS.slice(0, 8)}... (Demo)`}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-white/60">Chart Type</span>
+                <span className="text-white font-bold">
+                  {candlestickChart ? "OHLC Candlestick" : "No Data"}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
 
