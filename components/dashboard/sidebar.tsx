@@ -33,9 +33,9 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
       href: "/dashboard/ai-chat"
     },
     {
-      label: "Swap",
+      label: "EVM",
       icon: ArrowLeftRight,
-      href: "/dashboard/swap"
+      href: "/dashboard/EVM"
     },
       {
       label: "Cross Chain Swap Info",
