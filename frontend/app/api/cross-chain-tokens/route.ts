@@ -211,15 +211,15 @@ export async function POST(request: NextRequest) {
           },
         },
         examples: {
-          "Chain tokens for Solana": "/api/cross-chain-tokens?chainIndex=501&type=chain-tokens",
+          "Chain tokens for TRN": "/api/cross-chain-tokens?chainIndex=7668&type=chain-tokens",
           "Cross-chain supported tokens": "/api/cross-chain-tokens?type=cross-chain-supported",
-          "Cross-chain supported tokens for Solana":
-            "/api/cross-chain-tokens?chainIndex=501&type=cross-chain-supported",
+          "Cross-chain supported tokens for TRN":
+            "/api/cross-chain-tokens?chainIndex=7668&type=cross-chain-supported",
         },
       },
     },
     supportedChains: {
-      "501": "Solana",
+      "7668": "TRN (The Root Network)",
       "1": "Ethereum",
       "56": "BNB Chain",
       "137": "Polygon",

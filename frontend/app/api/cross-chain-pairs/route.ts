@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     console.log("My search params:", searchParams);
 
-    const fromChainIndex = "501"
+    const fromChainIndex = "7668"
 
     // Validate fromChainIndex if provided
     if (fromChainIndex && !/^\d+$/.test(fromChainIndex)) {
@@ -178,7 +178,7 @@ export async function POST(request: NextRequest) {
         },
         examples: {
           "All supported pairs": "/api/cross-chain-pairs",
-          "Pairs from Solana": "/api/cross-chain-pairs?fromChainIndex=501",
+          "Pairs from TRN": "/api/cross-chain-pairs?fromChainIndex=7668",
           "Pairs from Ethereum": "/api/cross-chain-pairs?fromChainIndex=1",
         },
         response: {
@@ -189,7 +189,7 @@ export async function POST(request: NextRequest) {
       },
     },
     supportedChains: {
-      "501": "Solana",
+      "7668": "TRN (The Root Network)",
       "1": "Ethereum",
       "56": "BNB Chain",
       "137": "Polygon",

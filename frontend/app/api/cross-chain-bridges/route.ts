@@ -88,11 +88,11 @@ export async function GET(request: NextRequest) {
       requireOtherNativeFee: bridge.requireOtherNativeFee || bridge.requiredOtherNativeFee || false,
       logoUrl: bridge.logoUrl || bridge.logo,
       supportedChains: bridge.supportedChains || [],
-      supportsSolana: bridge.supportedChains?.includes("501") || false,
+      supportsTRN: bridge.supportedChains?.includes("7668") || false,
     })) || []
 
-    // Filter bridges that support Solana if requested
-    const solanaBridges = transformedBridges.filter((bridge: any) => bridge.supportsSolana)
+    // Filter bridges that support TRN if requested
+    const trnBridges = transformedBridges.filter((bridge: any) => bridge.supportsTRN)
 
     // Add metadata to response
     const response = {
@@ -100,9 +100,9 @@ export async function GET(request: NextRequest) {
       chainIndex: chainIndex || "all",
       timestamp: new Date().toISOString(),
       totalBridges: transformedBridges.length,
-      solanaBridges: solanaBridges.length,
+      trnBridges: trnBridges.length,
       bridges: transformedBridges,
-      solanaSupportedBridges: solanaBridges,
+      trnSupportedBridges: trnBridges,
       ...result,
     }
 
@@ -162,13 +162,13 @@ export async function POST(request: NextRequest) {
         },
         examples: {
           "All supported bridges": "/api/cross-chain-bridges",
-          "Bridges supporting Solana": "/api/cross-chain-bridges?chainIndex=501",
+          "Bridges supporting TRN": "/api/cross-chain-bridges?chainIndex=7668",
         },
         response: {
           bridges: "Array of bridge information",
-          solanaSupportedBridges: "Bridges that support Solana",
+          trnSupportedBridges: "Bridges that support TRN",
           totalBridges: "Total number of bridges",
-          solanaBridges: "Number of bridges supporting Solana",
+          trnBridges: "Number of bridges supporting TRN",
         },
       },
     },
@@ -178,7 +178,7 @@ export async function POST(request: NextRequest) {
       requireOtherNativeFee: "Whether bridge requires native token fees",
       logoUrl: "Bridge logo image URL",
       supportedChains: "Array of supported chain IDs",
-      supportsSolana: "Whether bridge supports Solana (501)",
+      supportsTRN: "Whether bridge supports TRN (7668)",
     },
   })
 }

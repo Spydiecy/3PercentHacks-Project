@@ -15,7 +15,7 @@ interface Token {
   hasLogo?: boolean
 }
 
-interface SolanaSwapResult {
+interface TRNSwapResult {
   success: boolean
   action: string
   timestamp: string
@@ -43,7 +43,7 @@ interface ExecuteResult {
   lookupTablesUsed: number
 }
 
-export default function SolanaSwapPage() {
+export default function TRNSwapPage() {
   // State for tokens
   const [availableTokens, setAvailableTokens] = useState<Token[]>([])
   const [loadingTokens, setLoadingTokens] = useState(true)
@@ -56,7 +56,7 @@ export default function SolanaSwapPage() {
 
   // Default tokens (fallback)
   const defaultTokens: Token[] = [
-    { symbol: "SOL", name: "Solana", address: "11111111111111111111111111111111", decimals: 9 },
+    { symbol: "ROOT", name: "Root Token", address: "11111111111111111111111111111111", decimals: 9 },
     { symbol: "USDC", name: "USD Coin", address: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", decimals: 6 },
   ]
 
@@ -65,7 +65,7 @@ export default function SolanaSwapPage() {
   const [fromAmount, setFromAmount] = useState("0.1")
   const [toAmount, setToAmount] = useState("")
   const [slippage, setSlippage] = useState("0.5")
-  const [swapResult, setSwapResult] = useState<SolanaSwapResult | null>(null)
+  const [swapResult, setSwapResult] = useState<TRNSwapResult | null>(null)
   const [quoteResult, setQuoteResult] = useState<any>(null)
   const [executeResult, setExecuteResult] = useState<ExecuteResult | null>(null)
   const [loading, setLoading] = useState(false)
@@ -75,7 +75,7 @@ export default function SolanaSwapPage() {
   const [showFromTokens, setShowFromTokens] = useState(false)
   const [showToTokens, setShowToTokens] = useState(false)
 
-  // Demo Solana wallet address
+  // Demo TRN wallet address
   const userWalletAddress = "DemHwXRcTyc76MuRwXwyhDdVpYLwoDz1T2rVpzaajMsR"
 
   // Replace the fetchSupportedTokens function with this improved version:
@@ -112,7 +112,7 @@ export default function SolanaSwapPage() {
 
       console.log("Fetching supported tokens from OKX API...")
 
-      const response = await fetch("/api/dex-tokens?chainIndex=501", {
+      const response = await fetch("/api/dex-tokens?chainIndex=7668", {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -220,7 +220,7 @@ export default function SolanaSwapPage() {
 
       const params = {
         action: "quote",
-        chainId: "501", // Solana
+        chainId: "7668", // TRN
         fromTokenAddress: fromToken.address,
         toTokenAddress: toToken.address,
         amount: formattedAmount,
@@ -272,7 +272,7 @@ export default function SolanaSwapPage() {
 
       const params = {
         action: "instructions",
-        chainId: "501", // Solana
+        chainId: "7668", // TRN
         fromTokenAddress: fromToken.address,
         toTokenAddress: toToken.address,
         amount: formattedAmount,
@@ -467,12 +467,12 @@ export default function SolanaSwapPage() {
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 via-blue-400 to-purple-600 text-transparent bg-clip-text mb-1">
-            Solana Swap
+            TRN Swap
           </h1>
           <p className="text-white/60">
             {loadingTokens
               ? "Loading supported tokens..."
-              : `Trade tokens on Solana with best rates • ${availableTokens.length} tokens available`}
+              : `Trade tokens on TRN with best rates • ${availableTokens.length} tokens available`}
           </p>
         </div>
         <div className="flex gap-2">
@@ -499,7 +499,7 @@ export default function SolanaSwapPage() {
           <div className="flex justify-between items-center mb-2">
             <span className="text-sm text-white/60">From</span>
             <div className="px-3 py-1 bg-gradient-to-r from-purple-500/20 to-blue-500/20 rounded-full border border-purple-500/30">
-              <span className="text-xs text-purple-300 font-medium">Solana</span>
+              <span className="text-xs text-purple-300 font-medium">TRN</span>
             </div>
           </div>
           <div className="flex justify-between items-center mb-2">
@@ -559,7 +559,7 @@ export default function SolanaSwapPage() {
           <div className="flex justify-between items-center mb-2">
             <span className="text-sm text-white/60">To</span>
             <div className="px-3 py-1 bg-gradient-to-r from-purple-500/20 to-blue-500/20 rounded-full border border-purple-500/30">
-              <span className="text-xs text-purple-300 font-medium">Solana</span>
+              <span className="text-xs text-purple-300 font-medium">TRN</span>
             </div>
           </div>
           <div className="flex justify-between items-center mb-2">
@@ -617,7 +617,7 @@ export default function SolanaSwapPage() {
 
             <div className="flex items-center justify-between">
               <span className="text-sm text-white/60">Network</span>
-              <span className="text-sm text-white/80 font-medium">Solana Mainnet</span>
+              <span className="text-sm text-white/80 font-medium">TRN Mainnet</span>
             </div>
 
             <div className="flex items-center justify-between">
@@ -745,7 +745,7 @@ export default function SolanaSwapPage() {
               </div>
 
               <div className="bg-white/5 rounded-lg p-3">
-                <div className="text-white/80 font-medium mb-2">Solana Transaction Details</div>
+                <div className="text-white/80 font-medium mb-2">TRN Transaction Details</div>
                 <div className="text-sm space-y-1">
                   <div className="flex justify-between">
                     <span className="text-white/60">Instructions:</span>
@@ -844,7 +844,7 @@ export default function SolanaSwapPage() {
                   Transaction Confirmed
                 </div>
                 <div className="text-sm text-green-200">
-                  Your swap has been successfully executed on Solana. The transaction has been confirmed and is now
+                  Your swap has been successfully executed on TRN. The transaction has been confirmed and is now
                   visible on the blockchain.
                 </div>
               </div>
@@ -855,7 +855,7 @@ export default function SolanaSwapPage() {
 
       <div className="mt-5 text-center">
         <p className="text-xs text-white/40">
-          Powered by OKX DEX Aggregator on Solana. Best rates across all Solana DEXs.
+          Powered by DEX Aggregator on TRN. Best rates across all TRN DEXs.
         </p>
       </div>
     </div>

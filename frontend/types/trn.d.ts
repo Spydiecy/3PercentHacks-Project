@@ -1,6 +1,6 @@
 interface Window {
-  solana?: {
-    isPhantom?: boolean;
+  trn?: {
+    isRootWallet?: boolean;
     isConnected: boolean;
     connect: () => Promise<{ publicKey: { toString: () => string } }>;
     disconnect: () => Promise<void>;

@@ -20,7 +20,7 @@ import {
 } from "lucide-react"
 
 // Enhanced chain configuration
-const AVAILABLE_CHAINS = [{ id: "501", name: "Solana", label: "SOL", color: "from-purple-500 to-blue-500" }]
+const AVAILABLE_CHAINS = [{ id: "7668", name: "TRN (The Root Network)", label: "ROOT", color: "from-green-500 to-blue-500" }]
 
 const TIME_PERIODS = [
   { label: "24H", value: "24h" },
@@ -143,7 +143,7 @@ export default function PortfolioPage() {
   const [totalValue, setTotalValue] = useState<string>("0")
   const [specificToken, setSpecificToken] = useState<any[]>([])
   const [selectedTable, setSelectedTable] = useState<"balances" | "history" | "specific" | "total_value">("balances")
-  const [selectedChains, setSelectedChains] = useState<string[]>(["501"])
+  const [selectedChains, setSelectedChains] = useState<string[]>(["7668"])
   const [selectedPeriod, setSelectedPeriod] = useState("30d")
   const [searchTerm, setSearchTerm] = useState("")
   const [showChainDropdown, setShowChainDropdown] = useState(false)
@@ -237,7 +237,7 @@ export default function PortfolioPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           address: "52C9T2T7JRojtxumYnYZhyUmrN7kqzvCLc4Ksvjk7TxD",
-          chains: "501",
+          chains: "7668",
           limit: "50",
         }),
       })
@@ -254,7 +254,7 @@ export default function PortfolioPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           address: "52C9T2T7JRojtxumYnYZhyUmrN7kqzvCLc4Ksvjk7TxD",
-          chains: "501",
+          chains: "7668",
           excludeRiskToken: "0",
         }),
       })
@@ -271,7 +271,7 @@ export default function PortfolioPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           address: "52C9T2T7JRojtxumYnYZhyUmrN7kqzvCLc4Ksvjk7TxD",
-          chains: "501",
+          chains: "7668",
           excludeRiskToken: "0",
         }),
       })
@@ -290,7 +290,7 @@ export default function PortfolioPage() {
           address: "52C9T2T7JRojtxumYnYZhyUmrN7kqzvCLc4Ksvjk7TxD",
           tokenContractAddresses: [
             {
-              chainIndex: "501",
+              chainIndex: "7668",
               tokenContractAddress: "",
             },
           ],
@@ -402,7 +402,7 @@ export default function PortfolioPage() {
           <h1 className="text-4xl font-bold bg-gradient-to-r from-white to-white/80 text-transparent bg-clip-text mb-2">
             Portfolio
           </h1>
-          <p className="text-white/60">Track and manage your Solana assets</p>
+          <p className="text-white/60">Track and manage your TRN (The Root Network) assets</p>
         </div>
         <div className="flex gap-3">
           <div className="relative">

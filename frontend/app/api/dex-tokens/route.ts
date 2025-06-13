@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url)
-    const chainIndex = searchParams.get("chainIndex") || "501" // Default to Solana
+    const chainIndex = searchParams.get("chainIndex") || "7668" // Default to TRN
 
     // Validate chainIndex
     if (!/^\d+$/.test(chainIndex)) {
@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
     const response = {
       success: true,
       chainIndex: chainIndex,
-      chainName: chainIndex === "501" ? "Solana" : `Chain ${chainIndex}`,
+      chainName: chainIndex === "7668" ? "TRN (The Root Network)" : `Chain ${chainIndex}`,
       timestamp: new Date().toISOString(),
       totalTokens: transformedTokens.length,
       tokens: transformedTokens,
@@ -154,11 +154,11 @@ export async function POST(request: NextRequest) {
             chainIndex: {
               type: "string",
               required: false,
-              default: "501",
-              description: "Chain identifier (e.g., 501 for Solana)",
+              default: "7668",
+              description: "Chain identifier (e.g., 7668 for TRN)",
             },
           },
-          example: "/api/dex-tokens?chainIndex=501",
+          example: "/api/dex-tokens?chainIndex=7668",
           response: {
             success: "boolean",
             chainIndex: "string",
@@ -179,7 +179,7 @@ export async function POST(request: NextRequest) {
         },
       },
       supportedChains: {
-        "501": "Solana",
+        "7668": "TRN (The Root Network)",
         "1": "Ethereum",
         "56": "BNB Chain",
         "137": "Polygon",
@@ -196,7 +196,7 @@ export async function POST(request: NextRequest) {
     service: "DEX Tokens API",
     timestamp: new Date().toISOString(),
     documentation: "/api/dex-tokens?docs=true",
-    defaultChain: "Solana (501)",
+    defaultChain: "TRN (The Root Network) (7668)",
     features: ["token-list", "logos", "metadata"],
   })
 }

@@ -83,7 +83,7 @@ export function HeroSection() {
                                     <Link
                                         href="#link"
                                         className="hover:bg-background dark:hover:border-t-border bg-muted group mx-auto flex w-fit items-center gap-4 rounded-full border p-1 pl-4 shadow-md shadow-black/5 transition-all duration-300 dark:border-t-white/5 dark:shadow-zinc-950">
-                                        <span className="text-foreground text-sm">Introducing Support for Solana</span>
+                                        <span className="text-foreground text-sm">Introducing Support for TRN (The Root Network)</span>
                                         <span className="dark:border-background block h-4 w-0.5 border-l bg-white dark:bg-zinc-700"></span>
 
                                         <div className="bg-background group-hover:bg-muted size-6 overflow-hidden rounded-full duration-500">
@@ -104,7 +104,7 @@ export function HeroSection() {
                                     </h1>
                                     <p
                                         className="mx-auto mt-8 max-w-2xl text-balance text-lg">
-                                        Astra harnesses the power of artificial intelligence and Solana's high-performance blockchain to transform your DeFi experience.
+                                        Astra harnesses the power of artificial intelligence and TRN's (The Root Network) high-performance blockchain to transform your DeFi experience through Futurepass wallet integration and custom smart contracts.
                                     </p>
                                 </AnimatedGroup>
 
@@ -216,8 +216,8 @@ export function HeroSection() {
                                         <path d="m20 22-5-5"/>
                                     </svg>
                                 </div>
-                                <h3 className="mb-2 text-xl font-semibold">Seamless Multi-DEX Execution</h3>
-                                <p className="text-muted-foreground">Execute token swaps across multiple decentralized exchanges with minimal friction.</p>
+                                <h3 className="mb-2 text-xl font-semibold">Futurepass Wallet Integration</h3>
+                                <p className="text-muted-foreground">Seamless integration with Futurepass for secure and user-friendly wallet management on TRN.</p>
                             </div>
                             
                             {/* Feature 3 */}
@@ -258,21 +258,21 @@ export function HeroSection() {
                                         <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/>
                                     </svg>
                                 </div>
-                                <h3 className="mb-2 text-xl font-semibold">Real-time Market Sentiment Analysis</h3>
-                                <p className="text-muted-foreground">Leverage cutting-edge NLP to analyze market trends and sentiment indicators.</p>
+                                <h3 className="mb-2 text-xl font-semibold">Custom Smart Contract Payments</h3>
+                                <p className="text-muted-foreground">Purpose-built smart contracts enable AI agent-powered DeFi transactions on TRN.</p>
                             </div>
                             
                             {/* Feature 6 */}
                             <div className="group rounded-xl border p-6 hover:border-primary/50">
                                 <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide">
-                                        <rect x="2" y="3" width="20" height="14" rx="2"/>
-                                        <line x1="8" y1="21" x2="16" y2="21"/>
-                                        <line x1="12" y1="17" x2="12" y2="21"/>
+                                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                                        <polyline points="3.29 7 12 12 20.71 7"/>
+                                        <line x1="12" y1="22" x2="12" y2="12"/>
                                     </svg>
                                 </div>
-                                <h3 className="mb-2 text-xl font-semibold">Intuitive Interface</h3>
-                                <p className="text-muted-foreground">Clean, professional dashboard suitable for both novice and sophisticated traders.</p>
+                                <h3 className="mb-2 text-xl font-semibold">Rootscan API Integration</h3>
+                                <p className="text-muted-foreground">Real-time transaction fetching and comprehensive blockchain data through Rootscan API.</p>
                             </div>
                         </div>
                     </div>
@@ -314,7 +314,7 @@ export function HeroSection() {
                                                 <polyline points="22 4 12 14.01 9 11.01"/>
                                             </svg>
                                         </div>
-                                        <span><strong>Blockchain Layer:</strong> Solana Web3.js for high-throughput transaction processing</span>
+                                        <span><strong>Blockchain Layer:</strong> TRN (The Root Network) SDK for high-throughput transaction processing</span>
                                     </li>
                                     <li className="flex items-start gap-2">
                                         <div className="flex-shrink-0 text-primary">
@@ -323,7 +323,7 @@ export function HeroSection() {
                                                 <polyline points="22 4 12 14.01 9 11.01"/>
                                             </svg>
                                         </div>
-                                        <span><strong>Integration Layer:</strong> OKX DEX API for liquidity access and trade execution</span>
+                                        <span><strong>Wallet Integration:</strong> Futurepass for secure wallet management and user authentication</span>
                                     </li>
                                     <li className="flex items-start gap-2">
                                         <div className="flex-shrink-0 text-primary">
@@ -332,7 +332,16 @@ export function HeroSection() {
                                                 <polyline points="22 4 12 14.01 9 11.01"/>
                                             </svg>
                                         </div>
-                                        <span><strong>Data Services:</strong> Pyth Network for reliable, low-latency price oracle data</span>
+                                        <span><strong>Smart Contracts:</strong> Custom DeFi payment contracts for AI agent transactions</span>
+                                    </li>
+                                    <li className="flex items-start gap-2">
+                                        <div className="flex-shrink-0 text-primary">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide">
+                                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                                                <polyline points="22 4 12 14.01 9 11.01"/>
+                                            </svg>
+                                        </div>
+                                        <span><strong>Data Services:</strong> Rootscan API for transaction fetching and blockchain data access</span>
                                     </li>
                                 </ul>
                             </div>
@@ -560,7 +569,7 @@ export function HeroSection() {
                             <div className="md:col-span-2">
                                 <Logo className="mb-4" />
                                 <p className="mb-4 max-w-xs text-muted-foreground">
-                                    Your AI-powered copilot for DeFi trading on Solana. Enhancing trading efficiency through advanced algorithms.
+                                    Your AI-powered copilot for DeFi trading on TRN (The Root Network). Enhancing trading efficiency through advanced algorithms.
                                 </p>
                                 <div className="flex space-x-4">
                                     <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
@@ -607,7 +616,7 @@ export function HeroSection() {
                         
                         <div className="mt-10 border-t pt-6">
                             <p className="text-center text-xs text-muted-foreground">
-                                © {new Date().getFullYear()} Astra. All rights reserved. Developed for the OKX Solana Accelerate Hackathon 2025.
+                                © {new Date().getFullYear()} Astra. All rights reserved. Developed for The Apex of Skills: TRN Labs Hackathon 2025.
                             </p>
                         </div>
                     </div>

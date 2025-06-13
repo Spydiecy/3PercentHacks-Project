@@ -49,7 +49,7 @@ interface Bridge {
   requireOtherNativeFee: boolean
   logoUrl?: string
   supportedChains: string[]
-  supportsSolana: boolean
+  supportsTRN: boolean
 }
 
 interface CrossChainSwapResult {
@@ -102,7 +102,7 @@ interface RequestQueue {
 }
 
 const chainList = [
-  { name: "Solana", index: "501", id: "501", color: "from-purple-500 to-blue-500" },
+  { name: "TRN (The Root Network)", index: "7668", id: "7668", color: "from-green-500 to-blue-500" },
   { name: "Ethereum", index: "1", id: "1", color: "from-blue-600 to-purple-600" },
   { name: "BNB Chain", index: "56", id: "56", color: "from-yellow-500 to-orange-500" },
   { name: "Polygon", index: "137", id: "137", color: "from-purple-600 to-pink-500" },
@@ -225,7 +225,7 @@ class RequestQueueManager {
 
 export default function  CrossChainSwapPage(){
   // Chain and token state
-  const [fromChain, setFromChain] = useState(chainList[0]) // Solana
+  const [fromChain, setFromChain] = useState(chainList[0]) // TRN (The Root Network)
   const [toChain, setToChain] = useState(chainList[1]) // Ethereum
   const [fromTokens, setFromTokens] = useState<Token[]>([])
   const [toTokens, setToTokens] = useState<Token[]>([])
@@ -286,11 +286,11 @@ export default function  CrossChainSwapPage(){
   })
 
   // Demo wallet addresses
-  const solanaWallet = "DemHwXRcTyc76MuRwXwyhDdVpYLwoDz1T2rVpzaajMsR"
+  const trnWallet = "5GxLKnPFaFCGFsJT9VzCTPTMH8Qm8kfnLBCdGXUf2WW7UZdP"
   const evmWallet = "0x22497668Fb12BA21E6A132de7168D0Ecc69cDF7d"
 
   const getCurrentWallet = (chain: (typeof chainList)[0]) => {
-    return chain.index === "501" ? solanaWallet : evmWallet
+    return chain.index === "7668" ? trnWallet : evmWallet
   }
 
   // Update loading progress
@@ -606,9 +606,9 @@ export default function  CrossChainSwapPage(){
       return
     }
 
-    // Validate that at least one chain is Solana
-    if (fromChain.index !== "501" && toChain.index !== "501") {
-      setError("At least one chain must be Solana for cross-chain swaps")
+    // Validate that at least one chain is TRN
+    if (fromChain.index !== "7668" && toChain.index !== "7668") {
+      setError("At least one chain must be TRN (The Root Network) for cross-chain swaps")
       return
     }
 
@@ -1449,7 +1449,7 @@ export default function  CrossChainSwapPage(){
 
       <div className="mt-5 text-center">
         <p className="text-xs text-white/40">
-          Powered by OKX Cross-Chain Bridge Aggregator. Secure multi-chain token transfers.
+          Powered by Cross-Chain Bridge Aggregator. Secure multi-chain token transfers.
         </p>
       </div>
     </div>

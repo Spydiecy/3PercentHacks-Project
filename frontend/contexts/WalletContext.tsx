@@ -29,45 +29,45 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [publicKey, setPublicKey] = useState<string | null>(null)
 
   useEffect(() => {
-    const checkForPhantom = async () => {
+    const checkForRootWallet = async () => {
       try {
         // Check if window is defined (browser environment)
         if (typeof window !== 'undefined') {
-          // Check if Phantom is installed
-          const phantom = window.solana
+          // Check if Root Wallet is installed
+          const rootWallet = window.trn
           
-          if (phantom) {
-            setWallet(phantom)
+          if (rootWallet) {
+            setWallet(rootWallet)
             
             // Check if already connected
-            if (phantom.isConnected) {
-              const key = phantom.publicKey?.toString()
+            if (rootWallet.isConnected) {
+              const key = rootWallet.publicKey?.toString()
               setConnected(true)
               setPublicKey(key || null)
             }
             
             // Handle connection change events
-            phantom.on('connect', () => {
-              const key = phantom.publicKey?.toString()
+            rootWallet.on('connect', () => {
+              const key = rootWallet.publicKey?.toString()
               setConnected(true)
               setPublicKey(key || null)
               setConnecting(false)
             })
             
-            phantom.on('disconnect', () => {
+            rootWallet.on('disconnect', () => {
               setConnected(false)
               setPublicKey(null)
             })
           }
         }
       } catch (error) {
-        console.error("Error checking for Phantom wallet:", error)
+        console.error("Error checking for Root wallet:", error)
       }
     }
     
     // Only run in browser
     if (typeof window !== 'undefined') {
-      checkForPhantom()
+      checkForRootWallet()
     }
     
     return () => {
@@ -82,13 +82,13 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const connectWallet = async () => {
     try {
       if (!wallet) {
-        window.open('https://phantom.app/', '_blank')
+        window.open('https://wallet.rootnet.live/', '_blank')
         return
       }
       
       setConnecting(true)
       
-      // Phantom wallet connection
+      // Root wallet connection
       await wallet.connect()
       
     } catch (error) {

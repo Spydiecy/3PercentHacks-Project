@@ -37,8 +37,8 @@ interface LoadingStep {
   message: string
 }
 
-// Solana-focused configuration (default selected)
-const chainOptions = [{ name: "Solana", value: "501", label: "SOL" }]
+// TRN-focused configuration (default selected)
+const chainOptions = [{ name: "TRN", value: "7668", label: "ROOT" }]
 
 const quickActions = [
   {
@@ -75,12 +75,12 @@ const quickActions = [
   },
 ]
 
-// Real Solana address for data fetching
-const SOLANA_ADDRESS = "52C9T2T7JRojtxumYnYZhyUmrN7kqzvCLc4Ksvjk7TxD"
+// Real TRN address for data fetching
+const TRN_ADDRESS = "52C9T2T7JRojtxumYnYZhyUmrN7kqzvCLc4Ksvjk7TxD"
 
 // Get dynamic address - use connected wallet address or fall back to dummy address
 const getDynamicAddress = (walletAddress?: string | null): string => {
-  return walletAddress || SOLANA_ADDRESS
+  return walletAddress || TRN_ADDRESS
 }
 
 // Rate limiting manager
@@ -193,12 +193,12 @@ function filterNonZeroTransactions(transactions: any[]): any[] {
 // Market data API call function with error handling
 async function callMarketDataApi(type: string, tokenName = "SOL", dynamicAddress?: string) {
   const tokenContractAddress = "So11111111111111111111111111111111111111112" // SOL token address
-  const addressToUse = dynamicAddress || SOLANA_ADDRESS
+  const addressToUse = dynamicAddress || TRN_ADDRESS
 
   if (type === "total_token_balance") {
     const body = {
       address: addressToUse,
-      chains: "501",
+      chains: "7668",
       excludeRiskToken: "0",
     }
     const response = await fetch("/api/portfolio/total_token_balances", {
@@ -216,7 +216,7 @@ async function callMarketDataApi(type: string, tokenName = "SOL", dynamicAddress
   if (type === "transaction_history") {
     const body = {
       address: addressToUse,
-      chains: "501",
+      chains: "7668",
       limit: "20",
     }
     const response = await fetch("/api/portfolio/history_by_add", {
@@ -234,7 +234,7 @@ async function callMarketDataApi(type: string, tokenName = "SOL", dynamicAddress
   if (type === "token_value") {
     const body = {
       address: addressToUse,
-      chains: "501",
+      chains: "7668",
       excludeRiskToken: "0",
     }
     const response = await fetch("/api/portfolio/token_value", {
@@ -258,21 +258,21 @@ async function callMarketDataApi(type: string, tokenName = "SOL", dynamicAddress
     method = "GET"
     path = "/api/v5/dex/market/candles"
     requestData = {
-      chainIndex: "501",
+      chainIndex: "7668",
       tokenContractAddress: tokenContractAddress,
     }
   } else if (type === "price") {
     method = "POST"
     path = "/api/v5/dex/market/price"
     requestData = {
-      chainIndex: "501",
+      chainIndex: "7668",
       tokenContractAddress: tokenContractAddress,
     }
   } else {
     method = "POST"
     path = "/api/v5/dex/market/price"
     requestData = {
-      chainIndex: "501",
+      chainIndex: "7668",
       tokenContractAddress: tokenContractAddress,
     }
   }
@@ -627,7 +627,7 @@ export default function DashboardPage() {
     setLoadingSteps((prev) => prev.map((step) => ({ ...step, status: "pending" as const })))
 
     try {
-      console.log("Starting sequential Solana data fetch with rate limiting...")
+      console.log("Starting sequential TRN data fetch with rate limiting...")
       console.log("Using address:", currentAddress, connected ? "(Connected wallet)" : "(Dummy address)")
 
       // Add initial delay to prevent immediate API bombardment
@@ -927,7 +927,7 @@ export default function DashboardPage() {
             <h1 className="text-4xl font-bold bg-gradient-to-r from-white to-white/80 text-transparent bg-clip-text mb-2">
               Welcome back
             </h1>
-            <p className="text-white/60">Your Solana DeFi portfolio with real-time data</p>
+            <p className="text-white/60">Your TRN DeFi portfolio with real-time data</p>
           </div>
 
           <div className="flex items-center gap-4">
@@ -1090,7 +1090,7 @@ export default function DashboardPage() {
               <div className="flex justify-between items-center">
                 <span className="text-white/60">Address</span>
                 <span className="text-white font-mono text-xs">
-                  {connected ? `${currentAddress.slice(0, 8)}... (Connected)` : `${SOLANA_ADDRESS.slice(0, 8)}... (Demo)`}
+                  {connected ? `${currentAddress.slice(0, 8)}... (Connected)` : `${TRN_ADDRESS.slice(0, 8)}... (Demo)`}
                 </span>
               </div>
               <div className="flex justify-between items-center">

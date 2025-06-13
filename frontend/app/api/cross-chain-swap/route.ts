@@ -109,10 +109,10 @@ function validateCrossChainParams(params: any): string | null {
     return "Slippage must be between 0.002 and 0.5"
   }
 
-  // Validate Solana involvement
-  const solanaChainId = "501"
-  if (params.fromChainIndex !== solanaChainId && params.toChainIndex !== solanaChainId) {
-    return "At least one chain must be Solana (chainIndex: 501)"
+  // Validate TRN involvement
+  const trnChainId = "7668"
+  if (params.fromChainIndex !== trnChainId && params.toChainIndex !== trnChainId) {
+    return "At least one chain must be TRN (The Root Network) (chainIndex: 7668)"
   }
 
   return null
@@ -295,22 +295,22 @@ export async function GET(request: NextRequest) {
           ],
           example: {
             action: "build-tx",
-            fromChainIndex: "501",
+            fromChainIndex: "7668",
             toChainIndex: "1",
-            fromChainId: "501",
+            fromChainId: "7668",
             toChainId: "1",
             fromTokenAddress: "11111111111111111111111111111111",
             toTokenAddress: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
             amount: "100000000",
             slippage: "0.01",
-            userWalletAddress: "YourSolanaWalletAddress",
+            userWalletAddress: "YourTRNWalletAddress",
             sort: "1",
             feePercent: "0.1",
           },
         },
       },
       supportedChains: {
-        "501": "Solana",
+        "7668": "TRN (The Root Network)",
         "1": "Ethereum",
         "56": "BNB Chain",
         "137": "Polygon",
@@ -343,6 +343,6 @@ export async function GET(request: NextRequest) {
     timestamp: new Date().toISOString(),
     documentation: "/api/cross-chain-swap?docs=true",
     features: ["build-tx"],
-    supportedChains: ["Solana", "Ethereum", "BNB Chain", "Polygon", "Arbitrum", "Optimism", "Avalanche", "Fantom"],
+    supportedChains: ["TRN (The Root Network)", "Ethereum", "BNB Chain", "Polygon", "Arbitrum", "Optimism", "Avalanche", "Fantom"],
   })
 }

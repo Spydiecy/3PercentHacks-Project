@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Astra - AI-powered DeFi Trading on Solana",
-  description: "Astra is an intelligent trading assistant that harnesses the power of artificial intelligence and Solana's high-performance blockchain to transform your DeFi experience.",
+  title: "Astra - AI-Powered DeFi Trading on TRN | The Apex of Skills: TRN Labs Hackathon",
+  description: "Astra harnesses AI and TRN (The Root Network) blockchain for intelligent DeFi trading with Futurepass wallet integration and custom smart contracts. Built for The Apex of Skills: TRN Labs Hackathon.",
 };
 
 export default function RootLayout({
