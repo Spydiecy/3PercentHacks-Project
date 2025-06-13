@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { ArrowDown, Settings, Clock, Zap, Info, ChevronDown, Check, ExternalLink, Copy, RefreshCw } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
-// Token interface for API response
+// Token interfac-e for API response
 interface Token {
   symbol: string
   name: string
