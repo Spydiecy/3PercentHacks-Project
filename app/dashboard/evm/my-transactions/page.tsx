@@ -158,7 +158,7 @@ export default function MyTransactionsPage() {
   const [activeModal, setActiveModal] = useState<"transaction-details" | "api-responses" | null>(null)
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
 
-  const apiKey = process.env.NEXT_PUBLIC_API_KEY || "81d0f73d-93d0-4cb0-b7ae-bce20587e79b"
+  const apiKey = process.env.NEXT_PUBLIC_API_KEY1 || "81d0f73d-93d0-4cb0-b7ae-bce20587e79b"
 
   // Update wallet address when user connects
   useEffect(() => {

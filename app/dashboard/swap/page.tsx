@@ -108,8 +108,8 @@ interface MinAmountResponse {
 }
 
 export default function SwapPage() {
-  const [fromToken, setFromToken] = useState(TOKENS[0])
-  const [toToken, setToToken] = useState(TOKENS[1])
+  const [fromToken, setFromToken] = useState(TOKENS[2])
+  const [toToken, setToToken] = useState(TOKENS[3])
   const [amount, setAmount] = useState("")
   const [recipientAddress, setRecipientAddress] = useState("")
   const [minAmount, setMinAmount] = useState<number | null>(null)

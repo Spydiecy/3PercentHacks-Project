@@ -134,7 +134,7 @@ export default function AiChatPage() {
   const [swapAddress, setSwapAddress] = useState("")
   const [swapLoading, setSwapLoading] = useState(false)
 
-  const apiKey = process.env.NEXT_PUBLIC_API_KEY || "81d0f73d-93d0-4cb0-b7ae-bce20587e79b"
+  const apiKey = process.env.NEXT_PUBLIC_API_KEY2 || "81d0f73d-93d0-4cb0-b7ae-bce20587e79b"
   const changeNowApiKey = process.env.NEXT_PUBLIC_CHANGENOW_API_KEY || ""
 
   // RootScan API Functions
@@ -474,7 +474,7 @@ export default function AiChatPage() {
   const suggestions = [
     // Transaction Examples
     "Show transaction details for hash 0x259c61a30584e005cb645aa51f61e9e7968b836997015e03864f3310310a6c78",
-    "Get transaction info for 0x47db11dd86cd6661c022940b046fabe0b3dd250d6ea2edf9618cc47588c16ac6",
+    
 
     // Block Examples
     "Get block details for block 20874717",

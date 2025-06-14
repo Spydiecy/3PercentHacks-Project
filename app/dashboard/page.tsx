@@ -255,7 +255,7 @@ export default function RootScanPortfolio() {
   const [activeModal, setActiveModal] = useState<null | string>(null)
   const [apiResponses, setApiResponses] = useState<any>({})
 
-  const apiKey = process.env.NEXT_PUBLIC_API_KEY || "" 
+  const apiKey = process.env.NEXT_PUBLIC_API_KEY3 || "" 
 
   // Enhanced fetch function with rate limiting and response storage
   const fetchWithRateLimit = async (url: string, options: RequestInit, responseKey: string) => {

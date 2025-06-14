@@ -163,7 +163,7 @@ export default function ExplorerPage() {
   const [chartData, setChartData] = useState<any[]>([])
   const [activeTab, setActiveTab] = useState<"blocks" | "transactions" | "activity">("blocks")
 
-  const apiKey = process.env.NEXT_PUBLIC_API_KEY || "81d0f73d-93d0-4cb0-b7ae-bce20587e79b"
+  const apiKey = process.env.NEXT_PUBLIC_API_KEY2 || ""
 
   const fetchWithRateLimit = async (url: string, options: RequestInit, responseKey: string) => {
     return rateLimitManager.addRequest(async () => {
@@ -346,7 +346,7 @@ export default function ExplorerPage() {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          "X-API-Key": process.env.NEXT_PUBLIC_ROOTSCAN_API_KEY || "",
+          "X-API-Key": process.env.NEXT_PUBLIC_API_KEY2 || "",
         },
       })
 
@@ -374,7 +374,7 @@ export default function ExplorerPage() {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          "X-API-Key": process.env.NEXT_PUBLIC_ROOTSCAN_API_KEY || "",
+          "X-API-Key":process.env.NEXT_PUBLIC_API_KEY3 || "",
         },
       })
 
