@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { useWallet } from "@/contexts/WalletContext"
 import {
   Send,
   Bot,
@@ -108,13 +109,11 @@ const SWAP_TOKENS = [
   },
 ]
 
-// Dummy address for RootScan APIs
-const DUMMY_ADDRESS = "0x718E2030e82B945b9E39546278a7a30221fC2650"
-
 // Color palette for charts
 const NEON_COLORS = ["#00FFFF", "#FF00FF", "#FFFF00", "#00FF00", "#FF0080", "#8000FF", "#FF8000", "#0080FF"]
 
 export default function AiChatPage() {
+  const { getDisplayAddress } = useWallet()
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "system",
@@ -147,27 +146,27 @@ export default function AiChatPage() {
     switch (type) {
       case "address_details":
         url = `${baseUrl}/address`
-        body = { address: params.address || DUMMY_ADDRESS }
+        body = { address: params.address || getDisplayAddress() }
         break
       case "token_balances":
         url = `${baseUrl}/address-token-balances`
-        body = { address: params.address || DUMMY_ADDRESS }
+        body = { address: params.address || getDisplayAddress() }
         break
       case "nft_balances":
         url = `${baseUrl}/address-nft-balances`
-        body = { address: params.address || DUMMY_ADDRESS, page: 0 }
+        body = { address: params.address || getDisplayAddress(), page: 0 }
         break
       case "native_transfers":
         url = `${baseUrl}/native-transfers`
-        body = { address: params.address || DUMMY_ADDRESS }
+        body = { address: params.address || getDisplayAddress() }
         break
       case "evm_transfers":
         url = `${baseUrl}/evm-transfers`
-        body = { address: params.address || DUMMY_ADDRESS }
+        body = { address: params.address || getDisplayAddress() }
         break
       case "evm_transactions":
         url = `${baseUrl}/evm-transactions`
-        body = { address: params.address || DUMMY_ADDRESS, perPage: 100 }
+        body = { address: params.address || getDisplayAddress(), perPage: 100 }
         break
       case "evm_transaction_details":
         url = `${baseUrl}/evm-transaction`
@@ -175,7 +174,7 @@ export default function AiChatPage() {
         break
       case "extrinsics":
         url = `${baseUrl}/extrinsics`
-        body = { address: params.address || DUMMY_ADDRESS }
+        body = { address: params.address || getDisplayAddress() }
         break
       case "extrinsic_details":
         url = `${baseUrl}/extrinsic`
@@ -575,7 +574,7 @@ export default function AiChatPage() {
             <div key={index} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} mb-4`}>
               {message.content === "API_DATA" ? (
                 <div className="w-full max-w-4xl">
-                  <APIDataDisplay data={message.chartData} type={message.chartType} title={message.chartTitle} />
+                  <APIDataDisplay data={message.chartData} type={message.chartType} title={message.chartTitle} getDisplayAddress={getDisplayAddress} />
                 </div>
               ) : message.content === "SWAP_CREATED" ? (
                 <div className="w-full max-w-4xl">
@@ -793,7 +792,7 @@ export default function AiChatPage() {
 }
 
 // Component to display API data based on type
-function APIDataDisplay({ data, type, title }: { data: any; type?: string; title?: string }) {
+function APIDataDisplay({ data, type, title, getDisplayAddress }: { data: any; type?: string; title?: string; getDisplayAddress: () => string }) {
   if (!data) return null
 
   switch (type) {
@@ -817,7 +816,7 @@ function APIDataDisplay({ data, type, title }: { data: any; type?: string; title
     case "events":
       return <EventsDisplay data={data} title={title} />
     case "transfers":
-      return <TransfersDisplay data={data} title={title} />
+      return <TransfersDisplay data={data} title={title} getDisplayAddress={getDisplayAddress} />
     default:
       return <GenericDataDisplay data={data} title={title} />
   }
@@ -1413,7 +1412,7 @@ function EventsDisplay({ data, title }: { data: any; title?: string }) {
   )
 }
 
-function TransfersDisplay({ data, title }: { data: any; title?: string }) {
+function TransfersDisplay({ data, title, getDisplayAddress }: { data: any; title?: string; getDisplayAddress: () => string }) {
   const transfers = data.data || []
 
   // Prepare chart data for transfer activity
@@ -1422,7 +1421,7 @@ function TransfersDisplay({ data, title }: { data: any; title?: string }) {
     amount: transfer.args.amount / 1e12,
     timestamp: new Date(transfer.timestamp * 1000).toLocaleDateString(),
     block: transfer.blockNumber,
-    type: transfer.args.from.toLowerCase() === DUMMY_ADDRESS.toLowerCase() ? "Sent" : "Received",
+    type: transfer.args.from.toLowerCase() === getDisplayAddress().toLowerCase() ? "Sent" : "Received",
   }))
 
   return (
@@ -1473,7 +1472,7 @@ function TransfersDisplay({ data, title }: { data: any; title?: string }) {
           {/* Transfer List */}
           <div className="space-y-3">
             {transfers.slice(0, 10).map((transfer: any, index: number) => {
-              const isOutgoing = transfer.args.from.toLowerCase() === DUMMY_ADDRESS.toLowerCase()
+              const isOutgoing = transfer.args.from.toLowerCase() === getDisplayAddress().toLowerCase()
               return (
                 <div
                   key={index}

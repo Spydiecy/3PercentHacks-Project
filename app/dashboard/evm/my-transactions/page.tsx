@@ -25,9 +25,6 @@ import {
   X
 } from "lucide-react"
 
-// Dummy address for API calls
-const DUMMY_ADDRESS = "0x718E2030e82B945b9E39546278a7a30221fC2650"
-
 // Updated interfaces for Rootscan API
 interface Transaction {
   hash: string
@@ -151,8 +148,8 @@ function InfoCard({ title, value, className = "" }: { title: string; value: any;
 }
 
 export default function MyTransactionsPage() {
-  const { connectWallet: walletConnect, connected, publicKey, userSession } = useWallet()
-  const [walletAddress, setWalletAddress] = useState(DUMMY_ADDRESS)
+  const { connected, publicKey, userSession, getDisplayAddress } = useWallet()
+  const [walletAddress, setWalletAddress] = useState("")
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [walletBalance, setWalletBalance] = useState<WalletBalance | null>(null)
   const [loading, setLoading] = useState(false)
@@ -165,13 +162,9 @@ export default function MyTransactionsPage() {
 
   // Update wallet address when user connects
   useEffect(() => {
-    if (connected && publicKey) {
-      setWalletAddress(publicKey)
-      loadWalletData(publicKey)
-    } else if (connected && userSession?.eoa) {
-      setWalletAddress(userSession.eoa)
-      loadWalletData(userSession.eoa)
-    }
+    const displayAddress = getDisplayAddress()
+    setWalletAddress(displayAddress)
+    loadWalletData(displayAddress)
   }, [connected, publicKey, userSession])
 
   const fetchWithRateLimit = async (url: string, options: RequestInit, responseKey: string) => {
@@ -195,14 +188,6 @@ export default function MyTransactionsPage() {
 
       return data
     })
-  }
-
-  const connectWallet = async () => {
-    try {
-      await walletConnect()
-    } catch (error) {
-      console.error("Error connecting wallet:", error)
-    }
   }
 
   const loadWalletData = async (address: string) => {
@@ -355,20 +340,6 @@ export default function MyTransactionsPage() {
     }
   }
 
-  useEffect(() => {
-    const init = async () => {
-      try {
-        setLoading(true)
-        await loadWalletData(walletAddress)
-      } catch (error) {
-        console.error("Error initializing:", error)
-      } finally {
-        setLoading(false)
-      }
-    }
-    init()
-  }, [])
-
   return (
     <div className="space-y-6 p-6">
       {/* Header */}
@@ -383,15 +354,7 @@ export default function MyTransactionsPage() {
           <Button
             variant="outline"
             className="bg-black/20 border-gray-800 hover:border-gray-700 text-white"
-            onClick={connectWallet}
-          >
-            <Wallet className="h-4 w-4 mr-2" />
-            Connect Wallet
-          </Button>
-          <Button
-            variant="outline"
-            className="bg-black/20 border-gray-800 hover:border-gray-700 text-white"
-            onClick={() => loadWalletData(walletAddress)}
+            onClick={() => loadWalletData(getDisplayAddress())}
             disabled={loading}
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />

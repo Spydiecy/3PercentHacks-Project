@@ -6,6 +6,7 @@ import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { useWallet } from "@/contexts/WalletContext"
 import {
   BarChart,
   Bar,
@@ -38,9 +39,6 @@ import {
   Database,
   Loader2,
 } from "lucide-react"
-
-// Dummy address for RootScan API
-const DUMMY_ADDRESS = "0x718E2030e82B945b9E39546278a7a30221fC2650"
 
 // Enhanced chain configuration
 const AVAILABLE_CHAINS = [
@@ -235,6 +233,7 @@ function DashboardCard({
 }
 
 export default function RootScanPortfolio() {
+  const { getDisplayAddress, connected, publicKey, userSession } = useWallet()
   const [loading, setLoading] = useState(false)
   const [loadingStep, setLoadingStep] = useState("")
   const [loadingProgress, setLoadingProgress] = useState(0)
@@ -301,7 +300,7 @@ export default function RootScanPortfolio() {
             "content-type": "application/json",
             "x-api-key": apiKey,
           },
-          body: JSON.stringify({ address: DUMMY_ADDRESS }),
+          body: JSON.stringify({ address: getDisplayAddress() }),
         },
         "address",
       )
@@ -322,7 +321,7 @@ export default function RootScanPortfolio() {
             "content-type": "application/json",
             "x-api-key": apiKey,
           },
-          body: JSON.stringify({ address: DUMMY_ADDRESS }),
+          body: JSON.stringify({ address: getDisplayAddress() }),
         },
         "tokenBalances",
       )
@@ -340,7 +339,7 @@ export default function RootScanPortfolio() {
             "content-type": "application/json",
             "x-api-key": apiKey,
           },
-          body: JSON.stringify({ address: DUMMY_ADDRESS, page: 0 }),
+          body: JSON.stringify({ address: getDisplayAddress(), page: 0 }),
         },
         "nftBalances",
       )
@@ -360,7 +359,7 @@ export default function RootScanPortfolio() {
             "content-type": "application/json",
             "x-api-key": apiKey,
           },
-          body: JSON.stringify({ address: DUMMY_ADDRESS }),
+          body: JSON.stringify({ address: getDisplayAddress() }),
         },
         "nativeTransfers",
       )
@@ -380,7 +379,7 @@ export default function RootScanPortfolio() {
             "content-type": "application/json",
             "x-api-key": apiKey,
           },
-          body: JSON.stringify({ address: DUMMY_ADDRESS }),
+          body: JSON.stringify({ address: getDisplayAddress() }),
         },
         "evmTransfers",
       )
@@ -400,7 +399,7 @@ export default function RootScanPortfolio() {
             "content-type": "application/json",
             "x-api-key": apiKey,
           },
-          body: JSON.stringify({ address: DUMMY_ADDRESS }),
+          body: JSON.stringify({ address: getDisplayAddress() }),
         },
         "extrinsics",
       )
@@ -473,8 +472,12 @@ export default function RootScanPortfolio() {
   }
 
   useEffect(() => {
-    fetchRootScanData()
-  }, [])
+    // Only fetch data if we have a display address (connected wallet or demo mode)
+    const address = getDisplayAddress()
+    if (address) {
+      fetchRootScanData()
+    }
+  }, [connected, publicKey, userSession]) // Fetch data when wallet connection state changes
 
   // Calculate portfolio stats
   const portfolioStats = {
@@ -501,10 +504,10 @@ export default function RootScanPortfolio() {
 
   const transfersChartData = nativeTransfers.slice(0, 10).map((transfer, index) => ({
     name: `Block ${transfer.blockNumber}`,
-    amount: transfer.args.amount / 1e12,
+    amount: transfer.args?.amount ? transfer.args.amount / 1e12 : 0,
     timestamp: new Date(transfer.timestamp * 1000).toLocaleDateString(),
     block: transfer.blockNumber,
-    type: transfer.args.from.toLowerCase() === DUMMY_ADDRESS.toLowerCase() ? "Sent" : "Received",
+    type: transfer.args?.from?.toLowerCase() === getDisplayAddress().toLowerCase() ? "Sent" : "Received",
   }))
 
   const priceChangeData = tokenBalances.map((token, index) => ({
@@ -836,12 +839,12 @@ export default function RootScanPortfolio() {
                     <div className="flex items-center gap-3">
                       <div
                         className={`p-3 rounded-full ${
-                          transfer.args.from.toLowerCase() === DUMMY_ADDRESS.toLowerCase()
+                          transfer.args?.from?.toLowerCase() === getDisplayAddress().toLowerCase()
                             ? "bg-red-500/20 text-red-400 border border-red-500/30"
                             : "bg-green-500/20 text-green-400 border border-green-500/30"
                         }`}
                       >
-                        {transfer.args.from.toLowerCase() === DUMMY_ADDRESS.toLowerCase() ? (
+                        {transfer.args?.from?.toLowerCase() === getDisplayAddress().toLowerCase() ? (
                           <ArrowUpRight className="h-5 w-5" />
                         ) : (
                           <ArrowDownRight className="h-5 w-5" />
@@ -849,13 +852,13 @@ export default function RootScanPortfolio() {
                       </div>
                       <div>
                         <p className="text-white font-semibold">
-                          {transfer.args.from.toLowerCase() === DUMMY_ADDRESS.toLowerCase() ? "Sent" : "Received"}
+                          {transfer.args?.from?.toLowerCase() === getDisplayAddress().toLowerCase() ? "Sent" : "Received"}
                         </p>
                         <p className="text-white/60 text-sm">Block #{transfer.blockNumber}</p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-white font-bold">{(transfer.args.amount / 1e12).toFixed(6)} ROOT</p>
+                      <p className="text-white font-bold">{((transfer.args?.amount || 0) / 1e12).toFixed(6)} ROOT</p>
                       <p className="text-white/60 text-sm">{new Date(transfer.timestamp * 1000).toLocaleString()}</p>
                     </div>
                   </div>

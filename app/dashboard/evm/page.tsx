@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { useWallet } from "@/contexts/WalletContext"
 import {
   BarChart,
   Bar,
@@ -34,9 +35,6 @@ import {
   XCircle,
   ArrowRight,
 } from "lucide-react"
-
-// Dummy address for API calls
-const DUMMY_ADDRESS = "0x718E2030e82B945b9E39546278a7a30221fC2650"
 
 // Neon color palette
 const NEON_COLORS = ["#00FFFF", "#FF00FF", "#FFFF00", "#00FF00", "#FF0080", "#8000FF", "#FF8000", "#0080FF"]
@@ -142,6 +140,7 @@ class RateLimitManager {
 const rateLimitManager = new RateLimitManager()
 
 export default function EVMExplorer() {
+  const { getDisplayAddress, connected, publicKey, userSession } = useWallet()
   const [loading, setLoading] = useState(false)
   const [loadingStep, setLoadingStep] = useState("")
   const [activeTab, setActiveTab] = useState<"transactions" | "blocks" | "events">("transactions")
@@ -204,7 +203,7 @@ export default function EVMExplorer() {
           "content-type": "application/json",
           "x-api-key": apiKey,
         },
-        body: JSON.stringify({ address: DUMMY_ADDRESS, perPage: 100 }),
+        body: JSON.stringify({ address: getDisplayAddress(), perPage: 100 }),
       },
       "evmTransactions",
     )
@@ -413,8 +412,12 @@ export default function EVMExplorer() {
   }
 
   useEffect(() => {
-    loadAllData()
-  }, [])
+    // Only fetch data if we have a display address (connected wallet or demo mode)
+    const address = getDisplayAddress()
+    if (address) {
+      loadAllData()
+    }
+  }, [connected, publicKey, userSession]) // Fetch data when wallet connection state changes
 
   // Prepare chart data with proper validation
   const prepareTransactionVolumeData = () => {

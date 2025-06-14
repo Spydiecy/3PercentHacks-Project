@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { useWallet } from "@/contexts/WalletContext"
 import {
   BarChart,
   Bar,
@@ -37,9 +38,6 @@ import {
   DollarSign,
   X
 } from "lucide-react"
-
-// Dummy address for API calls
-const DUMMY_ADDRESS = "0x718E2030e82B945b9E39546278a7a30221fC2650"
 
 // Updated interfaces for Rootscan API
 interface Block {
@@ -151,6 +149,7 @@ class RateLimitManager {
 const rateLimitManager = new RateLimitManager()
 
 export default function ExplorerPage() {
+  const { getDisplayAddress } = useWallet()
   const [searchQuery, setSearchQuery] = useState("")
   const [searchType, setSearchType] = useState<"block" | "transaction" | "address">("block")
   const [latestBlocks, setLatestBlocks] = useState<Block[]>([])

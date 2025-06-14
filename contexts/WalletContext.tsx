@@ -12,6 +12,7 @@ interface WalletContextType {
   userSession: any | null
   connectWallet: () => Promise<void>
   disconnectWallet: () => Promise<void>
+  getDisplayAddress: () => string
 }
 
 const WalletContext = createContext<WalletContextType>({
@@ -21,7 +22,8 @@ const WalletContext = createContext<WalletContextType>({
   publicKey: null,
   userSession: null,
   connectWallet: async () => {},
-  disconnectWallet: async () => {}
+  disconnectWallet: async () => {},
+  getDisplayAddress: () => "0x718E2030e82B945b9E39546278a7a30221fC2650"
 })
 
 export const useWallet = () => useContext(WalletContext)
@@ -88,6 +90,28 @@ const WalletProviderInner: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }
 
+  // Utility function to get the address to display/use for API calls
+  const getDisplayAddress = (): string => {
+    // Use connected wallet address if available, otherwise use dummy address for demo
+    const DUMMY_ADDRESS = "0x718E2030e82B945b9E39546278a7a30221fC2650"
+    
+    if (connected && publicKey) {
+      return publicKey
+    }
+    
+    // If userSession has EOA or futurepass, use that
+    if (userSession?.eoa) {
+      return userSession.eoa
+    }
+    
+    if (userSession?.futurepass) {
+      return userSession.futurepass
+    }
+    
+    // Fallback to dummy address for demo purposes
+    return DUMMY_ADDRESS
+  }
+
   return (
     <WalletContext.Provider 
       value={{
@@ -97,7 +121,8 @@ const WalletProviderInner: React.FC<{ children: React.ReactNode }> = ({ children
         publicKey,
         userSession,
         connectWallet,
-        disconnectWallet
+        disconnectWallet,
+        getDisplayAddress
       }}
     >
       {children}
