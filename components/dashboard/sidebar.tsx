@@ -9,7 +9,9 @@ import {
   ArrowLeftRight, 
   Settings, 
   Home,
-  ArrowLeft
+  ArrowLeft,
+  History,
+  Search
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useEffect } from "react"
@@ -40,9 +42,14 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
       href: "/dashboard/ai-chat"
     },
     {
-      label: "EVM",
-      icon: ArrowLeftRight,
-      href: "/dashboard/evm"
+      label: "My Transactions",
+      icon: History,
+      href: "/dashboard/evm/my-transactions"
+    },
+    {
+      label: "Explorer",
+      icon: Search,
+      href: "/dashboard/evm/explorer"
     },
     {
       label: "Swap",
