@@ -74,9 +74,9 @@
 //     } catch (error) {
 //       console.error("Error connecting wallet:", error)
 //       // Set a demo connection for development purposes
-//       setPublicKey("0xc6342AD85a4d5CF9EEf0fcC9299C793200EA821F")
+//       setPublicKey("0x718E2030e82B945b9E39546278a7a30221fC2650")
 //       setConnected(true)
-//       setUserSession({ eoa: "0xc6342AD85a4d5CF9EEf0fcC9299C793200EA821F", demo: true })
+//       setUserSession({ eoa: "0x718E2030e82B945b9E39546278a7a30221fC2650", demo: true })
 //       console.log("Using demo wallet for development")
 //     } finally {
 //       setConnecting(false)

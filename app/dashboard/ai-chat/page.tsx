@@ -109,7 +109,7 @@ const SWAP_TOKENS = [
 ]
 
 // Dummy address for RootScan APIs
-const DUMMY_ADDRESS = "0xc6342AD85a4d5CF9EEf0fcC9299C793200EA821F"
+const DUMMY_ADDRESS = "0x718E2030e82B945b9E39546278a7a30221fC2650"
 
 // Color palette for charts
 const NEON_COLORS = ["#00FFFF", "#FF00FF", "#FFFF00", "#00FF00", "#FF0080", "#8000FF", "#FF8000", "#0080FF"]

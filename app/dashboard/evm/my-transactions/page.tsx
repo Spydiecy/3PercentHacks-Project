@@ -26,7 +26,7 @@ import {
 } from "lucide-react"
 
 // Dummy address for API calls
-const DUMMY_ADDRESS = "0xc6342AD85a4d5CF9EEf0fcC9299C793200EA821F"
+const DUMMY_ADDRESS = "0x718E2030e82B945b9E39546278a7a30221fC2650"
 
 // Updated interfaces for Rootscan API
 interface Transaction {

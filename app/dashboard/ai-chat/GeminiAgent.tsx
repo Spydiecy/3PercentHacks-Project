@@ -32,7 +32,7 @@ IMPORTANT EXTRACTION RULES:
 - If user provides an event ID (format like "20959992-3"), extract it as eventId
 - If user provides an extrinsic hash, extract it as extrinsicHash
 - If user provides an address (0x followed by 40 hex characters), extract it as address
-- If no specific hash/number provided, use dummy address: "0xc6342AD85a4d5CF9EEf0fcC9299C793200EA821F"
+- If no specific hash/number provided, use dummy address: "0x718E2030e82B945b9E39546278a7a30221fC2650"
 
 EXAMPLES:
 User: "Show transaction details for 0x259c61a30584e005cb645aa51f61e9e7968b836997015e03864f3310310a6c78"
@@ -48,7 +48,7 @@ User: "I want to swap BTC to ETH"
 Response: {"type": "swap_request"}
 
 User: "Show my token balances"
-Response: {"type": "token_balances", "address": "0xc6342AD85a4d5CF9EEf0fcC9299C793200EA821F"}
+Response: {"type": "token_balances", "address": "0x718E2030e82B945b9E39546278a7a30221fC2650"}
 
 User: "Get event details for 20959992-3"
 Response: {"type": "event_details", "eventId": "20959992-3"}
