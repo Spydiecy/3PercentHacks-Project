@@ -14,31 +14,6 @@
   [🚀 Live Demo](https://astra-trn.vercel.app) • [📖 Documentation](#documentation)
 </div>
 
-## 🏆 Built for 3Percent Hacks - Building with Web3 and AI
-
-<div align="center">
-  <img src="https://img.shields.io/badge/3Percent_Hacks-Hackathon_Winner-gold?style=for-the-badge" alt="3Percent Hacks" />
-</div>
-
-**About the Challenge**
-
-The **3percentclub Hackathon** is more than just a coding competition—it's a bold invitation to rethink who gets to build the future. Our goal is to create an inclusive, empowering space where underrepresented founders, developers, and creatives can launch ideas that center equity, community, and impact. Whether you're designing with Web3, building with AI, or dreaming up new models of access and innovation, this hackathon is your starting line. It's a week to experiment, collaborate, and unlock the kind of radical solutions that only emerge when diverse perspectives are at the table—and in the code.
-
-### 🎯 Challenge Tracks
-
-This project was built for multiple challenge tracks:
-
-#### 😎 **Vibe Coding for Social Impact Challenge**
-Astra TRN promotes financial inclusion by making blockchain portfolio analytics accessible to everyone, regardless of technical expertise. Our AI-powered interface democratizes access to complex financial data.
-
-#### 💅🏾 **Put the Charisma, Uniqueness, Nerve, and Talent into Web3**
-With its bold neon-themed design and innovative AI integration, Astra TRN showcases the transformative potential of Web3 technologies through a daring and imaginative user experience.
-
-#### 🤠 **Cowboy Coder - Blending Genres**
-Astra TRN seamlessly combines blockchain analytics, AI-powered insights, modern web development, and user experience design to create a unique and groundbreaking portfolio management platform.
-
----
-
 ## 📋 Table of Contents
 
 - [🎯 Project Overview](#-project-overview)
