@@ -12,7 +12,7 @@ const xamanAPIKey = process.env.NEXT_PUBLIC_XAMAN_API_KEY || 'your-xaman-applica
 
 export const authClient = new FutureverseAuthClient({
   clientId,
-  environment: 'production',
+  environment: 'development',
   redirectUri: typeof window !== 'undefined' ? `${window.location.origin}/dashboard/` : 'https://astra-trn.vercel.app/dashboard/',
   responseType: 'code'
 });

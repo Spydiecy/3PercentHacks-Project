@@ -29,7 +29,7 @@ export const useWallet = () => useContext(WalletContext)
 // Create auth client
 const authClient = new FutureverseAuthClient({
   clientId: process.env.NEXT_PUBLIC_FUTUREVERSE_CLIENT_ID || '2qC_LOMj3oHhri4XpJL2X',
-  environment: 'production',
+  environment: 'development',
   redirectUri: typeof window !== 'undefined' ? `${window.location.origin}/dashboard/` : 'https://astra-trn.vercel.app/dashboard/',
   responseType: 'code'
 })
