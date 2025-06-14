@@ -1,9 +1,8 @@
-
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI } from "@google/genai"
 
 const ai = new GoogleGenAI({
-  apiKey: process.env.NEXT_PUBLIC_GEMINI_KEY,
-});
+  apiKey: process.env.NEXT_PUBLIC_GEMINI_KEY!,
+})
 
 const IMPORTANT_INFO_PROMPT = `
 You are an assistant that extracts only the most important information from a given dataset or text. 
@@ -47,9 +46,10 @@ Input:
 }
 
 Output:
-"General information: No important price data found."
-if it is general msg then return the message only not general information written also.
-`;
+"No important price data found."
+
+If it is general msg then return the message only not general information written also.
+`
 
 /**
  * Calls Gemini API to extract important information (like prices) from the given data.
@@ -57,18 +57,18 @@ if it is general msg then return the message only not general information writte
  * @returns The concise user prompt string containing extracted important info.
  */
 export async function extractImportantInfoFromData(data: any): Promise<string> {
-  const prompt = `${IMPORTANT_INFO_PROMPT}\n\nInput:\n${JSON.stringify(data, null, 2)}\n\nOutput:`;
+  const prompt = `${IMPORTANT_INFO_PROMPT}\n\nInput:\n${JSON.stringify(data, null, 2)}\n\nOutput:`
 
   try {
-    const response:any = await ai.models.generateContent({
+    const response: any = await ai.models.generateContent({
       model: "gemini-2.0-flash",
       contents: prompt,
-    });
+    })
 
     // Return the trimmed text response (expected to be a plain string)
-    return response.text.trim();
+    return response.text.trim()
   } catch (error: any) {
-    console.error("Error extracting important info from data:", error);
-    return "General information: Unable to extract important data.";
+    console.error("Error extracting important info from data:", error)
+    return "Unable to extract important data."
   }
 }
