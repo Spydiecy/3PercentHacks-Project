@@ -32,7 +32,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
     {
       label: "Home",
       icon: Home,
-      href: "/dashboard/portfolio"
+      href: "/dashboard"
     },
     {
       label: "AI Chat",
@@ -44,15 +44,10 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
       icon: ArrowLeftRight,
       href: "/dashboard/evm"
     },
-      {
+    {
       label: "Cross Chain Swap Info",
       icon: ArrowLeftRight,
       href: "/dashboard/swap"
-    },
-    {
-      label: "Portfolio",
-      icon: BarChart2,
-      href: "/dashboard/portfolio"
     },
     {
       label: "Settings",

@@ -1,514 +1,200 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useWallet } from "@/contexts/WalletContext"
+import type React from "react"
+
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import {
-  ArrowRight,
-  MessageCircle,
-  ArrowLeftRight,
-  Sparkles,
-  TrendingUp,
-  CreditCard,
-  Settings,
-  ChevronDown,
-  RefreshCw,
-  BarChart3,
-  TrendingDown,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  AreaChart,
+  Area,
+  RadialBarChart,
+  RadialBar,
+} from "recharts"
+import {
+  Download,
+  DollarSign,
   Coins,
+  Activity,
+  RefreshCw,
+  X,
+  BarChart3,
+  TrendingUp,
+  Zap,
+  ArrowUpRight,
+  ArrowDownRight,
+  Wallet,
+  Database,
   Loader2,
 } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
-import { ResponsiveContainer } from "recharts"
-import Link from "next/link"
 
-// Types and interfaces
-interface DashboardStats {
-  tokenHoldings: number
-  totalTransactions: number
-  activeChains: number
-  totalTokens: number
-}
+// Dummy address for RootScan API
+const DUMMY_ADDRESS = "0xc6342AD85a4d5CF9EEf0fcC9299C793200EA821F"
 
-interface LoadingStep {
-  name: string
-  status: "pending" | "loading" | "completed" | "error"
-  message: string
-}
-
-// TRN-focused configuration (default selected)
-const chainOptions = [{ name: "TRN", value: "7668", label: "ROOT" }]
-
-const quickActions = [
-  {
-    id: "ai-chat",
-    label: "AI Assistant",
-    icon: MessageCircle,
-    href: "/dashboard/ai-chat",
-    gradientFrom: "#8B5CF6",
-    gradientTo: "#6366F1",
-  },
-  {
-    id: "swap",
-    label: "Swap",
-    icon: ArrowLeftRight,
-    href: "/dashboard/swap",
-    gradientFrom: "#EC4899",
-    gradientTo: "#F43F5E",
-  },
-  {
-    id: "portfolio",
-    label: "Portfolio",
-    icon: TrendingUp,
-    href: "/dashboard/portfolio",
-    gradientFrom: "#F59E0B",
-    gradientTo: "#EF4444",
-  },
-  {
-    id: "settings",
-    label: "Settings",
-    icon: Settings,
-    href: "/dashboard/settings",
-    gradientFrom: "#10B981",
-    gradientTo: "#059669",
-  },
+// Enhanced chain configuration
+const AVAILABLE_CHAINS = [
+  { id: "7668", name: "TRN (The Root Network)", label: "ROOT", color: "from-green-500 to-blue-500" },
 ]
 
-// Real TRN address for data fetching
-const TRN_ADDRESS = "52C9T2T7JRojtxumYnYZhyUmrN7kqzvCLc4Ksvjk7TxD"
+const TIME_PERIODS = [
+  { label: "24H", value: "24h" },
+  { label: "7D", value: "7d" },
+  { label: "30D", value: "30d" },
+  { label: "90D", value: "90d" },
+  { label: "1Y", value: "1y" },
+]
 
-// Get dynamic address - use connected wallet address or fall back to dummy address
-const getDynamicAddress = (walletAddress?: string | null): string => {
-  return walletAddress || TRN_ADDRESS
+// Color palette for neon effects
+const NEON_COLORS = ["#00FFFF", "#FF00FF", "#FFFF00", "#00FF00", "#FF0080", "#8000FF", "#FF8000", "#0080FF"]
+const GRADIENT_COLORS = [
+  "from-cyan-500 to-blue-500",
+  "from-purple-500 to-pink-500",
+  "from-green-500 to-teal-500",
+  "from-orange-500 to-red-500",
+  "from-indigo-500 to-purple-500",
+  "from-pink-500 to-rose-500",
+  "from-yellow-500 to-orange-500",
+  "from-teal-500 to-cyan-500",
+]
+
+interface TokenBalance {
+  contractAddress: string
+  address: string
+  balance: number
+  balanceFormatted: string
+  token: {
+    contractAddress: string
+    priceData: {
+      price: number
+      volume_24h: number
+      percent_change_24h: number
+      percent_change_7d: number
+      market_cap: number
+    }
+    decimals: number
+    name: string
+    symbol: string
+    totalSupply: number
+    type: string
+  }
+}
+
+interface NativeTransfer {
+  eventId: string
+  args: {
+    from: string
+    to: string
+    amount: number
+  }
+  blockNumber: number
+  timestamp: number
+  hash: string
+  method: string
+}
+
+interface Extrinsic {
+  extrinsicId: string
+  args: any
+  block: number
+  hash: string
+  method: string
+  section: string
+  timestamp: number
+  isSuccess: boolean
+  fee?: {
+    actualFee: number
+    actualFeeFormatted: number
+  }
 }
 
 // Rate limiting manager
-class DashboardRateLimitManager {
-  private lastRequestTime = 0
-  private minDelay = 3000 // 3 seconds between requests
+class RateLimitManager {
+  private queue: Array<() => Promise<any>> = []
+  private isProcessing = false
+  private minDelay = 1000 // 1 second between requests
   private maxRetries = 3
 
-  async makeRequest(
-    apiCall: () => Promise<any>,
-    stepName: string,
-    updateStep: (step: string, status: string, message: string) => void,
-  ): Promise<any> {
-    let retries = 0
+  async addRequest<T>(requestFn: () => Promise<T>, retries = 0): Promise<T> {
+    return new Promise((resolve, reject) => {
+      this.queue.push(async () => {
+        try {
+          const result = await requestFn()
+          resolve(result)
+        } catch (error: any) {
+          if (error.status === 429 && retries < this.maxRetries) {
+            const delay = this.minDelay * Math.pow(2, retries)
+            setTimeout(() => {
+              this.addRequest(requestFn, retries + 1)
+                .then(resolve)
+                .catch(reject)
+            }, delay)
+          } else {
+            reject(error)
+          }
+        }
+      })
 
-    while (retries < this.maxRetries) {
-      try {
-        // Ensure minimum delay between requests
-        const now = Date.now()
-        const timeSinceLastRequest = now - this.lastRequestTime
+      if (!this.isProcessing) {
+        this.processQueue()
+      }
+    })
+  }
 
-        if (timeSinceLastRequest < this.minDelay) {
-          const waitTime = this.minDelay - timeSinceLastRequest
-          updateStep(stepName, "loading", `Waiting ${Math.ceil(waitTime / 1000)}s to prevent rate limiting...`)
-          await new Promise((resolve) => setTimeout(resolve, waitTime))
+  private async processQueue() {
+    if (this.isProcessing || this.queue.length === 0) return
+
+    this.isProcessing = true
+
+    while (this.queue.length > 0) {
+      const request = this.queue.shift()
+      if (request) {
+        try {
+          await request()
+        } catch (error) {
+          console.error("Request failed:", error)
         }
 
-        updateStep(stepName, "loading", `Fetching ${stepName.toLowerCase()}...`)
-        this.lastRequestTime = Date.now()
-
-        const result = await apiCall()
-        updateStep(stepName, "completed", `✅ ${stepName} loaded successfully`)
-        return result
-      } catch (error: any) {
-        retries++
-
-        if (error.message?.includes("429") || error.message?.includes("rate limit")) {
-          const backoffDelay = Math.min(this.minDelay * Math.pow(2, retries), 15000) // Max 15s
-          updateStep(
-            stepName,
-            "error",
-            `Rate limited. Retrying in ${Math.ceil(backoffDelay / 1000)}s... (${retries}/${this.maxRetries})`,
-          )
-          await new Promise((resolve) => setTimeout(resolve, backoffDelay))
-        } else if (retries >= this.maxRetries) {
-          updateStep(stepName, "error", `❌ Failed to load ${stepName.toLowerCase()}`)
-          throw error
-        } else {
-          updateStep(stepName, "error", `Retry ${retries}/${this.maxRetries} for ${stepName.toLowerCase()}...`)
-          await new Promise((resolve) => setTimeout(resolve, 2000))
+        if (this.queue.length > 0) {
+          await new Promise((resolve) => setTimeout(resolve, this.minDelay))
         }
       }
     }
+
+    this.isProcessing = false
   }
 }
 
-// Helper functions
-function formatTimestamp(timestamp: string | number): string {
-  const date = new Date(Number(timestamp))
-  return date.toLocaleDateString() + " " + date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-}
+const rateLimitManager = new RateLimitManager()
 
-function formatPrice(price: string | number): string {
-  const num = Number(price)
-  if (num === 0) return "0.00"
-  return num.toFixed(6)
-}
-
-// Filter functions for zero values with error handling
-function filterNonZeroTokens(tokens: any[]): any[] {
-  try {
-    if (!Array.isArray(tokens)) return []
-
-    return tokens.filter((token) => {
-      try {
-        const balance = Number(token?.balance || 0)
-        const price = Number(token?.tokenPrice || 0)
-        const value = balance * price
-        return value > 0.01 && balance > 0 // Filter tokens worth less than $0.01
-      } catch (error) {
-        console.warn("Error filtering token:", token, error)
-        return false
-      }
-    })
-  } catch (error) {
-    console.warn("Error in filterNonZeroTokens:", error)
-    return []
-  }
-}
-
-function filterNonZeroTransactions(transactions: any[]): any[] {
-  try {
-    if (!Array.isArray(transactions)) return []
-
-    return transactions.filter((tx) => {
-      try {
-        const amount = Number(tx?.amount || 0)
-        return Math.abs(amount) > 0 // Filter zero-amount transactions
-      } catch (error) {
-        console.warn("Error filtering transaction:", tx, error)
-        return false
-      }
-    })
-  } catch (error) {
-    console.warn("Error in filterNonZeroTransactions:", error)
-    return []
-  }
-}
-
-// Market data API call function with error handling
-async function callMarketDataApi(type: string, tokenName = "SOL", dynamicAddress?: string) {
-  const tokenContractAddress = "So11111111111111111111111111111111111111112" // SOL token address
-  const addressToUse = dynamicAddress || TRN_ADDRESS
-
-  if (type === "total_token_balance") {
-    const body = {
-      address: addressToUse,
-      chains: "7668",
-      excludeRiskToken: "0",
-    }
-    const response = await fetch("/api/portfolio/total_token_balances", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    })
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-    }
-    return await response.json()
-  }
-
-  if (type === "transaction_history") {
-    const body = {
-      address: addressToUse,
-      chains: "7668",
-      limit: "20",
-    }
-    const response = await fetch("/api/portfolio/history_by_add", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    })
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-    }
-    return await response.json()
-  }
-
-  if (type === "token_value") {
-    const body = {
-      address: addressToUse,
-      chains: "7668",
-      excludeRiskToken: "0",
-    }
-    const response = await fetch("/api/portfolio/token_value", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    })
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-    }
-    return await response.json()
-  }
-
-  // Market data calls (candlestick and price data) - Fixed parameter structure
-  let path = ""
-  let method = "POST"
-  let requestData = {}
-  
-  if (type === "candlestick") {
-    method = "GET"
-    path = "/api/v5/dex/market/candles"
-    requestData = {
-      chainIndex: "7668",
-      tokenContractAddress: tokenContractAddress,
-    }
-  } else if (type === "price") {
-    method = "POST"
-    path = "/api/v5/dex/market/price"
-    requestData = {
-      chainIndex: "7668",
-      tokenContractAddress: tokenContractAddress,
-    }
-  } else {
-    method = "POST"
-    path = "/api/v5/dex/market/price"
-    requestData = {
-      chainIndex: "7668",
-      tokenContractAddress: tokenContractAddress,
-    }
-  }
-
-  const body = {
-    method: method,
-    path: path,
-    data: requestData
-  }
-
-  const response = await fetch("/api/market_data", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  })
-
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-  }
-  return await response.json()
-}
-
-// Candlestick Chart component for SOL OHLC data
-function SolanaCandlestickChart({ data, title }: { data: any; title: string }) {
-  if (!data?.data || !Array.isArray(data.data) || data.data.length === 0) return null
-
-  let chartData: any[] = []
-  
-  // Handle different data formats for candlestick data
-  if (Array.isArray(data.data)) {
-    // Format: [[timestamp, open, high, low, close, volume], ...]
-    chartData = data.data
-      .map((item: any) => ({
-        time: formatTimestamp(item[0]),
-        open: Number(item[1]),
-        high: Number(item[2]),
-        low: Number(item[3]),
-        close: Number(item[4]),
-        volume: Number(item[5]) || 0,
-        timestamp: Number(item[0]),
-      }))
-      .reverse()
-      .slice(-12) // Show last 12 data points for better visibility
-  }
-
-  if (chartData.length === 0) {
-    return null
-  }
-
-  const currentPrice = chartData[chartData.length - 1]?.close || 0
-  const previousPrice = chartData[chartData.length - 2]?.close || 0
-  const priceChange = currentPrice - previousPrice
-  const isPositive = priceChange >= 0
-
-  // Calculate price range for the entire dataset
-  const allPrices = chartData.flatMap((item: any) => [item.open, item.high, item.low, item.close])
-  const minPrice = Math.min(...allPrices)
-  const maxPrice = Math.max(...allPrices)
-  const priceRange = maxPrice - minPrice || 1
-  const padding = priceRange * 0.1
-  const yMin = minPrice - padding
-  const yMax = maxPrice + padding
-
-  return (
-    <Card className="w-full bg-black/40 border-white/20 backdrop-blur-sm">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-white flex items-center gap-2">
-          <BarChart3 className="h-5 w-5" />
-          {title}
-        </CardTitle>
-        <div className="flex items-center gap-2">
-          <span className="text-2xl font-bold text-white">${formatPrice(currentPrice)}</span>
-          <span className={`flex items-center gap-1 text-sm ${isPositive ? "text-green-400" : "text-red-400"}`}>
-            {isPositive ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
-            {isPositive ? "+" : ""}
-            {formatPrice(priceChange)}
-          </span>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <ChartContainer
-          config={{
-            high: { label: "High", color: "#22c55e" },
-            low: { label: "Low", color: "#ef4444" },
-            open: { label: "Open", color: "#3b82f6" },
-            close: { label: "Close", color: "#8b5cf6" },
-          }}
-          className="h-[200px]"
-        >
-          <ResponsiveContainer width="100%" height="100%">
-            <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-              <svg width="100%" height="100%" className="candlestick-chart">
-                <defs>
-                  <linearGradient id="bgGradientDash" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="rgba(255,255,255,0.05)" />
-                    <stop offset="100%" stopColor="rgba(255,255,255,0.01)" />
-                  </linearGradient>
-                </defs>
-                
-                {/* Background */}
-                <rect width="100%" height="100%" fill="url(#bgGradientDash)" />
-                
-                {/* Grid lines */}
-                {[0, 25, 50, 75, 100].map((percent: number) => (
-                  <line
-                    key={percent}
-                    x1="40"
-                    y1={40 + (percent / 100) * 120}
-                    x2="100%"
-                    y2={40 + (percent / 100) * 120}
-                    stroke="rgba(255,255,255,0.1)"
-                    strokeWidth={0.5}
-                  />
-                ))}
-                
-                {/* Y-axis labels */}
-                {[0, 25, 50, 75, 100].map((percent: number) => {
-                  const price = yMax - (percent / 100) * (yMax - yMin)
-                  return (
-                    <text
-                      key={percent}
-                      x="35"
-                      y={45 + (percent / 100) * 120}
-                      fill="white"
-                      fontSize="8"
-                      textAnchor="end"
-                    >
-                      ${price.toFixed(2)}
-                    </text>
-                  )
-                })}
-                
-                {/* Candlesticks */}
-                {chartData.map((item: any, index: number) => {
-                  const chartWidth = 400 // Approximate chart width
-                  const x = 50 + (index / Math.max(chartData.length - 1, 1)) * (chartWidth - 100)
-                  const candleWidth = Math.max((chartWidth - 100) / chartData.length * 0.8, 3)
-                  
-                  // Calculate positions
-                  const priceToY = (price: number) => 40 + ((yMax - price) / (yMax - yMin)) * 120
-                  
-                  const highY = priceToY(item.high)
-                  const lowY = priceToY(item.low)
-                  const openY = priceToY(item.open)
-                  const closeY = priceToY(item.close)
-                  
-                  const isPositive = item.close >= item.open
-                  const bodyColor = isPositive ? "#22c55e" : "#ef4444"
-                  const wickColor = isPositive ? "#16a34a" : "#dc2626"
-                  
-                  const bodyTop = Math.min(openY, closeY)
-                  const bodyHeight = Math.abs(closeY - openY) || 1
-                  const bodyX = x - candleWidth / 2
-                  
-                  return (
-                    <g key={index}>
-                      {/* Wick */}
-                      <line
-                        x1={x}
-                        y1={highY}
-                        x2={x}
-                        y2={lowY}
-                        stroke={wickColor}
-                        strokeWidth={1}
-                      />
-                      {/* Body */}
-                      <rect
-                        x={bodyX}
-                        y={bodyTop}
-                        width={candleWidth}
-                        height={bodyHeight}
-                        fill={isPositive ? bodyColor : "transparent"}
-                        stroke={bodyColor}
-                        strokeWidth={isPositive ? 0 : 1}
-                      />
-                      
-                      {/* Tooltip trigger area */}
-                      <rect
-                        x={bodyX - 2}
-                        y={Math.min(highY, lowY) - 2}
-                        width={candleWidth + 4}
-                        height={Math.abs(highY - lowY) + 4}
-                        fill="transparent"
-                        className="cursor-pointer"
-                      >
-                        <title>
-                          {`Time: ${item.time}
-Open: $${item.open.toFixed(4)}
-High: $${item.high.toFixed(4)}
-Low: $${item.low.toFixed(4)}
-Close: $${item.close.toFixed(4)}
-Volume: ${item.volume.toLocaleString()}`}
-                        </title>
-                      </rect>
-                    </g>
-                  )
-                })}
-                
-                {/* X-axis labels */}
-                {chartData.filter((_: any, index: number) => index % Math.ceil(chartData.length / 4) === 0).map((item: any, filteredIndex: number) => {
-                  const originalIndex = filteredIndex * Math.ceil(chartData.length / 4)
-                  const chartWidth = 400
-                  const x = 50 + (originalIndex / Math.max(chartData.length - 1, 1)) * (chartWidth - 100)
-                  return (
-                    <text
-                      key={filteredIndex}
-                      x={x}
-                      y="175"
-                      fill="white"
-                      fontSize="8"
-                      textAnchor="middle"
-                    >
-                      {item.time.split(' ')[0]}
-                    </text>
-                  )
-                })}
-              </svg>
-            </div>
-          </ResponsiveContainer>
-        </ChartContainer>
-      </CardContent>
-    </Card>
-  )
-}
-
+// DashboardCard component
 function DashboardCard({
-  id,
   title,
   value,
   change,
-  trend,
   icon: Icon,
   gradientFrom,
   gradientTo,
   loading = false,
-}: any) {
+}: {
+  title: string
+  value: string
+  change: string
+  icon: any
+  gradientFrom: string
+  gradientTo: string
+  loading?: boolean
+}) {
   return (
     <div className="relative group">
       <div
@@ -530,11 +216,7 @@ function DashboardCard({
               )}
             </p>
             <div className="flex items-center mt-1">
-              <span
-                className={`text-xs ${
-                  trend === "up" ? "text-emerald-400" : trend === "down" ? "text-rose-400" : "text-gray-400"
-                }`}
-              >
+              <span className="text-xs text-emerald-400">
                 {change}
               </span>
             </div>
@@ -552,745 +234,887 @@ function DashboardCard({
   )
 }
 
-export default function DashboardPage() {
-  const { connected, publicKey } = useWallet()
-  const [isHovering, setIsHovering] = useState<string | null>(null)
-  const [selectedChain, setSelectedChain] = useState(chainOptions[0])
-  const [showChainDropdown, setShowChainDropdown] = useState(false)
-  const [dashboardStats, setDashboardStats] = useState<DashboardStats>({
-    tokenHoldings: 0,
-    totalTransactions: 0,
-    activeChains: 1,
-    totalTokens: 0,
-  })
-  const [tokenAssets, setTokenAssets] = useState<any[]>([])
-  const [transactions, setTransactions] = useState<any[]>([])
-  const [candlestickChart, setCandlestickChart] = useState<any | null>(null)
-  const [currentPrice, setCurrentPrice] = useState<string>("0")
-  const [portfolioValue, setPortfolioValue] = useState<string>("0")
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
-  const [loadingSteps, setLoadingSteps] = useState<LoadingStep[]>([
-    { name: "Token Balances", status: "pending", message: "Preparing to fetch token balances..." },
-    { name: "Transaction History", status: "pending", message: "Preparing to fetch transaction history..." },
-    { name: "Portfolio Value", status: "pending", message: "Preparing to fetch portfolio value..." },
-    { name: "Candlestick Data", status: "pending", message: "Preparing to fetch candlestick data..." },
-    { name: "Current Price", status: "pending", message: "Preparing to fetch current SOL price..." },
-  ])
-  const [progress, setProgress] = useState(0)
+export default function RootScanPortfolio() {
+  const [loading, setLoading] = useState(false)
+  const [loadingStep, setLoadingStep] = useState("")
+  const [loadingProgress, setLoadingProgress] = useState(0)
+  const [refreshing, setRefreshing] = useState(false)
 
-  const rateLimitManager = new DashboardRateLimitManager()
+  // RootScan API Data
+  const [addressData, setAddressData] = useState<any>(null)
+  const [tokenBalances, setTokenBalances] = useState<TokenBalance[]>([])
+  const [nftBalances, setNftBalances] = useState<any[]>([])
+  const [nativeTransfers, setNativeTransfers] = useState<NativeTransfer[]>([])
+  const [evmTransfers, setEvmTransfers] = useState<any[]>([])
+  const [extrinsics, setExtrinsics] = useState<Extrinsic[]>([])
+  const [selectedExtrinsic, setSelectedExtrinsic] = useState<any>(null)
 
-  // Get dynamic address based on wallet connection
-  const currentAddress = getDynamicAddress(publicKey)
+  // UI State
+  const [selectedTable, setSelectedTable] = useState<"overview" | "tokens" | "transfers" | "extrinsics">("overview")
+  const [selectedPeriod, setSelectedPeriod] = useState("30d")
+  const [showPeriodDropdown, setShowPeriodDropdown] = useState(false)
+  const [activeModal, setActiveModal] = useState<null | string>(null)
+  const [apiResponses, setApiResponses] = useState<any>({})
 
-  const updateLoadingStep :any= (
-    stepName: string,
-    status: "pending" | "loading" | "completed" | "error",
-    message: string,
-  ) => {
-    setLoadingSteps((prev) => prev.map((step) => (step.name === stepName ? { ...step, status, message } : step)))
+  const apiKey = process.env.NEXT_PUBLIC_API_KEY || "" 
 
-    // Update progress
-    setLoadingSteps((current) => {
-      const completed = current.filter((step) => step.status === "completed").length
-      const total = current.length
-      setProgress((completed / total) * 100)
-      return current
+  // Enhanced fetch function with rate limiting and response storage
+  const fetchWithRateLimit = async (url: string, options: RequestInit, responseKey: string) => {
+    return rateLimitManager.addRequest(async () => {
+      const response = await fetch(url, options)
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+      const data = await response.json()
+
+      // Store API response for viewing
+      setApiResponses((prev: any) => ({
+        ...prev,
+        [responseKey]: {
+          url,
+          method: options.method,
+          body: options.body,
+          response: data,
+          timestamp: new Date().toISOString(),
+        },
+      }))
+
+      return data
     })
   }
 
-  const formatCurrency = (value: string | number) => {
-    try {
-      const num = Number(value)
-      if (isNaN(num) || num === 0) return "$0.00"
-      if (num >= 1000000) {
-        return `$${(num / 1000000).toFixed(2)}M`
-      } else if (num >= 1000) {
-        return `$${(num / 1000).toFixed(2)}K`
-      }
-      return `$${num.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
-    } catch (error) {
-      console.warn("Error formatting currency:", value, error)
-      return "$0.00"
-    }
-  }
-
-  // Fetch all real data with rate limiting and error recovery
-  const fetchAllData = async () => {
+  const fetchRootScanData = async () => {
     setLoading(true)
-    setError(null)
-    setProgress(0)
-
-    // Reset all steps to pending
-    setLoadingSteps((prev) => prev.map((step) => ({ ...step, status: "pending" as const })))
+    setLoadingProgress(0)
 
     try {
-      console.log("Starting sequential TRN data fetch with rate limiting...")
-      console.log("Using address:", currentAddress, connected ? "(Connected wallet)" : "(Dummy address)")
+      // 1. Fetch address data
+      setLoadingStep("Fetching address data...")
+      setLoadingProgress(16)
 
-      // Add initial delay to prevent immediate API bombardment
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      const addressResponse = await fetchWithRateLimit(
+        "https://api.rootscan.io/v1/address",
+        {
+          method: "POST",
+          headers: {
+            accept: "application/json",
+            "content-type": "application/json",
+            "x-api-key": apiKey,
+          },
+          body: JSON.stringify({ address: DUMMY_ADDRESS }),
+        },
+        "address",
+      )
 
-      let tokenBalancesRes, transactionHistoryRes, portfolioValueRes, candlestickDataRes, currentPriceRes
+      setAddressData(addressResponse.data)
+      setTokenBalances(addressResponse.data?.balances || [])
 
-      try {
-        tokenBalancesRes = await rateLimitManager.makeRequest(
-          () => callMarketDataApi("total_token_balance", "SOL", currentAddress),
-          "Token Balances",
-          updateLoadingStep,
-        )
-      } catch (error) {
-        console.warn("Token balances failed, using fallback:", error)
-        tokenBalancesRes = { data: [{ tokenAssets: [] }] }
-      }
+      // 2. Fetch token balances
+      setLoadingStep("Fetching token balances...")
+      setLoadingProgress(32)
 
-      try {
-        transactionHistoryRes = await rateLimitManager.makeRequest(
-          () => callMarketDataApi("transaction_history", "SOL", currentAddress),
-          "Transaction History",
-          updateLoadingStep,
-        )
-      } catch (error) {
-        console.warn("Transaction history failed, using fallback:", error)
-        transactionHistoryRes = { data: [{ transactions: [], transactionList: [] }] }
-      }
+      const tokenResponse = await fetchWithRateLimit(
+        "https://api.rootscan.io/v1/address-token-balances",
+        {
+          method: "POST",
+          headers: {
+            accept: "application/json",
+            "content-type": "application/json",
+            "x-api-key": apiKey,
+          },
+          body: JSON.stringify({ address: DUMMY_ADDRESS }),
+        },
+        "tokenBalances",
+      )
 
-      try {
-        portfolioValueRes = await rateLimitManager.makeRequest(
-          () => callMarketDataApi("token_value", "SOL", currentAddress),
-          "Portfolio Value",
-          updateLoadingStep,
-        )
-      } catch (error) {
-        console.warn("Portfolio value failed, using fallback:", error)
-        portfolioValueRes = { data: [{ totalValue: "0" }] }
-      }
+      // 3. Fetch NFT balances
+      setLoadingStep("Fetching NFT balances...")
+      setLoadingProgress(48)
 
-      try {
-        candlestickDataRes = await rateLimitManager.makeRequest(
-          () => callMarketDataApi("candlestick"),
-          "Candlestick Data",
-          updateLoadingStep,
-        )
-      } catch (error) {
-        console.warn("Candlestick data failed, using fallback:", error)
-        candlestickDataRes = { data: [] }
-      }
+      const nftResponse = await fetchWithRateLimit(
+        "https://api.rootscan.io/v1/address-nft-balances",
+        {
+          method: "POST",
+          headers: {
+            accept: "application/json",
+            "content-type": "application/json",
+            "x-api-key": apiKey,
+          },
+          body: JSON.stringify({ address: DUMMY_ADDRESS, page: 0 }),
+        },
+        "nftBalances",
+      )
 
-      try {
-        currentPriceRes = await rateLimitManager.makeRequest(
-          () => callMarketDataApi("price"),
-          "Current Price",
-          updateLoadingStep,
-        )
-      } catch (error) {
-        console.warn("Current price failed, using fallback:", error)
-        currentPriceRes = { data: [{ price: "0" }] }
-      }
+      setNftBalances(nftResponse.data || [])
 
-      console.log("All API calls completed, processing data...")
+      // 4. Fetch native transfers
+      setLoadingStep("Fetching native transfers...")
+      setLoadingProgress(64)
 
-      // Initialize variables to hold processed data
-      let processedTokens: any[] = []
-      let processedTransactions: any[] = []
-      let processedPortfolioValue = "0"
-      let processedCurrentPrice = "0"
+      const transfersResponse = await fetchWithRateLimit(
+        "https://api.rootscan.io/v1/native-transfers",
+        {
+          method: "POST",
+          headers: {
+            accept: "application/json",
+            "content-type": "application/json",
+            "x-api-key": apiKey,
+          },
+          body: JSON.stringify({ address: DUMMY_ADDRESS }),
+        },
+        "nativeTransfers",
+      )
 
-      // Process token balances with safe fallbacks
-      try {
-        const allTokenBalances = tokenBalancesRes?.data?.[0]?.tokenAssets || []
-        console.log("Raw token balances:", allTokenBalances)
-        processedTokens = Array.isArray(allTokenBalances) ? filterNonZeroTokens(allTokenBalances) : []
-        console.log("Filtered tokens:", processedTokens.length, processedTokens)
-      } catch (error) {
-        console.warn("Error processing token balances:", error)
-        processedTokens = []
-      }
+      setNativeTransfers(transfersResponse.data || [])
 
-      // Process transactions with safe fallbacks
-      try {
-        const allTransactions =
-          transactionHistoryRes?.data?.[0]?.transactions || transactionHistoryRes?.data?.[0]?.transactionList || []
-        console.log("Raw transactions:", allTransactions)
-        processedTransactions = Array.isArray(allTransactions) ? filterNonZeroTransactions(allTransactions) : []
-        console.log("Filtered transactions:", processedTransactions.length, processedTransactions)
-      } catch (error) {
-        console.warn("Error processing transactions:", error)
-        processedTransactions = []
-      }
+      // 5. Fetch EVM transfers
+      setLoadingStep("Fetching EVM transfers...")
+      setLoadingProgress(80)
 
-      // Process portfolio value with safe fallbacks
-      try {
-        const portfolioVal = portfolioValueRes?.data?.[0]?.totalValue || "0"
-        console.log("Raw portfolio value:", portfolioVal)
-        processedPortfolioValue = String(portfolioVal)
+      const evmResponse = await fetchWithRateLimit(
+        "https://api.rootscan.io/v1/evm-transfers",
+        {
+          method: "POST",
+          headers: {
+            accept: "application/json",
+            "content-type": "application/json",
+            "x-api-key": apiKey,
+          },
+          body: JSON.stringify({ address: DUMMY_ADDRESS }),
+        },
+        "evmTransfers",
+      )
 
-        // If portfolio value is 0 or invalid, calculate from token assets
-        if (Number(processedPortfolioValue) === 0 && processedTokens.length > 0) {
-          const calculatedValue = processedTokens.reduce((total, token) => {
-            const balance = Number(token?.balance || 0)
-            const price = Number(token?.tokenPrice || 0)
-            return total + balance * price
-          }, 0)
-          processedPortfolioValue = String(calculatedValue)
-          console.log("Calculated portfolio value from tokens:", processedPortfolioValue)
-        }
-      } catch (error) {
-        console.warn("Error processing portfolio value:", error)
-        processedPortfolioValue = "0"
-      }
+      setEvmTransfers(evmResponse.data || [])
 
-      // Process current price with safe fallbacks
-      try {
-        const price = currentPriceRes?.data?.[0]?.price || "0"
-        console.log("Raw current price:", price)
-        processedCurrentPrice = String(price)
+      // 6. Fetch extrinsics
+      setLoadingStep("Fetching extrinsics...")
+      setLoadingProgress(96)
 
-        // If current price is 0, try to get it from token assets (SOL token)
-        if (Number(processedCurrentPrice) === 0 && processedTokens.length > 0) {
-          const solToken = processedTokens.find(
-            (token) => token.symbol === "SOL" || token.tokenAddress === "So11111111111111111111111111111111111111112",
-          )
-          if (solToken && solToken.tokenPrice) {
-            processedCurrentPrice = String(solToken.tokenPrice)
-            console.log("Got SOL price from token assets:", processedCurrentPrice)
-          }
-        }
-      } catch (error) {
-        console.warn("Error processing current price:", error)
-        processedCurrentPrice = "0"
-      }
+      const extrinsicsResponse = await fetchWithRateLimit(
+        "https://api.rootscan.io/v1/extrinsics",
+        {
+          method: "POST",
+          headers: {
+            accept: "application/json",
+            "content-type": "application/json",
+            "x-api-key": apiKey,
+          },
+          body: JSON.stringify({ address: DUMMY_ADDRESS }),
+        },
+        "extrinsics",
+      )
 
-      // Process candlestick chart data with safe fallbacks
-      try {
-        if (candlestickDataRes?.data && Array.isArray(candlestickDataRes.data) && candlestickDataRes.data.length > 0) {
-          setCandlestickChart(candlestickDataRes)
-          console.log("Candlestick data processed:", candlestickDataRes.data.length, "data points")
-        } else {
-          setCandlestickChart(null)
-          console.log("No candlestick data available")
-        }
-      } catch (error) {
-        console.warn("Error processing candlestick chart:", error)
-        setCandlestickChart(null)
-      }
+      setExtrinsics(extrinsicsResponse.data || [])
 
-      // Update all states together to prevent race conditions
-      const newStats = {
-        tokenHoldings: processedTokens.length,
-        totalTransactions: processedTransactions.length,
-        activeChains: 1,
-        totalTokens: processedTokens.length,
-      }
-
-      console.log("Final processed data:", {
-        tokens: processedTokens.length,
-        transactions: processedTransactions.length,
-        portfolioValue: processedPortfolioValue,
-        currentPrice: processedCurrentPrice,
-        stats: newStats,
-      })
-
-      // Update all states in the correct order
-      setTokenAssets(processedTokens)
-      setTransactions(processedTransactions)
-      setPortfolioValue(processedPortfolioValue)
-      setCurrentPrice(processedCurrentPrice)
-      setDashboardStats(newStats)
-
-      setLastUpdated(new Date())
-      setLoading(false)
-      console.log("Dashboard data processing completed successfully")
+      setLoadingStep("Data loaded successfully!")
+      setLoadingProgress(100)
     } catch (error) {
-      console.error("Critical error in fetchAllData:", error)
-      setError("Failed to load dashboard data. Please check your connection and try refreshing.")
+      console.error("Error fetching data:", error)
+      setLoadingStep("Error loading data. Please try again.")
     } finally {
-      setProgress(100)
-    }
-  }
-
-  const handleRefresh = () => {
-    fetchAllData()
-  }
-
-  // Fetch data on component mount with error boundary
-  useEffect(() => {
-    const initializeData = async () => {
-      try {
-        await fetchAllData()
-      } catch (error) {
-        console.error("Failed to initialize dashboard:", error)
-        setError("Failed to initialize dashboard. Please refresh the page.")
+      setTimeout(() => {
         setLoading(false)
-      }
+        setLoadingStep("")
+        setLoadingProgress(0)
+      }, 500)
+    }
+  }
+
+  const fetchExtrinsicDetails = async (hash: string) => {
+    try {
+      const response = await fetchWithRateLimit(
+        "https://api.rootscan.io/v1/extrinsic",
+        {
+          method: "POST",
+          headers: {
+            accept: "application/json",
+            "content-type": "application/json",
+            "x-api-key": apiKey,
+          },
+          body: JSON.stringify({ hash }),
+        },
+        `extrinsicDetail_${hash}`,
+      )
+
+      setSelectedExtrinsic(response.data)
+    } catch (error) {
+      console.error("Error fetching extrinsic details:", error)
+    }
+  }
+
+  const handleRefresh = async () => {
+    setRefreshing(true)
+    await fetchRootScanData()
+    setRefreshing(false)
+  }
+
+  const handleExport = () => {
+    const data = {
+      addressData,
+      tokenBalances,
+      nftBalances,
+      nativeTransfers,
+      evmTransfers,
+      extrinsics,
+      apiResponses,
+      exportDate: new Date().toISOString(),
     }
 
-    initializeData()
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `rootscan-portfolio-${new Date().toISOString().split("T")[0]}.json`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  useEffect(() => {
+    fetchRootScanData()
   }, [])
 
-  // Auto-refresh every 5 minutes with error handling
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      try {
-        if (!loading) {
-          await fetchAllData()
-        }
-      } catch (error) {
-        console.error("Auto-refresh failed:", error)
-      }
-    }, 300000)
+  // Calculate portfolio stats
+  const portfolioStats = {
+    totalValue: tokenBalances.reduce((sum, token) => {
+      const value = Number.parseFloat(token.balanceFormatted) * token.token.priceData.price
+      return sum + value
+    }, 0),
+    totalTokens: tokenBalances.length,
+    totalTransfers: nativeTransfers.length + evmTransfers.length,
+    totalExtrinsics: extrinsics.length,
+    freeBalance: addressData?.balance?.freeFormatted || "0",
+    nftCount: nftBalances.length,
+  }
 
-    return () => clearInterval(interval)
-  }, [loading])
+  // Prepare chart data
+  const tokenChartData = tokenBalances.map((token, index) => ({
+    name: token.token.symbol,
+    value: Number.parseFloat(token.balanceFormatted) * token.token.priceData.price,
+    balance: Number.parseFloat(token.balanceFormatted),
+    price: token.token.priceData.price,
+    change24h: token.token.priceData.percent_change_24h,
+    color: NEON_COLORS[index % NEON_COLORS.length],
+  }))
 
-  // Watch for wallet connection changes and refresh data
-  useEffect(() => {
-    const refreshDataOnWalletChange = async () => {
-      try {
-        console.log("Wallet connection status changed. Connected:", connected, "PublicKey:", publicKey)
-        
-        // Add a small delay to ensure wallet context has fully updated
-        setTimeout(async () => {
-          await fetchAllData()
-        }, 1000)
-      } catch (error) {
-        console.error("Failed to refresh data on wallet change:", error)
-      }
-    }
+  const transfersChartData = nativeTransfers.slice(0, 10).map((transfer, index) => ({
+    name: `Block ${transfer.blockNumber}`,
+    amount: transfer.args.amount / 1e12,
+    timestamp: new Date(transfer.timestamp * 1000).toLocaleDateString(),
+    block: transfer.blockNumber,
+    type: transfer.args.from.toLowerCase() === DUMMY_ADDRESS.toLowerCase() ? "Sent" : "Received",
+  }))
 
-    // Only trigger refresh if we've already loaded data once (avoid double loading on initial mount)
-    if (lastUpdated) {
-      refreshDataOnWalletChange()
-    }
-  }, [connected, publicKey]) // Watch for changes in wallet connection status
+  const priceChangeData = tokenBalances.map((token, index) => ({
+    symbol: token.token.symbol,
+    change24h: token.token.priceData.percent_change_24h,
+    change7d: token.token.priceData.percent_change_7d || 0,
+    volume: token.token.priceData.volume_24h,
+    color: NEON_COLORS[index % NEON_COLORS.length],
+  }))
 
-  // Debug logging
-  useEffect(() => {
-    console.log("Dashboard stats updated:", dashboardStats)
-    console.log("Token assets length:", tokenAssets.length)
-    console.log("Portfolio value:", portfolioValue)
-    console.log("Current price:", currentPrice)
-  }, [dashboardStats, tokenAssets.length, portfolioValue, currentPrice])
+  const extrinsicsData = extrinsics.slice(0, 8).map((ext, index) => ({
+    method: `${ext.section}.${ext.method}`,
+    success: ext.isSuccess ? 1 : 0,
+    fee: ext.fee?.actualFeeFormatted || 0,
+    block: ext.block,
+    color: ext.isSuccess ? "#00FF00" : "#FF0040",
+  }))
 
   return (
-    <div className="space-y-10">
-      {/* Loading Progress */}
-      {loading && (
-        <Card className="bg-black/40 border-white/20 backdrop-blur-sm">
-          <CardContent className="p-6">
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <Loader2 className="h-5 w-5 animate-spin text-purple-400" />
-                <span className="text-white font-medium">Loading Dashboard Data</span>
-                <span className="text-white/60 text-sm">({Math.round(progress)}%)</span>
-              </div>
-
-              <div className="w-full bg-white/10 rounded-full h-2">
-                <div
-                  className="bg-gradient-to-r from-purple-500 to-blue-500 h-2 rounded-full transition-all duration-500"
-                  style={{ width: `${progress}%` }}
-                ></div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {loadingSteps.map((step, idx) => (
-                  <div key={idx} className="flex items-center gap-2 p-2 rounded bg-white/5">
-                    <div
-                      className={`w-2 h-2 rounded-full ${
-                        step.status === "completed"
-                          ? "bg-green-400"
-                          : step.status === "loading"
-                            ? "bg-yellow-400 animate-pulse"
-                            : step.status === "error"
-                              ? "bg-red-400"
-                              : "bg-gray-400"
-                      }`}
-                    ></div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-white text-xs font-medium">{step.name}</div>
-                      <div className="text-white/60 text-xs truncate">{step.message}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Header Section */}
-      <div className="relative">
+    <div className="space-y-10 p-6">
+      <div className="relative z-10 space-y-8">
+        {/* Header */}
         <div className="flex justify-between items-start mb-8">
           <div>
             <h1 className="text-4xl font-bold bg-gradient-to-r from-white to-white/80 text-transparent bg-clip-text mb-2">
-              Welcome back
+              RootScan Portfolio
             </h1>
-            <p className="text-white/60">Your TRN DeFi portfolio with real-time data</p>
+            <p className="text-white/60">Advanced blockchain analytics for The Root Network</p>
           </div>
 
           <div className="flex items-center gap-4">
-            <div className="relative">
-              <Button
-                variant="outline"
-                className="border-white/20 hover:bg-white/10 text-white gap-2"
-                onClick={() => setShowChainDropdown(!showChainDropdown)}
-                disabled={loading}
-              >
-                <div className="w-3 h-3 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 flex items-center justify-center text-white text-xs font-bold">
-                  {selectedChain.label}
-                </div>
-                <ChevronDown className="h-4 w-4" />
-              </Button>
-
-              {showChainDropdown && (
-                <div className="absolute top-full mt-2 right-0 bg-black/90 border border-white/20 rounded-lg p-2 min-w-[200px] z-50 backdrop-blur-sm">
-                  <div className="max-h-60 overflow-y-auto">
-                    {chainOptions.map((chain) => (
-                      <button
-                        key={chain.value}
-                        className="w-full flex items-center justify-between p-2 hover:bg-white/10 rounded text-left text-white"
-                        onClick={() => {
-                          setSelectedChain(chain)
-                          setShowChainDropdown(false)
-                        }}
-                      >
-                        <span>{chain.name}</span>
-                        {selectedChain.value === chain.value && (
-                          <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
             <Button
+              onClick={() => setActiveModal("api-responses")}
+              variant="outline"
+              className="border-white/20 hover:bg-white/10 text-white gap-2"
+            >
+              <Database className="h-4 w-4" />
+              View API Responses
+            </Button>
+            <Button
+              onClick={handleExport}
+              disabled={loading}
+              variant="outline"
+              className="border-white/20 hover:bg-white/10 text-white gap-2"
+            >
+              <Download className="h-4 w-4" />
+              Export Data
+            </Button>
+            <Button
+              onClick={handleRefresh}
+              disabled={refreshing || loading}
               variant="outline"
               size="icon"
               className="border-white/20 hover:bg-white/10 text-white"
-              onClick={handleRefresh}
-              disabled={loading}
             >
-              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+              <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
             </Button>
           </div>
         </div>
 
+        {/* Loading Progress */}
+        {loading && (
+          <Card className="bg-black/40 border border-cyan-500/30 shadow-lg shadow-cyan-500/10 backdrop-blur-sm">
+            <CardContent className="p-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-cyan-300 font-medium">{loadingStep}</span>
+                  <span className="text-cyan-400 font-bold">{loadingProgress}%</span>
+                </div>
+                <div className="w-full bg-gray-800 rounded-full h-3 overflow-hidden">
+                  <div
+                    className="bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 h-3 rounded-full transition-all duration-500 shadow-lg shadow-cyan-500/50"
+                    style={{ width: `${loadingProgress}%` }}
+                  ></div>
+                </div>
+                <div className="flex items-center gap-2 text-cyan-400 text-sm">
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  Processing RootScan API requests...
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <DashboardCard
-            id="total-holdings"
-            title="Total Holdings"
-            value={
-              loading
-                ? "Loading..."
-                : Number(portfolioValue) > 0
-                  ? formatCurrency(portfolioValue)
-                  : dashboardStats.tokenHoldings > 0
-                    ? "Calculating..."
-                    : "$0.00"
-            }
-            change={`${dashboardStats.totalTokens} active tokens`}
-            trend="up"
-            icon={Coins}
+            title="Portfolio Value"
+            value={`$${portfolioStats.totalValue.toFixed(2)}`}
+            icon={DollarSign}
             gradientFrom="#8B5CF6"
             gradientTo="#3B82F6"
+            change="+2.5%"
             loading={loading}
           />
           <DashboardCard
-            id="sol-price"
-            title="SOL Price"
-            value={loading ? "Loading..." : Number(currentPrice) > 0 ? `$${Number(currentPrice).toFixed(2)}` : "$0.00"}
-            change="Real-time price"
-            trend="up"
-            icon={TrendingUp}
+            title="Free Balance"
+            value={`${portfolioStats.freeBalance} ROOT`}
+            icon={Wallet}
             gradientFrom="#EC4899"
             gradientTo="#8B5CF6"
+            change="+1.2%"
             loading={loading}
           />
           <DashboardCard
-            id="transactions"
-            title="Transactions"
-            value={loading ? "Loading..." : dashboardStats.totalTransactions.toString()}
-            change="Non-zero transactions"
-            trend="up"
-            icon={CreditCard}
+            title="Active Tokens"
+            value={portfolioStats.totalTokens.toString()}
+            icon={Coins}
             gradientFrom="#F59E0B"
             gradientTo="#EF4444"
+            change="Live"
             loading={loading}
           />
           <DashboardCard
-            id="updated"
-            title="Last Updated"
-            value={lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-            change="Auto-refresh: 5min"
-            trend="up"
-            icon={RefreshCw}
+            title="Transactions"
+            value={portfolioStats.totalTransfers.toString()}
+            icon={Activity}
             gradientFrom="#10B981"
-            gradientTo="#3B82F6"
+            gradientTo="#059669"
+            change={`${portfolioStats.totalExtrinsics} extrinsics`}
             loading={loading}
           />
         </div>
-      </div>
 
-      {/* Error Display */}
-      {error && (
-        <Card className="bg-red-900/20 border-red-500/30">
-          <CardContent className="p-4">
-            <div className="text-red-400 text-sm">
-              <strong>Error:</strong> {error}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Market Chart Section */}
-      {candlestickChart && !loading && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* SOL Candlestick Chart */}
-          <SolanaCandlestickChart data={candlestickChart} title="SOL Candlestick Chart" />
-          
-          {/* Market Stats Card */}
-          <Card className="bg-black/20 border-white/10 hover:border-white/20 transition-all hover:shadow-xl h-full">
-            <CardHeader>
-              <CardTitle className="text-xl font-bold bg-gradient-to-r from-white to-white/80 text-transparent bg-clip-text">
-                Market Stats
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-white/60">Current SOL Price</span>
-                <span className="text-white font-bold">
-                  {loading
-                    ? "Loading..."
-                    : Number(currentPrice) > 0
-                      ? `$${Number(currentPrice).toFixed(2)}`
-                      : "$0.00"}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-white/60">Portfolio Value</span>
-                <span className="text-white font-bold">
-                  {loading ? "Loading..." : Number(portfolioValue) > 0 ? formatCurrency(portfolioValue) : "$0.00"}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-white/60">Active Tokens</span>
-                <span className="text-white font-bold">{loading ? "Loading..." : dashboardStats.totalTokens}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-white/60">Transactions</span>
-                <span className="text-white font-bold">
-                  {loading ? "Loading..." : dashboardStats.totalTransactions}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-white/60">Address</span>
-                <span className="text-white font-mono text-xs">
-                  {connected ? `${currentAddress.slice(0, 8)}... (Connected)` : `${TRN_ADDRESS.slice(0, 8)}... (Demo)`}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-white/60">Chart Type</span>
-                <span className="text-white font-bold">
-                  {candlestickChart ? "OHLC Candlestick" : "No Data"}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Navigation Tabs */}
+        <div className="flex gap-2 bg-black/60 p-2 rounded-xl border border-gray-700/50 backdrop-blur-sm">
+          {[
+            { key: "overview", label: "Overview", icon: BarChart3 },
+            { key: "tokens", label: "Tokens", icon: Coins },
+            { key: "transfers", label: "Transfers", icon: Activity },
+            { key: "extrinsics", label: "Extrinsics", icon: Zap },
+          ].map((tab, index) => (
+            <Button
+              key={tab.key}
+              variant={selectedTable === tab.key ? "default" : "ghost"}
+              onClick={() => setSelectedTable(tab.key as any)}
+              className={`flex-1 gap-2 transition-all duration-300 ${
+                selectedTable === tab.key
+                  ? "bg-white/10 text-white shadow-lg border border-white/20"
+                  : "text-gray-300 hover:text-white hover:bg-white/10 border border-transparent"
+              }`}
+            >
+              <tab.icon className="h-4 w-4" />
+              {tab.label}
+            </Button>
+          ))}
         </div>
-      )}
 
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-10">
-        {/* Recent Transactions */}
-        <div className="col-span-2">
-          <Card className="bg-black/20 border-white/10 hover:border-white/20 transition-all hover:shadow-xl h-full">
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <CardTitle className="text-xl font-bold bg-gradient-to-r from-white to-white/80 text-transparent bg-clip-text">
-                  Recent Transactions ({transactions.length})
+        {/* Content based on active tab */}
+        {selectedTable === "overview" && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Token Distribution */}
+            <Card className="bg-black/20 border-white/10 hover:border-white/20 transition-all hover:shadow-xl">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Coins className="h-5 w-5" />
+                  Token Distribution
                 </CardTitle>
-                <Link href="/dashboard/portfolio">
-                  <Button variant="ghost" size="sm" className="gap-1 text-white/80 hover:text-white hover:bg-white/10">
-                    View All <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </Link>
-              </div>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={tokenChartData}
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={100}
+                      fill="#8884d8"
+                      dataKey="value"
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    >
+                      {tokenChartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(value: any) => [`$${value.toFixed(2)}`, "Value"]}
+                      contentStyle={{
+                        backgroundColor: "rgba(0, 0, 0, 0.8)",
+                        border: "1px solid rgba(255, 255, 255, 0.2)",
+                        borderRadius: "8px",
+                        color: "#fff",
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            {/* Price Changes */}
+            <Card className="bg-black/20 border-white/10 hover:border-white/20 transition-all hover:shadow-xl">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5" />
+                  Price Changes (24h)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={priceChangeData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
+                    <XAxis dataKey="symbol" stroke="#9CA3AF" />
+                    <YAxis stroke="#9CA3AF" />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "rgba(0, 0, 0, 0.8)",
+                        border: "1px solid rgba(255, 255, 255, 0.2)",
+                        borderRadius: "8px",
+                        color: "#fff",
+                      }}
+                      formatter={(value: any) => [`${value.toFixed(2)}%`, "Change"]}
+                    />
+                    <Bar dataKey="change24h" fill="url(#colorGradient)" />
+                    <defs>
+                      <linearGradient id="colorGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.8} />
+                        <stop offset="95%" stopColor="#EC4899" stopOpacity={0.8} />
+                      </linearGradient>
+                    </defs>
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            {/* Transfer Activity */}
+            <Card className="bg-black/20 border-white/10 hover:border-white/20 transition-all hover:shadow-xl lg:col-span-2">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Activity className="h-5 w-5" />
+                  Transfer Activity
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <AreaChart data={transfersChartData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
+                    <XAxis dataKey="name" stroke="#9CA3AF" />
+                    <YAxis stroke="#9CA3AF" />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "rgba(0, 0, 0, 0.8)",
+                        border: "1px solid rgba(255, 255, 255, 0.2)",
+                        borderRadius: "8px",
+                        color: "#fff",
+                      }}
+                    />
+                    <Area type="monotone" dataKey="amount" stroke="#10B981" fill="url(#colorAmount)" strokeWidth={2} />
+                    <defs>
+                      <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10B981" stopOpacity={0.8} />
+                        <stop offset="95%" stopColor="#10B981" stopOpacity={0.1} />
+                      </linearGradient>
+                    </defs>
+                  </AreaChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {selectedTable === "tokens" && (
+          <Card className="bg-black/20 border-white/10 hover:border-white/20 transition-all hover:shadow-xl">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <Coins className="h-5 w-5" />
+                Token Balances
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {loading ? (
-                  <div className="text-white/60 text-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
-                    Loading transactions...
-                  </div>
-                ) : transactions.length === 0 ? (
-                  <div className="text-white/60 text-center py-8">No non-zero transactions found.</div>
-                ) : (
-                  transactions.slice(0, 5).map((tx, idx) => (
-                    <div
-                      key={idx}
-                      className="flex justify-between items-center p-4 hover:bg-white/5 rounded-lg transition-colors border border-transparent hover:border-white/5"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div
-                          className={`p-2.5 rounded-full ${
-                            tx.amount && Number(tx.amount) > 0
-                              ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
-                              : "bg-rose-500/10 text-rose-500 border border-rose-500/20"
-                          }`}
-                        >
-                          {tx.amount && Number(tx.amount) > 0 ? "+" : "-"}
-                        </div>
-                        <div>
-                          <p className="font-medium text-white/90">{tx.symbol || "SOL"}</p>
-                          <p className="text-sm text-white/60">
-                            {tx.txTime ? new Date(Number(tx.txTime) * 1000).toLocaleString() : "Recent"}
-                          </p>
-                        </div>
+                {tokenBalances.map((token, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between p-4 hover:bg-white/5 rounded-lg transition-colors border border-transparent hover:border-white/5"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div
+                        className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold shadow-lg"
+                        style={{
+                          background: `linear-gradient(135deg, ${NEON_COLORS[index % NEON_COLORS.length]}, ${NEON_COLORS[(index + 1) % NEON_COLORS.length]})`,
+                        }}
+                      >
+                        {token.token.symbol.slice(0, 2)}
                       </div>
-                      <div className="text-right">
-                        <p className="font-medium text-white/90">{Number(tx.amount || 0).toFixed(6)}</p>
-                        <p className="text-sm text-white/60">
-                          {tx.txHash ? `${tx.txHash.slice(0, 8)}...${tx.txHash.slice(-6)}` : "Transaction"}
-                        </p>
+                      <div>
+                        <h3 className="text-white font-semibold">{token.token.name}</h3>
+                        <p className="text-white/60 text-sm">{token.token.symbol}</p>
                       </div>
                     </div>
-                  ))
-                )}
+                    <div className="text-right">
+                      <p className="text-white font-bold">{token.balanceFormatted}</p>
+                      <p className="text-white/60 text-sm">
+                        ${(Number.parseFloat(token.balanceFormatted) * token.token.priceData.price).toFixed(2)}
+                      </p>
+                      <Badge
+                        variant={token.token.priceData.percent_change_24h >= 0 ? "default" : "destructive"}
+                        className={`mt-1 ${
+                          token.token.priceData.percent_change_24h >= 0
+                            ? "bg-green-500/20 text-green-400 border-green-500/30"
+                            : "bg-red-500/20 text-red-400 border-red-500/30"
+                        }`}
+                      >
+                        {token.token.priceData.percent_change_24h >= 0 ? "+" : ""}
+                        {token.token.priceData.percent_change_24h.toFixed(2)}%
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
-        </div>
+        )}
 
-        {/* Quick Actions */}
-        <div>
-          <Card className="bg-black/20 border-white/10 hover:border-white/20 transition-all hover:shadow-xl h-full">
+        {selectedTable === "transfers" && (
+          <Card className="bg-black/20 border-white/10 hover:border-white/20 transition-all hover:shadow-xl">
             <CardHeader>
-              <CardTitle className="text-xl font-bold bg-gradient-to-r from-white to-white/80 text-transparent bg-clip-text">
-                Quick Actions
+              <CardTitle className="text-white flex items-center gap-2">
+                <Activity className="h-5 w-5" />
+                Native Transfers
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                {quickActions.map((action) => (
-                  <Link
-                    href={action.href}
-                    key={action.id}
-                    onMouseEnter={() => setIsHovering(action.id)}
-                    onMouseLeave={() => setIsHovering(null)}
+              <div className="space-y-4">
+                {nativeTransfers.slice(0, 10).map((transfer, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between p-4 hover:bg-white/5 rounded-lg transition-colors border border-transparent hover:border-white/5"
                   >
-                    <div className="relative group flex flex-col items-center justify-center p-5 rounded-xl overflow-hidden transition-all hover:scale-105 duration-300">
+                    <div className="flex items-center gap-3">
                       <div
-                        className={`absolute inset-0 bg-gradient-to-br opacity-20 ${isHovering === action.id ? "opacity-40" : "opacity-20"} transition-opacity`}
-                        style={{
-                          backgroundImage: `linear-gradient(to bottom right, ${action.gradientFrom}, ${action.gradientTo})`,
-                        }}
-                      ></div>
-                      <div className="relative z-10 flex flex-col items-center">
-                        <action.icon className={`h-8 w-8 mb-3 text-white group-hover:scale-110 transition-transform`} />
-                        <span className="font-medium text-white text-sm">{action.label}</span>
+                        className={`p-3 rounded-full ${
+                          transfer.args.from.toLowerCase() === DUMMY_ADDRESS.toLowerCase()
+                            ? "bg-red-500/20 text-red-400 border border-red-500/30"
+                            : "bg-green-500/20 text-green-400 border border-green-500/30"
+                        }`}
+                      >
+                        {transfer.args.from.toLowerCase() === DUMMY_ADDRESS.toLowerCase() ? (
+                          <ArrowUpRight className="h-5 w-5" />
+                        ) : (
+                          <ArrowDownRight className="h-5 w-5" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-white font-semibold">
+                          {transfer.args.from.toLowerCase() === DUMMY_ADDRESS.toLowerCase() ? "Sent" : "Received"}
+                        </p>
+                        <p className="text-white/60 text-sm">Block #{transfer.blockNumber}</p>
                       </div>
                     </div>
-                  </Link>
+                    <div className="text-right">
+                      <p className="text-white font-bold">{(transfer.args.amount / 1e12).toFixed(6)} ROOT</p>
+                      <p className="text-white/60 text-sm">{new Date(transfer.timestamp * 1000).toLocaleString()}</p>
+                    </div>
+                  </div>
                 ))}
-              </div>
-
-              <div className="p-4 rounded-lg bg-gradient-to-r from-violet-500/20 to-blue-500/20 border border-white/10">
-                <div className="flex items-center mb-2">
-                  <Sparkles className="h-5 w-5 mr-2 text-purple-400" />
-                  <h3 className="font-medium text-white">Portfolio Summary</h3>
-                </div>
-                <p className="text-sm text-white/70 mb-3">
-                  {loading
-                    ? "Loading portfolio data..."
-                    : `${dashboardStats.tokenHoldings} active tokens worth ${formatCurrency(portfolioValue)}. SOL price: ${Number(currentPrice) > 0 ? `$${Number(currentPrice).toFixed(2)}` : "Loading..."}`}
-                </p>
-                <Link href="/dashboard/ai-chat">
-                  <Button size="sm" variant="outline" className="w-full border-white/20 hover:bg-white/10 text-white">
-                    Get AI Analysis
-                  </Button>
-                </Link>
               </div>
             </CardContent>
           </Card>
-        </div>
-      </div>
+        )}
 
-      {/* Token Holdings */}
-      <Card className="bg-black/20 border-white/10 hover:border-white/20 transition-all hover:shadow-xl">
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <CardTitle className="text-xl font-bold bg-gradient-to-r from-white to-white/80 text-transparent bg-clip-text">
-              Active Token Holdings ({tokenAssets.length})
-            </CardTitle>
-            <div className="flex space-x-2">
-              <Button variant="outline" size="sm" className="border-white/20 hover:bg-white/10 text-white">
-                Value
-              </Button>
-              <Button variant="outline" size="sm" className="border-white/20 bg-white/10 text-white">
-                Balance
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            {loading ? (
-              <div className="text-white/60 text-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
-                Loading token balances...
+        {selectedTable === "extrinsics" && (
+          <Card className="bg-black/20 border-white/10 hover:border-white/20 transition-all hover:shadow-xl">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <Zap className="h-5 w-5" />
+                Extrinsics
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {extrinsics.map((extrinsic, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between p-4 hover:bg-white/5 rounded-lg transition-colors border border-transparent hover:border-white/5 cursor-pointer"
+                    onClick={() => fetchExtrinsicDetails(extrinsic.hash)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`p-3 rounded-full ${
+                          extrinsic.isSuccess
+                            ? "bg-green-500/20 text-green-400 border border-green-500/30"
+                            : "bg-red-500/20 text-red-400 border border-red-500/30"
+                        }`}
+                      >
+                        <Zap className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-white font-semibold">
+                          {extrinsic.section}.{extrinsic.method}
+                        </p>
+                        <p className="text-white/60 text-sm font-mono">{extrinsic.hash.slice(0, 20)}...</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <Badge
+                        variant={extrinsic.isSuccess ? "default" : "destructive"}
+                        className={
+                          extrinsic.isSuccess
+                            ? "bg-green-500/20 text-green-400 border-green-500/30"
+                            : "bg-red-500/20 text-red-400 border-red-500/30"
+                        }
+                      >
+                        {extrinsic.isSuccess ? "Success" : "Failed"}
+                      </Badge>
+                      <p className="text-white/60 text-sm mt-1">
+                        {new Date(extrinsic.timestamp * 1000).toLocaleString()}
+                      </p>
+                      {extrinsic.fee && (
+                        <p className="text-white/60 text-sm">Fee: {extrinsic.fee.actualFeeFormatted} ROOT</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
-            ) : tokenAssets.length === 0 ? (
-              <div className="text-white/60 text-center py-8">No active token holdings found.</div>
-            ) : (
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-white/10">
-                    <th className="text-left pb-3 text-white/60">Token</th>
-                    <th className="text-right pb-3 text-white/60">Balance</th>
-                    <th className="text-right pb-3 text-white/60">Price</th>
-                    <th className="text-right pb-3 text-white/60">Value</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {tokenAssets.slice(0, 10).map((asset, idx) => {
-                    const balance = Number(asset.balance || 0)
-                    const price = Number(asset.tokenPrice || 0)
-                    const value = balance * price
+            </CardContent>
+          </Card>
+        )}
 
-                    return (
-                      <tr key={idx} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                        <td className="py-4">
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 flex items-center justify-center text-white text-xs font-bold">
-                              {asset.symbol?.slice(0, 2) || "TK"}
-                            </div>
-                            <span className="font-medium text-white">{asset.symbol || "Unknown"}</span>
-                          </div>
-                        </td>
-                        <td className="text-right py-4 text-white">
-                          {balance.toLocaleString(undefined, { maximumFractionDigits: 6 })}
-                        </td>
-                        <td className="text-right py-4 text-white">
-                          ${price.toLocaleString(undefined, { maximumFractionDigits: 4 })}
-                        </td>
-                        <td className="text-right py-4 text-white font-medium">
-                          ${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            )}
+        {/* API Responses Modal */}
+        {activeModal === "api-responses" && (
+          <Modal onClose={() => setActiveModal(null)}>
+            <div className="p-6 text-white max-w-6xl max-h-[80vh] overflow-y-auto">
+              <h2 className="text-2xl font-bold mb-4 bg-gradient-to-r from-cyan-400 to-purple-400 text-transparent bg-clip-text">
+                API Response Models
+              </h2>
+              <div className="space-y-4">
+                {Object.entries(apiResponses).map(([key, response]: [string, any]) => (
+                  <div key={key} className="bg-black/60 p-4 rounded-lg border border-cyan-500/30">
+                    <h3 className="font-semibold mb-2 text-cyan-400 flex items-center gap-2">
+                      <Database className="h-4 w-4" />
+                      {key.charAt(0).toUpperCase() + key.slice(1)} API
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <p className="text-sm text-gray-400">Endpoint:</p>
+                        <p className="text-xs font-mono text-cyan-300">{response.url}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400">Timestamp:</p>
+                        <p className="text-xs text-gray-300">{new Date(response.timestamp).toLocaleString()}</p>
+                      </div>
+                    </div>
+                    <div className="bg-black/80 p-3 rounded border border-gray-700/50 max-h-60 overflow-y-auto">
+                      <pre className="text-xs text-gray-300 whitespace-pre-wrap">
+                        {JSON.stringify(response.response, null, 2)}
+                      </pre>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Modal>
+        )}
+
+        {/* Extrinsic Details Modal */}
+        {selectedExtrinsic && (
+          <Modal onClose={() => setSelectedExtrinsic(null)}>
+            <div className="p-6 text-white max-w-4xl max-h-[80vh] overflow-y-auto">
+              <h2 className="text-2xl font-bold mb-4 bg-gradient-to-r from-orange-400 to-red-400 text-transparent bg-clip-text">
+                Extrinsic Details
+              </h2>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-black/60 p-4 rounded-lg border border-orange-500/30">
+                    <h4 className="font-semibold text-orange-400 mb-2">Hash</h4>
+                    <p className="font-mono text-sm break-all text-gray-300">{selectedExtrinsic.hash}</p>
+                  </div>
+                  <div className="bg-black/60 p-4 rounded-lg border border-orange-500/30">
+                    <h4 className="font-semibold text-orange-400 mb-2">Method</h4>
+                    <p className="text-gray-300">
+                      {selectedExtrinsic.section}.{selectedExtrinsic.method}
+                    </p>
+                  </div>
+                  <div className="bg-black/60 p-4 rounded-lg border border-orange-500/30">
+                    <h4 className="font-semibold text-orange-400 mb-2">Block</h4>
+                    <p className="text-gray-300">{selectedExtrinsic.block}</p>
+                  </div>
+                  <div className="bg-black/60 p-4 rounded-lg border border-orange-500/30">
+                    <h4 className="font-semibold text-orange-400 mb-2">Status</h4>
+                    <Badge
+                      variant={selectedExtrinsic.isSuccess ? "default" : "destructive"}
+                      className={
+                        selectedExtrinsic.isSuccess
+                          ? "bg-green-500/20 text-green-400 border-green-500/30"
+                          : "bg-red-500/20 text-red-400 border-red-500/30"
+                      }
+                    >
+                      {selectedExtrinsic.isSuccess ? "Success" : "Failed"}
+                    </Badge>
+                  </div>
+                </div>
+
+                {selectedExtrinsic.events && (
+                  <div className="bg-black/60 p-4 rounded-lg border border-orange-500/30">
+                    <h4 className="font-semibold text-orange-400 mb-2">Events</h4>
+                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                      {selectedExtrinsic.events.map((event: any, index: number) => (
+                        <div key={index} className="p-3 bg-black/40 rounded border border-gray-700/50">
+                          <p className="font-semibold text-cyan-400">
+                            {event.section}.{event.method}
+                          </p>
+                          <p className="text-sm text-gray-400 mb-2">{event.doc}</p>
+                          <pre className="text-xs text-gray-300 overflow-x-auto bg-black/60 p-2 rounded">
+                            {JSON.stringify(event.args, null, 2)}
+                          </pre>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </Modal>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function NeonStatsCard({
+  title,
+  value,
+  icon: Icon,
+  gradient,
+  change,
+  glowColor,
+}: {
+  title: string
+  value: string
+  icon: any
+  gradient: string
+  change: string
+  glowColor: string
+}) {
+  const glowColors = {
+    cyan: "shadow-cyan-500/25",
+    purple: "shadow-purple-500/25",
+    green: "shadow-green-500/25",
+    orange: "shadow-orange-500/25",
+  }
+
+  return (
+    <Card
+      className={`bg-black/40 border border-gray-700/50 hover:border-white/30 transition-all duration-300 backdrop-blur-sm ${glowColors[glowColor as keyof typeof glowColors]} hover:shadow-lg group`}
+    >
+      <CardContent className="p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-gray-400 text-sm font-medium">{title}</p>
+            <p className="text-2xl font-bold text-white mt-1">{value}</p>
+            <p className="text-gray-400 text-sm mt-1">{change}</p>
           </div>
-        </CardContent>
-      </Card>
+          <div
+            className={`p-3 rounded-full bg-gradient-to-r ${gradient} group-hover:scale-110 transition-transform duration-300 shadow-lg`}
+          >
+            <Icon className="h-6 w-6 text-white" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function NeonCard({
+  title,
+  icon: Icon,
+  glowColor,
+  children,
+  className = "",
+}: {
+  title: string
+  icon: any
+  glowColor: string
+  children: React.ReactNode
+  className?: string
+}) {
+  const glowColors = {
+    cyan: "border-cyan-500/30 shadow-cyan-500/10",
+    purple: "border-purple-500/30 shadow-purple-500/10",
+    green: "border-green-500/30 shadow-green-500/10",
+    orange: "border-orange-500/30 shadow-orange-500/10",
+  }
+
+  return (
+    <Card
+      className={`bg-black/40 border ${glowColors[glowColor as keyof typeof glowColors]} hover:border-white/30 transition-all duration-300 backdrop-blur-sm shadow-lg ${className}`}
+    >
+      <CardHeader>
+        <CardTitle className="text-white flex items-center gap-2">
+          <Icon className="h-5 w-5" />
+          {title}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>{children}</CardContent>
+    </Card>
+  )
+}
+
+function Modal({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+      <div className="bg-black/90 rounded-xl shadow-2xl border border-cyan-500/30 relative max-w-6xl w-full mx-4 shadow-cyan-500/20">
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-gray-400 hover:text-white text-xl z-10 p-2 hover:bg-white/10 rounded-full transition-colors"
+        >
+          <X className="h-5 w-5" />
+        </button>
+        {children}
+      </div>
     </div>
   )
 }

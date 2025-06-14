@@ -405,37 +405,41 @@ export default function SwapPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black p-6">
-      <div className="max-w-6xl mx-auto space-y-8">
+    <div className="space-y-10 p-6">
+      <div className="relative z-10 space-y-8">
         {/* Header */}
-        <div className="text-center space-y-4">
-          <h1 className="text-5xl font-bold bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 text-transparent bg-clip-text">
-            Crypto Swap Exchange
-          </h1>
-          <p className="text-gray-400 text-lg">Instant cross-chain cryptocurrency exchange</p>
+        <div className="flex justify-between items-start mb-8">
+          <div>
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-white to-white/80 text-transparent bg-clip-text mb-2">
+              Swap
+            </h1>
+            <p className="text-white/60">Exchange cryptocurrencies instantly</p>
+          </div>
 
-          {/* Action Buttons */}
-          <div className="flex justify-center gap-4">
+          <div className="flex items-center gap-4">
             <Button
               onClick={() => setActiveModal("api-responses")}
-              className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white"
+              variant="outline"
+              className="border-white/20 hover:bg-white/10 text-white gap-2"
             >
-              <Database className="h-4 w-4 mr-2" />
+              <Database className="h-4 w-4" />
               API Responses
             </Button>
             <Button
               onClick={() => setActiveModal("transaction-history")}
-              className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
+              variant="outline"
+              className="border-white/20 hover:bg-white/10 text-white gap-2"
             >
-              <Clock className="h-4 w-4 mr-2" />
-              Transaction History
+              <Clock className="h-4 w-4" />
+              History
             </Button>
             <Button
               onClick={handleExport}
-              className="bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 text-white"
+              variant="outline"
+              className="border-white/20 hover:bg-white/10 text-white gap-2"
             >
-              <Download className="h-4 w-4 mr-2" />
-              Export Data
+              <Download className="h-4 w-4" />
+              Export
             </Button>
           </div>
         </div>
@@ -443,9 +447,9 @@ export default function SwapPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Swap Interface */}
           <div className="lg:col-span-2">
-            <Card className="bg-gray-900/50 border border-gray-700 backdrop-blur-sm">
+            <Card className="bg-black/20 border-white/10 hover:border-white/20 transition-all hover:shadow-xl backdrop-blur-sm">
               <CardHeader>
-                <CardTitle className="text-white text-center flex items-center justify-center gap-2">
+                <CardTitle className="text-white flex items-center gap-2">
                   <ArrowUpDown className="h-5 w-5" />
                   Swap Tokens
                 </CardTitle>
@@ -453,10 +457,10 @@ export default function SwapPage() {
               <CardContent className="space-y-6">
                 {/* From Token */}
                 <div className="space-y-2">
-                  <label className="text-gray-300 text-sm font-medium">From</label>
+                  <label className="text-white/80 text-sm font-medium">From</label>
                   <div className="relative">
                     <div
-                      className="flex items-center gap-3 p-4 bg-gray-800/50 rounded-lg border border-gray-600 cursor-pointer hover:border-gray-500 transition-colors"
+                      className="flex items-center gap-3 p-4 bg-black/40 rounded-lg border border-white/10 cursor-pointer hover:border-white/20 transition-colors"
                       onClick={() => setShowFromTokens(true)}
                     >
                       <img
@@ -469,7 +473,7 @@ export default function SwapPage() {
                       />
                       <div className="flex-1">
                         <p className="text-white font-semibold">{fromToken.name}</p>
-                        <p className="text-gray-400 text-sm">{fromToken.symbol.toUpperCase()}</p>
+                        <p className="text-white/60 text-sm">{fromToken.symbol.toUpperCase()}</p>
                       </div>
                     </div>
                     <Input

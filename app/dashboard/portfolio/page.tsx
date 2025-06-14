@@ -36,6 +36,7 @@ import {
   ArrowDownRight,
   Wallet,
   Database,
+  Loader2,
 } from "lucide-react"
 
 // Dummy address for RootScan API
@@ -176,6 +177,63 @@ class RateLimitManager {
 
 const rateLimitManager = new RateLimitManager()
 
+// DashboardCard component
+function DashboardCard({
+  title,
+  value,
+  change,
+  icon: Icon,
+  gradientFrom,
+  gradientTo,
+  loading = false,
+}: {
+  title: string
+  value: string
+  change: string
+  icon: any
+  gradientFrom: string
+  gradientTo: string
+  loading?: boolean
+}) {
+  return (
+    <div className="relative group">
+      <div
+        className="absolute inset-0 bg-gradient-to-r rounded-xl blur-sm opacity-20 group-hover:opacity-30 transition-opacity"
+        style={{ backgroundImage: `linear-gradient(to right, ${gradientFrom}, ${gradientTo})` }}
+      ></div>
+      <div className="relative h-full backdrop-blur-sm bg-black/20 border border-white/10 rounded-xl p-6 overflow-hidden group-hover:border-white/20 transition-all group-hover:shadow-xl">
+        <div className="flex justify-between items-start">
+          <div>
+            <p className="text-sm text-white/60">{title}</p>
+            <p className="text-2xl font-bold mt-1 text-white">
+              {loading ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span className="text-lg">Loading...</span>
+                </div>
+              ) : (
+                value
+              )}
+            </p>
+            <div className="flex items-center mt-1">
+              <span className="text-xs text-emerald-400">
+                {change}
+              </span>
+            </div>
+          </div>
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/5 backdrop-blur-sm border border-white/5">
+            <Icon className="h-5 w-5 text-white/80" />
+          </div>
+        </div>
+        <div
+          className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r opacity-60"
+          style={{ backgroundImage: `linear-gradient(to right, ${gradientFrom}, ${gradientTo})` }}
+        ></div>
+      </div>
+    </div>
+  )
+}
+
 export default function RootScanPortfolio() {
   const [loading, setLoading] = useState(false)
   const [loadingStep, setLoadingStep] = useState("")
@@ -198,7 +256,7 @@ export default function RootScanPortfolio() {
   const [activeModal, setActiveModal] = useState<null | string>(null)
   const [apiResponses, setApiResponses] = useState<any>({})
 
-  const apiKey = process.env.NEXT_PUBLIC_API_KEY 
+  const apiKey = process.env.NEXT_PUBLIC_API_KEY || "" 
 
   // Enhanced fetch function with rate limiting and response storage
   const fetchWithRateLimit = async (url: string, options: RequestInit, responseKey: string) => {
@@ -210,7 +268,7 @@ export default function RootScanPortfolio() {
       const data = await response.json()
 
       // Store API response for viewing
-      setApiResponses((prev) => ({
+      setApiResponses((prev: any) => ({
         ...prev,
         [responseKey]: {
           url,
@@ -466,44 +524,43 @@ export default function RootScanPortfolio() {
   }))
 
   return (
-    <div className="min-h-screen bg-black relative overflow-hidden">
-      {/* Animated background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-black via-purple-900/20 to-black">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(120,119,198,0.1),transparent_50%)]"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(120,119,198,0.1),transparent_50%)]"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,rgba(120,119,198,0.1),transparent_50%)]"></div>
-      </div>
-
-      <div className="relative z-10 p-6 space-y-8">
+    <div className="space-y-10 p-6">
+      <div className="relative z-10 space-y-8">
         {/* Header */}
-        <div className="text-center space-y-4">
-          <h1 className="text-5xl font-bold bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 text-transparent bg-clip-text animate-pulse">
-            RootScan Portfolio
-          </h1>
-          <p className="text-gray-300 text-lg">Advanced blockchain analytics for The Root Network</p>
-          <div className="flex justify-center gap-4">
+        <div className="flex justify-between items-start mb-8">
+          <div>
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-white to-white/80 text-transparent bg-clip-text mb-2">
+              RootScan Portfolio
+            </h1>
+            <p className="text-white/60">Advanced blockchain analytics for The Root Network</p>
+          </div>
+
+          <div className="flex items-center gap-4">
             <Button
               onClick={() => setActiveModal("api-responses")}
-              className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white shadow-lg shadow-cyan-500/25 border border-cyan-400/30"
+              variant="outline"
+              className="border-white/20 hover:bg-white/10 text-white gap-2"
             >
-              <Database className="h-4 w-4 mr-2" />
+              <Database className="h-4 w-4" />
               View API Responses
             </Button>
             <Button
               onClick={handleExport}
               disabled={loading}
-              className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-lg shadow-purple-500/25 border border-purple-400/30"
+              variant="outline"
+              className="border-white/20 hover:bg-white/10 text-white gap-2"
             >
-              <Download className="h-4 w-4 mr-2" />
+              <Download className="h-4 w-4" />
               Export Data
             </Button>
             <Button
               onClick={handleRefresh}
               disabled={refreshing || loading}
-              className="bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 text-white shadow-lg shadow-green-500/25 border border-green-400/30"
+              variant="outline"
+              size="icon"
+              className="border-white/20 hover:bg-white/10 text-white"
             >
-              <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
-              Refresh
+              <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
             </Button>
           </div>
         </div>
@@ -534,37 +591,41 @@ export default function RootScanPortfolio() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <NeonStatsCard
+          <DashboardCard
             title="Portfolio Value"
             value={`$${portfolioStats.totalValue.toFixed(2)}`}
             icon={DollarSign}
-            gradient={GRADIENT_COLORS[0]}
+            gradientFrom="#8B5CF6"
+            gradientTo="#3B82F6"
             change="+2.5%"
-            glowColor="cyan"
+            loading={loading}
           />
-          <NeonStatsCard
+          <DashboardCard
             title="Free Balance"
             value={`${portfolioStats.freeBalance} ROOT`}
             icon={Wallet}
-            gradient={GRADIENT_COLORS[1]}
+            gradientFrom="#EC4899"
+            gradientTo="#8B5CF6"
             change="+1.2%"
-            glowColor="purple"
+            loading={loading}
           />
-          <NeonStatsCard
+          <DashboardCard
             title="Active Tokens"
             value={portfolioStats.totalTokens.toString()}
             icon={Coins}
-            gradient={GRADIENT_COLORS[2]}
+            gradientFrom="#F59E0B"
+            gradientTo="#EF4444"
             change="Live"
-            glowColor="green"
+            loading={loading}
           />
-          <NeonStatsCard
+          <DashboardCard
             title="Transactions"
             value={portfolioStats.totalTransfers.toString()}
             icon={Activity}
-            gradient={GRADIENT_COLORS[3]}
+            gradientFrom="#10B981"
+            gradientTo="#059669"
             change={`${portfolioStats.totalExtrinsics} extrinsics`}
-            glowColor="orange"
+            loading={loading}
           />
         </div>
 
@@ -582,7 +643,7 @@ export default function RootScanPortfolio() {
               onClick={() => setSelectedTable(tab.key as any)}
               className={`flex-1 gap-2 transition-all duration-300 ${
                 selectedTable === tab.key
-                  ? `bg-gradient-to-r ${GRADIENT_COLORS[index]} text-white shadow-lg border border-white/20`
+                  ? "bg-white/10 text-white shadow-lg border border-white/20"
                   : "text-gray-300 hover:text-white hover:bg-white/10 border border-transparent"
               }`}
             >
@@ -596,240 +657,270 @@ export default function RootScanPortfolio() {
         {selectedTable === "overview" && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Token Distribution */}
-            <NeonCard title="Token Distribution" icon={Coins} glowColor="cyan">
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={tokenChartData}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={100}
-                    fill="#8884d8"
-                    dataKey="value"
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  >
-                    {tokenChartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    formatter={(value: any) => [`$${value.toFixed(2)}`, "Value"]}
-                    contentStyle={{
-                      backgroundColor: "rgba(0, 0, 0, 0.8)",
-                      border: "1px solid rgba(0, 255, 255, 0.3)",
-                      borderRadius: "8px",
-                      color: "#fff",
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </NeonCard>
+            <Card className="bg-black/20 border-white/10 hover:border-white/20 transition-all hover:shadow-xl">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Coins className="h-5 w-5" />
+                  Token Distribution
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={tokenChartData}
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={100}
+                      fill="#8884d8"
+                      dataKey="value"
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    >
+                      {tokenChartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(value: any) => [`$${value.toFixed(2)}`, "Value"]}
+                      contentStyle={{
+                        backgroundColor: "rgba(0, 0, 0, 0.8)",
+                        border: "1px solid rgba(255, 255, 255, 0.2)",
+                        borderRadius: "8px",
+                        color: "#fff",
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
 
             {/* Price Changes */}
-            <NeonCard title="Price Changes (24h)" icon={TrendingUp} glowColor="purple">
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={priceChangeData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
-                  <XAxis dataKey="symbol" stroke="#9CA3AF" />
-                  <YAxis stroke="#9CA3AF" />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "rgba(0, 0, 0, 0.8)",
-                      border: "1px solid rgba(147, 51, 234, 0.3)",
-                      borderRadius: "8px",
-                      color: "#fff",
-                    }}
-                    formatter={(value: any) => [`${value.toFixed(2)}%`, "Change"]}
-                  />
-                  <Bar dataKey="change24h" fill="url(#colorGradient)" />
-                  <defs>
-                    <linearGradient id="colorGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.8} />
-                      <stop offset="95%" stopColor="#EC4899" stopOpacity={0.8} />
-                    </linearGradient>
-                  </defs>
-                </BarChart>
-              </ResponsiveContainer>
-            </NeonCard>
+            <Card className="bg-black/20 border-white/10 hover:border-white/20 transition-all hover:shadow-xl">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5" />
+                  Price Changes (24h)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={priceChangeData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
+                    <XAxis dataKey="symbol" stroke="#9CA3AF" />
+                    <YAxis stroke="#9CA3AF" />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "rgba(0, 0, 0, 0.8)",
+                        border: "1px solid rgba(255, 255, 255, 0.2)",
+                        borderRadius: "8px",
+                        color: "#fff",
+                      }}
+                      formatter={(value: any) => [`${value.toFixed(2)}%`, "Change"]}
+                    />
+                    <Bar dataKey="change24h" fill="url(#colorGradient)" />
+                    <defs>
+                      <linearGradient id="colorGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.8} />
+                        <stop offset="95%" stopColor="#EC4899" stopOpacity={0.8} />
+                      </linearGradient>
+                    </defs>
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
 
             {/* Transfer Activity */}
-            <NeonCard title="Transfer Activity" icon={Activity} glowColor="green" className="lg:col-span-2">
-              <ResponsiveContainer width="100%" height={300}>
-                <AreaChart data={transfersChartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
-                  <XAxis dataKey="name" stroke="#9CA3AF" />
-                  <YAxis stroke="#9CA3AF" />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "rgba(0, 0, 0, 0.8)",
-                      border: "1px solid rgba(16, 185, 129, 0.3)",
-                      borderRadius: "8px",
-                      color: "#fff",
-                    }}
-                  />
-                  <Area type="monotone" dataKey="amount" stroke="#10B981" fill="url(#colorAmount)" strokeWidth={2} />
-                  <defs>
-                    <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10B981" stopOpacity={0.8} />
-                      <stop offset="95%" stopColor="#10B981" stopOpacity={0.1} />
-                    </linearGradient>
-                  </defs>
-                </AreaChart>
-              </ResponsiveContainer>
-            </NeonCard>
-
-            {/* Extrinsics Success Rate */}
-            <NeonCard title="Extrinsics Overview" icon={Zap} glowColor="orange" className="lg:col-span-2">
-              <ResponsiveContainer width="100%" height={300}>
-                <RadialBarChart cx="50%" cy="50%" innerRadius="20%" outerRadius="80%" data={extrinsicsData}>
-                  <RadialBar dataKey="success" cornerRadius={10} fill="#00FF00" />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "rgba(0, 0, 0, 0.8)",
-                      border: "1px solid rgba(249, 115, 22, 0.3)",
-                      borderRadius: "8px",
-                      color: "#fff",
-                    }}
-                  />
-                </RadialBarChart>
-              </ResponsiveContainer>
-            </NeonCard>
+            <Card className="bg-black/20 border-white/10 hover:border-white/20 transition-all hover:shadow-xl lg:col-span-2">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Activity className="h-5 w-5" />
+                  Transfer Activity
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <AreaChart data={transfersChartData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
+                    <XAxis dataKey="name" stroke="#9CA3AF" />
+                    <YAxis stroke="#9CA3AF" />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "rgba(0, 0, 0, 0.8)",
+                        border: "1px solid rgba(255, 255, 255, 0.2)",
+                        borderRadius: "8px",
+                        color: "#fff",
+                      }}
+                    />
+                    <Area type="monotone" dataKey="amount" stroke="#10B981" fill="url(#colorAmount)" strokeWidth={2} />
+                    <defs>
+                      <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10B981" stopOpacity={0.8} />
+                        <stop offset="95%" stopColor="#10B981" stopOpacity={0.1} />
+                      </linearGradient>
+                    </defs>
+                  </AreaChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
           </div>
         )}
 
         {selectedTable === "tokens" && (
-          <NeonCard title="Token Balances" icon={Coins} glowColor="cyan">
-            <div className="space-y-4">
-              {tokenBalances.map((token, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between p-4 bg-black/40 rounded-lg border border-gray-700/50 hover:border-cyan-500/50 transition-all duration-300 backdrop-blur-sm"
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold shadow-lg"
-                      style={{
-                        background: `linear-gradient(135deg, ${NEON_COLORS[index % NEON_COLORS.length]}, ${NEON_COLORS[(index + 1) % NEON_COLORS.length]})`,
-                        boxShadow: `0 0 20px ${NEON_COLORS[index % NEON_COLORS.length]}40`,
-                      }}
-                    >
-                      {token.token.symbol.slice(0, 2)}
+          <Card className="bg-black/20 border-white/10 hover:border-white/20 transition-all hover:shadow-xl">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <Coins className="h-5 w-5" />
+                Token Balances
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {tokenBalances.map((token, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between p-4 hover:bg-white/5 rounded-lg transition-colors border border-transparent hover:border-white/5"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div
+                        className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold shadow-lg"
+                        style={{
+                          background: `linear-gradient(135deg, ${NEON_COLORS[index % NEON_COLORS.length]}, ${NEON_COLORS[(index + 1) % NEON_COLORS.length]})`,
+                        }}
+                      >
+                        {token.token.symbol.slice(0, 2)}
+                      </div>
+                      <div>
+                        <h3 className="text-white font-semibold">{token.token.name}</h3>
+                        <p className="text-white/60 text-sm">{token.token.symbol}</p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="text-white font-semibold text-lg">{token.token.name}</h3>
-                      <p className="text-gray-400">{token.token.symbol}</p>
+                    <div className="text-right">
+                      <p className="text-white font-bold">{token.balanceFormatted}</p>
+                      <p className="text-white/60 text-sm">
+                        ${(Number.parseFloat(token.balanceFormatted) * token.token.priceData.price).toFixed(2)}
+                      </p>
+                      <Badge
+                        variant={token.token.priceData.percent_change_24h >= 0 ? "default" : "destructive"}
+                        className={`mt-1 ${
+                          token.token.priceData.percent_change_24h >= 0
+                            ? "bg-green-500/20 text-green-400 border-green-500/30"
+                            : "bg-red-500/20 text-red-400 border-red-500/30"
+                        }`}
+                      >
+                        {token.token.priceData.percent_change_24h >= 0 ? "+" : ""}
+                        {token.token.priceData.percent_change_24h.toFixed(2)}%
+                      </Badge>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-white font-bold text-lg">{token.balanceFormatted}</p>
-                    <p className="text-gray-400">
-                      ${(Number.parseFloat(token.balanceFormatted) * token.token.priceData.price).toFixed(2)}
-                    </p>
-                    <Badge
-                      variant={token.token.priceData.percent_change_24h >= 0 ? "default" : "destructive"}
-                      className={`mt-1 ${
-                        token.token.priceData.percent_change_24h >= 0
-                          ? "bg-green-500/20 text-green-400 border-green-500/30"
-                          : "bg-red-500/20 text-red-400 border-red-500/30"
-                      }`}
-                    >
-                      {token.token.priceData.percent_change_24h >= 0 ? "+" : ""}
-                      {token.token.priceData.percent_change_24h.toFixed(2)}%
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </NeonCard>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         {selectedTable === "transfers" && (
-          <NeonCard title="Native Transfers" icon={Activity} glowColor="purple">
-            <div className="space-y-4">
-              {nativeTransfers.slice(0, 10).map((transfer, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between p-4 bg-black/40 rounded-lg border border-gray-700/50 hover:border-purple-500/50 transition-all duration-300 backdrop-blur-sm"
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`p-3 rounded-full ${
-                        transfer.args.from.toLowerCase() === DUMMY_ADDRESS.toLowerCase()
-                          ? "bg-red-500/20 text-red-400 border border-red-500/30"
-                          : "bg-green-500/20 text-green-400 border border-green-500/30"
-                      }`}
-                    >
-                      {transfer.args.from.toLowerCase() === DUMMY_ADDRESS.toLowerCase() ? (
-                        <ArrowUpRight className="h-5 w-5" />
-                      ) : (
-                        <ArrowDownRight className="h-5 w-5" />
-                      )}
+          <Card className="bg-black/20 border-white/10 hover:border-white/20 transition-all hover:shadow-xl">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <Activity className="h-5 w-5" />
+                Native Transfers
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {nativeTransfers.slice(0, 10).map((transfer, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between p-4 hover:bg-white/5 rounded-lg transition-colors border border-transparent hover:border-white/5"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`p-3 rounded-full ${
+                          transfer.args.from.toLowerCase() === DUMMY_ADDRESS.toLowerCase()
+                            ? "bg-red-500/20 text-red-400 border border-red-500/30"
+                            : "bg-green-500/20 text-green-400 border border-green-500/30"
+                        }`}
+                      >
+                        {transfer.args.from.toLowerCase() === DUMMY_ADDRESS.toLowerCase() ? (
+                          <ArrowUpRight className="h-5 w-5" />
+                        ) : (
+                          <ArrowDownRight className="h-5 w-5" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-white font-semibold">
+                          {transfer.args.from.toLowerCase() === DUMMY_ADDRESS.toLowerCase() ? "Sent" : "Received"}
+                        </p>
+                        <p className="text-white/60 text-sm">Block #{transfer.blockNumber}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-white font-semibold">
-                        {transfer.args.from.toLowerCase() === DUMMY_ADDRESS.toLowerCase() ? "Sent" : "Received"}
-                      </p>
-                      <p className="text-gray-400 text-sm">Block #{transfer.blockNumber}</p>
+                    <div className="text-right">
+                      <p className="text-white font-bold">{(transfer.args.amount / 1e12).toFixed(6)} ROOT</p>
+                      <p className="text-white/60 text-sm">{new Date(transfer.timestamp * 1000).toLocaleString()}</p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-white font-bold">{(transfer.args.amount / 1e12).toFixed(6)} ROOT</p>
-                    <p className="text-gray-400 text-sm">{new Date(transfer.timestamp * 1000).toLocaleString()}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </NeonCard>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         {selectedTable === "extrinsics" && (
-          <NeonCard title="Extrinsics" icon={Zap} glowColor="orange">
-            <div className="space-y-4">
-              {extrinsics.map((extrinsic, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between p-4 bg-black/40 rounded-lg border border-gray-700/50 hover:border-orange-500/50 transition-all duration-300 backdrop-blur-sm cursor-pointer"
-                  onClick={() => fetchExtrinsicDetails(extrinsic.hash)}
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`p-3 rounded-full ${
-                        extrinsic.isSuccess
-                          ? "bg-green-500/20 text-green-400 border border-green-500/30"
-                          : "bg-red-500/20 text-red-400 border border-red-500/30"
-                      }`}
-                    >
-                      <Zap className="h-5 w-5" />
+          <Card className="bg-black/20 border-white/10 hover:border-white/20 transition-all hover:shadow-xl">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <Zap className="h-5 w-5" />
+                Extrinsics
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {extrinsics.map((extrinsic, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between p-4 hover:bg-white/5 rounded-lg transition-colors border border-transparent hover:border-white/5 cursor-pointer"
+                    onClick={() => fetchExtrinsicDetails(extrinsic.hash)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`p-3 rounded-full ${
+                          extrinsic.isSuccess
+                            ? "bg-green-500/20 text-green-400 border border-green-500/30"
+                            : "bg-red-500/20 text-red-400 border border-red-500/30"
+                        }`}
+                      >
+                        <Zap className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-white font-semibold">
+                          {extrinsic.section}.{extrinsic.method}
+                        </p>
+                        <p className="text-white/60 text-sm font-mono">{extrinsic.hash.slice(0, 20)}...</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-white font-semibold">
-                        {extrinsic.section}.{extrinsic.method}
+                    <div className="text-right">
+                      <Badge
+                        variant={extrinsic.isSuccess ? "default" : "destructive"}
+                        className={
+                          extrinsic.isSuccess
+                            ? "bg-green-500/20 text-green-400 border-green-500/30"
+                            : "bg-red-500/20 text-red-400 border-red-500/30"
+                        }
+                      >
+                        {extrinsic.isSuccess ? "Success" : "Failed"}
+                      </Badge>
+                      <p className="text-white/60 text-sm mt-1">
+                        {new Date(extrinsic.timestamp * 1000).toLocaleString()}
                       </p>
-                      <p className="text-gray-400 text-sm font-mono">{extrinsic.hash.slice(0, 20)}...</p>
+                      {extrinsic.fee && (
+                        <p className="text-white/60 text-sm">Fee: {extrinsic.fee.actualFeeFormatted} ROOT</p>
+                      )}
                     </div>
                   </div>
-                  <div className="text-right">
-                    <Badge
-                      variant={extrinsic.isSuccess ? "default" : "destructive"}
-                      className={
-                        extrinsic.isSuccess
-                          ? "bg-green-500/20 text-green-400 border-green-500/30"
-                          : "bg-red-500/20 text-red-400 border-red-500/30"
-                      }
-                    >
-                      {extrinsic.isSuccess ? "Success" : "Failed"}
-                    </Badge>
-                    <p className="text-gray-400 text-sm mt-1">
-                      {new Date(extrinsic.timestamp * 1000).toLocaleString()}
-                    </p>
-                    {extrinsic.fee && (
-                      <p className="text-gray-400 text-sm">Fee: {extrinsic.fee.actualFeeFormatted} ROOT</p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </NeonCard>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* API Responses Modal */}
