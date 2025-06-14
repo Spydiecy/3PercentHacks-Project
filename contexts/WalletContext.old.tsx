@@ -29,7 +29,7 @@ export const useWallet = () => useContext(WalletContext)
 const authClient = new FutureverseAuthClient({
   clientId: process.env.NEXT_PUBLIC_FUTUREVERSE_CLIENT_ID || '2qC_LOMj3oHhri4XpJL2X',
   environment: (process.env.NEXT_PUBLIC_FUTUREVERSE_ENVIRONMENT as any) || 'development',
-  redirectUri: typeof window !== 'undefined' ? `${window.location.origin}/dashboard/` : 'http://localhost:3000/dashboard/'
+  redirectUri: typeof window !== 'undefined' ? `${window.location.origin}/dashboard/` : 'http://astra-trn.vercel.app/dashboard/'
 })
 
 const WalletProviderInner: React.FC<{ children: React.ReactNode }> = ({ children }) => {
