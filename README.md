@@ -11,7 +11,7 @@
   
   **A next-generation blockchain portfolio analytics platform for The Root Network (TRN)**
   
-  [🚀 Live Demo](https://astra-trn.vercel.app) • [📖 Documentation](#documentation) • [🤝 Contributing](#contributing)
+  [🚀 Live Demo](https://astra-trn.vercel.app) • [📖 Documentation](#documentation)
 </div>
 
 ## 📋 Table of Contents
@@ -21,9 +21,7 @@
 - [🛠️ Tech Stack](#️-tech-stack)
 - [🔧 How It Works](#-how-it-works)
 - [👥 Target Audience](#-target-audience)
-- [🚀 Getting Started](#-getting-started)
 - [📱 Live Demo](#-live-demo)
-- [🤝 Contributing](#-contributing)
 - [📞 Connect With Us](#-connect-with-us)
 
 ## 🎯 Project Overview
@@ -104,17 +102,6 @@ Our platform bridges the gap between complex blockchain data and user-friendly a
 ## 🔧 How It Works
 
 ### 1. **Smart Address Management**
-```typescript
-// Dynamic address system that adapts to wallet connection status
-const getDisplayAddress = (): string => {
-  // Connected wallet takes priority
-  if (connected && publicKey) return publicKey
-  // Futureverse session fallback
-  if (userSession?.eoa) return userSession.eoa
-  // Demo mode with dummy address
-  return DUMMY_ADDRESS
-}
-```
 
 ### 2. **Real-Time Data Fetching**
 - Integrates with **RootScan API** for live blockchain data
@@ -149,64 +136,6 @@ const getDisplayAddress = (): string => {
 - **Developer Tools**: API exploration and blockchain data analysis
 - **Educational**: Learn about blockchain technology through interactive exploration
 
-## 🚀 Getting Started
-
-### Prerequisites
-- **Node.js 18+** or **Bun runtime**
-- **Git** for version control
-- **The Root Network** wallet (optional for demo mode)
-
-### Installation
-
-1. **Clone the repository**
-```bash
-git clone https://github.com/yourusername/astra-trn.git
-cd astra-trn
-```
-
-2. **Install dependencies**
-```bash
-npm install
-# or
-yarn install
-# or
-pnpm install
-# or
-bun install
-```
-
-3. **Set up environment variables**
-```bash
-cp .env.example .env.local
-```
-
-Add your API keys:
-```env
-NEXT_PUBLIC_API_KEY=your_rootscan_api_key
-NEXT_PUBLIC_FUTUREVERSE_CLIENT_ID=your_futureverse_client_id
-NEXT_PUBLIC_GEMINI_API_KEY=your_gemini_api_key
-```
-
-4. **Run the development server**
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
-
-5. **Open your browser**
-Navigate to [http://localhost:3000](http://localhost:3000) to see the application.
-
-### 🔧 Build for Production
-```bash
-npm run build
-npm run start
-```
-
 ## 📱 Live Demo
 
 🌐 **[Try Astra TRN Live](https://astra-trn.vercel.app)**
@@ -223,33 +152,6 @@ npm run start
 - **Network**: The Root Network (TRN)
 - **Features**: All platform features accessible without wallet connection
 
-## 🤝 Contributing
-
-We welcome contributions from the community! Here's how you can help:
-
-### 🐛 Bug Reports
-- Use GitHub Issues to report bugs
-- Include detailed reproduction steps
-- Provide browser and system information
-
-### 💡 Feature Requests
-- Discuss new features in GitHub Discussions
-- Follow our feature request template
-- Consider contributing the implementation
-
-### 🔧 Development
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-### 📜 Code Style
-- Follow TypeScript best practices
-- Use Prettier for code formatting
-- Write meaningful commit messages
-- Add tests for new features
-
 ## 📞 Connect With Us
 
 <div align="center">
@@ -257,18 +159,13 @@ We welcome contributions from the community! Here's how you can help:
 ### 🌐 Social Media & Links
 
 [![Twitter](https://img.shields.io/badge/Twitter-1DA1F2?style=for-the-badge&logo=twitter&logoColor=white)](https://twitter.com/astra_trn)
-[![Discord](https://img.shields.io/badge/Discord-7289DA?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/astra-trn)
-[![Telegram](https://img.shields.io/badge/Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/astra_trn)
-[![GitHub](https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white)](https://github.com/yourusername/astra-trn)
-
-### 💼 Professional
-
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://linkedin.com/company/astra-trn)
-[![Medium](https://img.shields.io/badge/Medium-12100E?style=for-the-badge&logo=medium&logoColor=white)](https://medium.com/@astra-trn)
+[![Discord](https://img.shields.io/badge/Discord-7289DA?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/spydiecy)
+[![Telegram](https://img.shields.io/badge/Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/spydiecy)
+[![GitHub](https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white)](https://github.com/spydiecy/astra-trn)
 
 ### 📧 Contact
 
-**Email**: [hello@astra-trn.com](mailto:hello@astra-trn.com)  
+**Email**: [tanishqgupa322@gmail.com](mailto:tanishqgupa322@gmail.com)  
 **Website**: [https://astra-trn.vercel.app](https://astra-trn.vercel.app)
 
 </div>
@@ -276,20 +173,6 @@ We welcome contributions from the community! Here's how you can help:
 ---
 
 <div align="center">
-
-### 🌟 Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=yourusername/astra-trn&type=Date)](https://star-history.com/#yourusername/astra-trn&Date)
-
-**Made with ❤️ for The Root Network community**
-
-*Astra TRN - Illuminating the blockchain universe, one transaction at a time.*
-
-</div>
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
