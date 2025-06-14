@@ -132,7 +132,7 @@ export default function SwapPage() {
   const [toSearch, setToSearch] = useState("")
 
   const apiKey =
-    process.env.NEXT_PUBLIC_CHANGENOW_API_KEY || "abd6b1cd1a3a36f2c35fc8f2537ab67f8da57a92fbd4739fe63dc87c94a9d9da"
+    process.env.NEXT_PUBLIC_CHANGENOW_API_KEY 
 
   const fetchMinAmount = async (from: string, to: string) => {
     setLoadingMinAmount(true)
@@ -154,7 +154,7 @@ export default function SwapPage() {
       setApiResponses((prev:any) => ({
         ...prev,
         [`minAmount_${from}_${to}`]: {
-          url: `https://api.changenow.io/v1/min-amount/${from}_${to}?api_key=rNxp4h8apvRis6mJf9Sh8C6iRxfrDWN7AV`,
+          url: `https://api.changenow.io/v1/min-amount/${from}_${to}?api_key=${apiKey}`,
           method: "GET",
           response: data,
           timestamp: new Date().toISOString(),
@@ -175,7 +175,7 @@ export default function SwapPage() {
 
     setLoading(true)
     try {
-      const response = await fetch("https://api.changenow.io/v1/transactions/abd6b1cd1a3a36f2c35fc8f2537ab67f8da57a92fbd4739fe63dc87c94a9d9da", {
+      const response = await fetch(`https://api.changenow.io/v1/transactions/${apiKey}`, {
         method: "POST",
         headers: {
           accept: "application/json",
@@ -195,7 +195,7 @@ export default function SwapPage() {
       }
 
       const data: SwapTransaction = await response.json()
-      console.log("my data is::::::",data);
+      console.log("my data is:::::: from list all transactions",data);
       
       setApiResponses((prev:any) => ({
         ...prev,
@@ -215,6 +215,9 @@ export default function SwapPage() {
       }))
 
       setSwapTransaction(data)
+    window.open(`https://changenow.io/pro/exchange/txs/${data.id}`, "_blank");
+;
+
       setSwapStep("confirm")
     } catch (error) {
       console.error("Error creating swap transaction:", error)
