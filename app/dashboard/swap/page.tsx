@@ -481,10 +481,10 @@ export default function SwapPage() {
                       placeholder="0.0"
                       value={amount}
                       onChange={(e) => setAmount(e.target.value)}
-                      className="mt-2 bg-gray-800/50 border-gray-600 text-white text-lg"
+                      className="mt-2 bg-black/40 border-white/10 text-white text-lg placeholder:text-white/40"
                     />
                     {minAmount && (
-                      <p className="text-xs text-gray-400 mt-1">
+                      <p className="text-xs text-white/60 mt-1">
                         Minimum: {minAmount} {fromToken.symbol.toUpperCase()}
                       </p>
                     )}
@@ -503,7 +503,7 @@ export default function SwapPage() {
                     onClick={swapTokens}
                     variant="outline"
                     size="sm"
-                    className="rounded-full border-gray-600 hover:bg-gray-700"
+                    className="rounded-full border-white/20 hover:bg-white/10 text-white"
                   >
                     <ArrowUpDown className="h-4 w-4" />
                   </Button>
@@ -511,10 +511,10 @@ export default function SwapPage() {
 
                 {/* To Token */}
                 <div className="space-y-2">
-                  <label className="text-gray-300 text-sm font-medium">To</label>
+                  <label className="text-white/80 text-sm font-medium">To</label>
                   <div className="relative">
                     <div
-                      className="flex items-center gap-3 p-4 bg-gray-800/50 rounded-lg border border-gray-600 cursor-pointer hover:border-gray-500 transition-colors"
+                      className="flex items-center gap-3 p-4 bg-black/40 rounded-lg border border-white/10 cursor-pointer hover:border-white/20 transition-colors"
                       onClick={() => setShowToTokens(true)}
                     >
                       <img
@@ -527,7 +527,7 @@ export default function SwapPage() {
                       />
                       <div className="flex-1">
                         <p className="text-white font-semibold">{toToken.name}</p>
-                        <p className="text-gray-400 text-sm">{toToken.symbol.toUpperCase()}</p>
+                        <p className="text-white/60 text-sm">{toToken.symbol.toUpperCase()}</p>
                       </div>
                     </div>
                     <Input
@@ -535,22 +535,22 @@ export default function SwapPage() {
                       placeholder="0.0"
                       value={swapTransaction?.amount || ""}
                       readOnly
-                      className="mt-2 bg-gray-800/50 border-gray-600 text-white text-lg"
+                      className="mt-2 bg-black/40 border-white/10 text-white text-lg placeholder:text-white/40"
                     />
                   </div>
                 </div>
 
                 {/* Recipient Address */}
                 <div className="space-y-2">
-                  <label className="text-gray-300 text-sm font-medium">Recipient Address</label>
+                  <label className="text-white/80 text-sm font-medium">Recipient Address</label>
                   <div className="flex gap-2">
                     <Input
                       placeholder="Enter recipient address"
                       value={recipientAddress}
                       onChange={(e) => setRecipientAddress(e.target.value)}
-                      className="bg-gray-800/50 border-gray-600 text-white"
+                      className="bg-black/40 border-white/10 text-white placeholder:text-white/40"
                     />
-                    <Button onClick={connectMetaMask} variant="outline" className="border-gray-600 hover:bg-gray-700">
+                    <Button onClick={connectMetaMask} variant="outline" className="border-white/20 hover:bg-white/10 text-white">
                       <Wallet className="h-4 w-4" />
                     </Button>
                   </div>
@@ -561,7 +561,7 @@ export default function SwapPage() {
                   <Button
                     onClick={createSwapTransaction}
                     disabled={!amount || !recipientAddress || !isAmountValid || loading}
-                    className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
+                    className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white border-0"
                   >
                     {loading ? (
                       <>
@@ -576,15 +576,15 @@ export default function SwapPage() {
 
                 {swapStep === "confirm" && swapTransaction && (
                   <div className="space-y-4">
-                    <div className="bg-gray-800/50 p-4 rounded-lg border border-gray-600">
+                    <div className="bg-black/40 p-4 rounded-lg border border-white/10">
                       <h3 className="text-white font-semibold mb-2">Swap Details</h3>
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
-                          <span className="text-gray-400">Transaction ID:</span>
+                          <span className="text-white/60">Transaction ID:</span>
                           <span className="text-white font-mono">{swapTransaction.id}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-400">Pay-in Address:</span>
+                          <span className="text-white/60">Pay-in Address:</span>
                           <div className="flex items-center gap-2">
                             <span className="text-white font-mono">{swapTransaction.payinAddress.slice(0, 10)}...</span>
                             <Button
@@ -597,13 +597,13 @@ export default function SwapPage() {
                           </div>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-400">Amount to Send:</span>
+                          <span className="text-white/60">Amount to Send:</span>
                           <span className="text-white">
                             {amount} {fromToken.symbol.toUpperCase()}
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-400">Amount to Receive:</span>
+                          <span className="text-white/60">Amount to Receive:</span>
                           <span className="text-white">
                             {swapTransaction.amount} {toToken.symbol.toUpperCase()}
                           </span>
@@ -620,7 +620,7 @@ export default function SwapPage() {
                     <Button
                       onClick={() => setSwapStep("input")}
                       variant="outline"
-                      className="w-full border-gray-600 hover:bg-gray-700"
+                      className="w-full border-white/20 hover:bg-white/10 text-white"
                     >
                       Back to Edit
                     </Button>
@@ -634,11 +634,11 @@ export default function SwapPage() {
                         <Clock className="h-8 w-8 text-white" />
                       </div>
                       <h3 className="text-white font-semibold text-lg">Payment Sent!</h3>
-                      <p className="text-gray-400 text-sm">Your swap is being processed. Track the status below.</p>
+                      <p className="text-white/60 text-sm">Your swap is being processed. Track the status below.</p>
                     </div>
 
                     {transactionStatus && (
-                      <div className="bg-gray-800/50 p-4 rounded-lg border border-gray-600">
+                      <div className="bg-black/40 p-4 rounded-lg border border-white/10">
                         <div className="flex items-center justify-between mb-3">
                           <h4 className="text-white font-semibold">Transaction Status</h4>
                           <Badge className={getStatusColor(transactionStatus.status)}>
@@ -647,19 +647,19 @@ export default function SwapPage() {
                         </div>
                         <div className="space-y-2 text-sm">
                           <div className="flex justify-between">
-                            <span className="text-gray-400">Expected Send:</span>
+                            <span className="text-white/60">Expected Send:</span>
                             <span className="text-white">
                               {transactionStatus.expectedSendAmount} {transactionStatus.fromCurrency.toUpperCase()}
                             </span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-gray-400">Expected Receive:</span>
+                            <span className="text-white/60">Expected Receive:</span>
                             <span className="text-white">
                               {transactionStatus.expectedReceiveAmount} {transactionStatus.toCurrency.toUpperCase()}
                             </span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-gray-400">Last Updated:</span>
+                            <span className="text-white/60">Last Updated:</span>
                             <span className="text-white">{new Date(transactionStatus.updatedAt).toLocaleString()}</span>
                           </div>
                         </div>
@@ -671,7 +671,7 @@ export default function SwapPage() {
                         onClick={() => swapTransaction && fetchTransactionStatus(swapTransaction.id)}
                         disabled={loadingStatus}
                         variant="outline"
-                        className="flex-1 border-gray-600 hover:bg-gray-700"
+                        className="flex-1 border-white/20 hover:bg-white/10 text-white"
                       >
                         {loadingStatus ? <RefreshCw className="h-4 w-4 animate-spin" /> : "Refresh Status"}
                       </Button>
@@ -696,14 +696,14 @@ export default function SwapPage() {
 
           {/* Stats Panel */}
           <div className="space-y-6">
-            <Card className="bg-gray-900/50 border border-gray-700">
+            <Card className="bg-black/20 border-white/10">
               <CardHeader>
                 <CardTitle className="text-white text-sm">Swap Information</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-3">
                   <div className="flex justify-between">
-                    <span className="text-gray-400 text-sm">Min Amount:</span>
+                    <span className="text-white/60 text-sm">Min Amount:</span>
                     <span className="text-white text-sm">
                       {loadingMinAmount ? (
                         <RefreshCw className="h-3 w-3 animate-spin" />
@@ -715,7 +715,7 @@ export default function SwapPage() {
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-400 text-sm">Exchange Rate:</span>
+                    <span className="text-white/60 text-sm">Exchange Rate:</span>
                     <span className="text-white text-sm">
                       {swapTransaction && amount
                         ? `1 ${fromToken.symbol.toUpperCase()} = ${(swapTransaction.amount / Number.parseFloat(amount)).toFixed(6)} ${toToken.symbol.toUpperCase()}`
@@ -723,11 +723,11 @@ export default function SwapPage() {
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-400 text-sm">Network Fee:</span>
+                    <span className="text-white/60 text-sm">Network Fee:</span>
                     <span className="text-white text-sm">Included</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-400 text-sm">Processing Time:</span>
+                    <span className="text-white/60 text-sm">Processing Time:</span>
                     <span className="text-white text-sm">5-30 min</span>
                   </div>
                 </div>
@@ -736,24 +736,24 @@ export default function SwapPage() {
 
             {/* Current Transaction Status */}
             {transactionStatus && (
-              <Card className="bg-gray-900/50 border border-gray-700">
+              <Card className="bg-black/20 border-white/10">
                 <CardHeader>
                   <CardTitle className="text-white text-sm">Current Transaction</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-gray-400 text-sm">Status:</span>
+                      <span className="text-white/60 text-sm">Status:</span>
                       <Badge className={getStatusColor(transactionStatus.status)}>
                         {transactionStatus.status.toUpperCase()}
                       </Badge>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-400 text-sm">ID:</span>
+                      <span className="text-white/60 text-sm">ID:</span>
                       <span className="text-white text-sm font-mono">{transactionStatus.id}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-400 text-sm">Progress:</span>
+                      <span className="text-white/60 text-sm">Progress:</span>
                       <span className="text-white text-sm">
                         {transactionStatus.status === "waiting" && "0%"}
                         {transactionStatus.status === "confirming" && "25%"}
@@ -812,7 +812,7 @@ export default function SwapPage() {
             <div className="space-y-4">
               {transactionHistory.length > 0 ? (
                 transactionHistory.map((tx) => (
-                  <div key={tx.id} className="bg-gray-800/50 p-4 rounded-lg border border-gray-600">
+                  <div key={tx.id} className="bg-black/40 p-4 rounded-lg border border-white/10">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-3">
                         <span className="text-white font-mono text-sm">{tx.id}</span>
@@ -822,30 +822,30 @@ export default function SwapPage() {
                         size="sm"
                         variant="outline"
                         onClick={() => fetchTransactionStatus(tx.id)}
-                        className="border-gray-600 hover:bg-gray-700"
+                        className="border-white/20 hover:bg-white/10 text-white"
                       >
                         <RefreshCw className="h-3 w-3" />
                       </Button>
                     </div>
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
-                        <p className="text-gray-400">From:</p>
+                        <p className="text-white/60">From:</p>
                         <p className="text-white">
                           {tx.expectedSendAmount} {tx.fromCurrency.toUpperCase()}
                         </p>
                       </div>
                       <div>
-                        <p className="text-gray-400">To:</p>
+                        <p className="text-white/60">To:</p>
                         <p className="text-white">
                           {tx.expectedReceiveAmount} {tx.toCurrency.toUpperCase()}
                         </p>
                       </div>
                       <div>
-                        <p className="text-gray-400">Created:</p>
+                        <p className="text-white/60">Created:</p>
                         <p className="text-white">{new Date(tx.createdAt).toLocaleDateString()}</p>
                       </div>
                       <div>
-                        <p className="text-gray-400">Updated:</p>
+                        <p className="text-white/60">Updated:</p>
                         <p className="text-white">{new Date(tx.updatedAt).toLocaleDateString()}</p>
                       </div>
                     </div>
@@ -853,8 +853,8 @@ export default function SwapPage() {
                 ))
               ) : (
                 <div className="text-center py-12">
-                  <Clock className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                  <p className="text-gray-400">No transaction history yet. Create your first swap!</p>
+                  <Clock className="h-12 w-12 mx-auto mb-4 text-white/40" />
+                  <p className="text-white/60">No transaction history yet. Create your first swap!</p>
                 </div>
               )}
             </div>
@@ -888,7 +888,7 @@ export default function SwapPage() {
                     {response.body && (
                       <div className="mb-4">
                         <p className="text-sm text-gray-400 mb-2">Request Body:</p>
-                        <div className="bg-black/80 p-3 rounded border border-gray-700/50 max-h-32 overflow-y-auto">
+                        <div className="bg-black/80 p-3 rounded border border-white/20 max-h-32 overflow-y-auto">
                           <pre className="text-xs text-green-300 whitespace-pre-wrap">
                             {JSON.stringify(response.body, null, 2)}
                           </pre>
@@ -897,7 +897,7 @@ export default function SwapPage() {
                     )}
                     <div>
                       <p className="text-sm text-gray-400 mb-2">Response:</p>
-                      <div className="bg-black/80 p-3 rounded border border-gray-700/50 max-h-60 overflow-y-auto">
+                      <div className="bg-black/80 p-3 rounded border border-white/20 max-h-60 overflow-y-auto">
                         <pre className="text-xs text-gray-300 whitespace-pre-wrap">
                           {JSON.stringify(response.response, null, 2)}
                         </pre>
@@ -907,8 +907,8 @@ export default function SwapPage() {
                 ))
               ) : (
                 <div className="text-center py-12">
-                  <Database className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                  <p className="text-gray-400">No API responses recorded yet. Perform a swap to see API data.</p>
+                  <Database className="h-12 w-12 mx-auto mb-4 text-white/40" />
+                  <p className="text-white/60">No API responses recorded yet. Perform a swap to see API data.</p>
                 </div>
               )}
             </div>
@@ -936,31 +936,31 @@ function TokenSelectionModal({
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-      <div className="bg-gray-900 rounded-xl shadow-2xl border border-gray-700 relative max-w-md w-full mx-4 max-h-[80vh] overflow-hidden">
-        <div className="flex items-center justify-between p-6 border-b border-gray-700">
+      <div className="bg-black/90 rounded-xl shadow-2xl border border-white/10 relative max-w-md w-full mx-4 max-h-[80vh] overflow-hidden">
+        <div className="flex items-center justify-between p-6 border-b border-white/10">
           <h2 className="text-xl font-bold text-white">{title}</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white text-xl p-2 hover:bg-white/10 rounded-full transition-colors"
+            className="text-white/60 hover:text-white text-xl p-2 hover:bg-white/10 rounded-full transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
         <div className="p-4">
           <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/60" />
             <Input
               placeholder="Search tokens..."
               value={searchValue}
               onChange={(e) => onSearchChange(e.target.value)}
-              className="pl-10 bg-gray-800 border-gray-600 text-white"
+              className="pl-10 bg-black/40 border-white/10 text-white"
             />
           </div>
           <div className="space-y-2 max-h-96 overflow-y-auto">
             {tokens.map((token, index) => (
               <div
                 key={index}
-                className="flex items-center gap-3 p-3 bg-gray-800/50 rounded-lg border border-gray-700 cursor-pointer hover:border-gray-600 transition-colors"
+                className="flex items-center gap-3 p-3 bg-black/40 rounded-lg border border-white/10 cursor-pointer hover:border-white/20 transition-colors"
                 onClick={() => onSelect(token)}
               >
                 <img
@@ -973,7 +973,7 @@ function TokenSelectionModal({
                 />
                 <div className="flex-1">
                   <p className="text-white font-semibold">{token.name}</p>
-                  <p className="text-gray-400 text-sm">
+                  <p className="text-white/60 text-sm">
                     {token.symbol.toUpperCase()} • {token.network}
                   </p>
                 </div>
@@ -989,14 +989,14 @@ function TokenSelectionModal({
 function Modal({ children, onClose, title }: { children: React.ReactNode; onClose: () => void; title: string }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-      <div className="bg-gray-900 rounded-xl shadow-2xl border border-gray-700 relative max-w-6xl w-full mx-4 max-h-[90vh] overflow-hidden">
-        <div className="flex items-center justify-between p-6 border-b border-gray-700">
+      <div className="bg-black/90 rounded-xl shadow-2xl border border-white/10 relative max-w-6xl w-full mx-4 max-h-[90vh] overflow-hidden">
+        <div className="flex items-center justify-between p-6 border-b border-white/10">
           <h2 className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 text-transparent bg-clip-text">
             {title}
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white text-xl p-2 hover:bg-white/10 rounded-full transition-colors"
+            className="text-white/60 hover:text-white text-xl p-2 hover:bg-white/10 rounded-full transition-colors"
           >
             <X className="h-5 w-5" />
           </button>

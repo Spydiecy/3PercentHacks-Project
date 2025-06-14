@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cookieStorage, createStorage } from 'wagmi';
 import { root } from 'wagmi/chains';
 
-const clientId = '<your-futureverse-client-id>';
+const clientId = '';
 const walletConnectProjectId = '<your-wallet-connect-project-id>';
 const xamanAPIKey = '<your-xaman-application->';
 

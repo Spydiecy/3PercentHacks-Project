@@ -82,7 +82,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const connectWallet = async () => {
     try {
       if (!wallet) {
-        window.open('https://wallet.rootnet.live/', '_blank')
+        window.open('https://login.passonline.dev/reg/2qC_LOMj3oHhri4XpJL2X', '_blank')
         return
       }
       

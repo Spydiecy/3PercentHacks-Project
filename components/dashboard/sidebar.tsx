@@ -45,7 +45,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
       href: "/dashboard/evm"
     },
     {
-      label: "Cross Chain Swap Info",
+      label: "Swap",
       icon: ArrowLeftRight,
       href: "/dashboard/swap"
     },
