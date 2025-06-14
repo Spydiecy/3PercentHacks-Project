@@ -1,7 +1,7 @@
 # 🌟 Astra TRN - Advanced Blockchain Portfolio Analytics
 
 <div align="center">
-  <img src="/hero.png" alt="Astra TRN Hero" width="600" height="300" />
+  <img src="https://raw.githubusercontent.com/Spydiecy/Astra_TRN/refs/heads/main/public/hero.png?token=GHSAT0AAAAAAC3HREOVV4ILR3OYH2BNVGME2CBLBZQ" alt="Astra TRN Hero" width="600" height="300" />
   
   [![Next.js](https://img.shields.io/badge/Next.js-15.3.2-black)](https://nextjs.org/)
   [![React](https://img.shields.io/badge/React-19.0.0-blue)](https://reactjs.org/)
