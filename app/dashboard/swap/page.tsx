@@ -14,7 +14,7 @@ const TOKENS = [
   {
     symbol: "btc",
     name: "Bitcoin",
-    image: "https://cryptologos.cc/logos/bitcoin-btc-logo.png",
+    image: "https://logowik.com/content/uploads/images/t_ethereum-eth7803.logowik.com.webp",
     color: "from-orange-500 to-yellow-500",
     network: "Bitcoin",
     decimals: 8,
@@ -22,7 +22,7 @@ const TOKENS = [
   {
     symbol: "eth",
     name: "Ethereum",
-    image: "https://cryptologos.cc/logos/ethereum-eth-logo.png",
+    image: "https://logowik.com/content/uploads/images/t_ethereum-eth7803.logowik.com.webp",
     color: "from-blue-500 to-purple-500",
     network: "Ethereum",
     decimals: 18,
@@ -30,7 +30,7 @@ const TOKENS = [
   {
     symbol: "xrp",
     name: "XRP",
-    image: "https://cryptologos.cc/logos/xrp-xrp-logo.png",
+    image: "https://logowik.com/content/uploads/images/t_ethereum-eth7803.logowik.com.webp",
     color: "from-blue-600 to-cyan-500",
     network: "XRP Ledger",
     decimals: 6,
@@ -38,7 +38,7 @@ const TOKENS = [
   {
     symbol: "root",
     name: "Root Network",
-    image: "/placeholder.svg?height=32&width=32",
+    image: "https://logowik.com/content/uploads/images/t_ethereum-eth7803.logowik.com.webp",
     color: "from-green-500 to-teal-500",
     network: "Root Network",
     decimals: 6,
@@ -46,7 +46,7 @@ const TOKENS = [
   {
     symbol: "usdt",
     name: "Tether USD",
-    image: "https://cryptologos.cc/logos/tether-usdt-logo.png",
+    image: "https://logowik.com/content/uploads/images/t_ethereum-eth7803.logowik.com.webp",
     color: "from-green-600 to-green-400",
     network: "Multiple",
     decimals: 6,
@@ -54,7 +54,7 @@ const TOKENS = [
   {
     symbol: "bnb",
     name: "BNB",
-    image: "https://cryptologos.cc/logos/bnb-bnb-logo.png",
+    image: "https://logowik.com/content/uploads/images/t_ethereum-eth7803.logowik.com.webp",
     color: "from-yellow-500 to-orange-500",
     network: "BSC",
     decimals: 18,
@@ -62,7 +62,7 @@ const TOKENS = [
   {
     symbol: "ada",
     name: "Cardano",
-    image: "https://cryptologos.cc/logos/cardano-ada-logo.png",
+    image: "https://logowik.com/content/uploads/images/t_ethereum-eth7803.logowik.com.webp",
     color: "from-blue-600 to-indigo-500",
     network: "Cardano",
     decimals: 6,
@@ -70,7 +70,7 @@ const TOKENS = [
   {
     symbol: "sol",
     name: "Solana",
-    image: "https://cryptologos.cc/logos/solana-sol-logo.png",
+    image: "https://logowik.com/content/uploads/images/t_ethereum-eth7803.logowik.com.webp",
     color: "from-purple-600 to-pink-500",
     network: "Solana",
     decimals: 9,
@@ -149,11 +149,12 @@ export default function SwapPage() {
       }
 
       const data: MinAmountResponse = await response.json()
-
+      console.log("my min Amount reponse is::::",data);
+      
       setApiResponses((prev:any) => ({
         ...prev,
         [`minAmount_${from}_${to}`]: {
-          url: `https://api.changenow.io/v1/min-amount/${from}_${to}`,
+          url: `https://api.changenow.io/v1/min-amount/${from}_${to}?api_key=rNxp4h8apvRis6mJf9Sh8C6iRxfrDWN7AV`,
           method: "GET",
           response: data,
           timestamp: new Date().toISOString(),
@@ -174,7 +175,7 @@ export default function SwapPage() {
 
     setLoading(true)
     try {
-      const response = await fetch("https://api.changenow.io/v1/transactions", {
+      const response = await fetch("https://api.changenow.io/v1/transactions/abd6b1cd1a3a36f2c35fc8f2537ab67f8da57a92fbd4739fe63dc87c94a9d9da", {
         method: "POST",
         headers: {
           accept: "application/json",
@@ -194,7 +195,8 @@ export default function SwapPage() {
       }
 
       const data: SwapTransaction = await response.json()
-
+      console.log("my data is::::::",data);
+      
       setApiResponses((prev:any) => ({
         ...prev,
         swapTransaction: {
@@ -236,7 +238,8 @@ export default function SwapPage() {
       }
 
       const data: TransactionStatus = await response.json()
-
+      console.log("my trnasaction status data is:::",data);
+      
       setApiResponses((prev:any) => ({
         ...prev,
         [`transactionStatus_${transactionId}`]: {
@@ -357,11 +360,11 @@ export default function SwapPage() {
   // Auto-refresh transaction status
   useEffect(() => {
     if (swapStep === "tracking" && swapTransaction?.id) {
-      const interval = setInterval(() => {
-        fetchTransactionStatus(swapTransaction.id)
-      }, 300000000) // Refresh every 30 seconds
 
-      return () => clearInterval(interval)
+        fetchTransactionStatus(swapTransaction.id)
+
+
+    
     }
   }, [swapStep, swapTransaction?.id])
 
