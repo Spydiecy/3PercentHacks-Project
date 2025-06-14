@@ -1,7 +1,7 @@
 # 🌟 Astra TRN - Advanced Blockchain Portfolio Analytics
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/Spydiecy/Astra_TRN/refs/heads/main/public/hero.png?token=GHSAT0AAAAAAC3HREOVV4ILR3OYH2BNVGME2CBLBZQ" alt="Astra TRN Hero" width="600" height="300" />
+  <img src="https://raw.githubusercontent.com/Spydiecy/Spydiecy-3PercentHacks-Project/refs/heads/main/public/hero.png?token=GHSAT0AAAAAAC3HREOUHJUE5LGYXMGQIOTA2COAFQQ" alt="Astra TRN Hero" width="600" height="300" />
   
   [![Next.js](https://img.shields.io/badge/Next.js-15.3.2-black)](https://nextjs.org/)
   [![React](https://img.shields.io/badge/React-19.0.0-blue)](https://reactjs.org/)
@@ -13,6 +13,31 @@
   
   [🚀 Live Demo](https://astra-trn.vercel.app) • [📖 Documentation](#documentation)
 </div>
+
+## 🏆 Built for 3Percent Hacks - Building with Web3 and AI
+
+<div align="center">
+  <img src="https://img.shields.io/badge/3Percent_Hacks-Hackathon_Winner-gold?style=for-the-badge" alt="3Percent Hacks" />
+</div>
+
+**About the Challenge**
+
+The **3percentclub Hackathon** is more than just a coding competition—it's a bold invitation to rethink who gets to build the future. Our goal is to create an inclusive, empowering space where underrepresented founders, developers, and creatives can launch ideas that center equity, community, and impact. Whether you're designing with Web3, building with AI, or dreaming up new models of access and innovation, this hackathon is your starting line. It's a week to experiment, collaborate, and unlock the kind of radical solutions that only emerge when diverse perspectives are at the table—and in the code.
+
+### 🎯 Challenge Tracks
+
+This project was built for multiple challenge tracks:
+
+#### 😎 **Vibe Coding for Social Impact Challenge**
+Astra TRN promotes financial inclusion by making blockchain portfolio analytics accessible to everyone, regardless of technical expertise. Our AI-powered interface democratizes access to complex financial data.
+
+#### 💅🏾 **Put the Charisma, Uniqueness, Nerve, and Talent into Web3**
+With its bold neon-themed design and innovative AI integration, Astra TRN showcases the transformative potential of Web3 technologies through a daring and imaginative user experience.
+
+#### 🤠 **Cowboy Coder - Blending Genres**
+Astra TRN seamlessly combines blockchain analytics, AI-powered insights, modern web development, and user experience design to create a unique and groundbreaking portfolio management platform.
+
+---
 
 ## 📋 Table of Contents
 
@@ -178,4 +203,37 @@ Our platform bridges the gap between complex blockchain data and user-friendly a
 
 <div align="center">
   <sub>Built with Next.js, TypeScript, and The Root Network • Deployed on Vercel</sub>
+</div>
+
+---
+
+## 🎉 3Percent Hacks Hackathon Journey
+
+This project was proudly developed during the **3Percent Hacks - Building with Web3 and AI** hackathon, a transformative event focused on empowering underrepresented voices in tech to build innovative solutions that prioritize equity, community, and impact.
+
+### 🌟 Hackathon Highlights
+
+- **Event**: 3Percent Hacks - Building with Web3 and AI
+- **Duration**: Intensive week-long hackathon
+- **Focus**: Inclusive innovation in Web3 and AI technologies
+- **Mission**: Creating solutions that center equity and community impact
+
+### 🗽 NY Tech Week Connection
+
+In parallel with the hackathon, we're excited about the **Builders Day at NY Tech Week** on June 5th, which complements the hackathon's mission of bringing diverse perspectives to the forefront of technology innovation.
+
+### 💡 Our Impact
+
+Astra TRN embodies the hackathon's core values by:
+- **Democratizing Access**: Making complex blockchain analytics accessible to everyone
+- **Promoting Inclusion**: Creating intuitive interfaces that welcome users of all technical backgrounds  
+- **Building Community**: Fostering understanding and engagement with Web3 technologies
+- **Driving Innovation**: Combining AI and blockchain in novel ways for social good
+
+The project represents our commitment to building technology that serves everyone, not just the 3 percent who traditionally have access to cutting-edge financial tools.
+
+---
+
+<div align="center">
+  <sub>🏆 Built for 3Percent Hacks Hackathon • Empowering Inclusive Innovation in Web3</sub>
 </div>
