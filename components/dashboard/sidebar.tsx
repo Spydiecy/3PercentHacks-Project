@@ -59,20 +59,10 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
       href: "/dashboard/swap"
     },
     {
-      label: "Futureverse Demo",
+      label: "Wallet",
       icon: Wallet,
       href: "/dashboard/futureverse-demo"
     },
-    {
-      label: "Wallet Test",
-      icon: TestTube,
-      href: "/dashboard/wallet-test"
-    },
-    {
-      label: "Settings",
-      icon: Settings,
-      href: "/dashboard/settings"
-    }
   ]
 
   return (
