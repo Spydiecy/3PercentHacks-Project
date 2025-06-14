@@ -269,7 +269,7 @@ export default function AiChatPage() {
           swapData: swapResult,
         } as any,
       ])
-
+ window.open(`https://changenow.io/pro/exchange/txs/${swapResult.id}`, "_blank");
       setShowSwapModal(false)
       setSwapAmount("")
       setSwapAddress("")
