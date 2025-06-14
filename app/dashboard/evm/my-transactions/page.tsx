@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { useWallet } from "@/contexts/WalletContext"
 import {
   History,
   Wallet,
@@ -150,6 +151,7 @@ function InfoCard({ title, value, className = "" }: { title: string; value: any;
 }
 
 export default function MyTransactionsPage() {
+  const { connectWallet: walletConnect, connected, publicKey, userSession } = useWallet()
   const [walletAddress, setWalletAddress] = useState(DUMMY_ADDRESS)
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [walletBalance, setWalletBalance] = useState<WalletBalance | null>(null)
@@ -160,6 +162,17 @@ export default function MyTransactionsPage() {
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
 
   const apiKey = process.env.NEXT_PUBLIC_API_KEY || "81d0f73d-93d0-4cb0-b7ae-bce20587e79b"
+
+  // Update wallet address when user connects
+  useEffect(() => {
+    if (connected && publicKey) {
+      setWalletAddress(publicKey)
+      loadWalletData(publicKey)
+    } else if (connected && userSession?.eoa) {
+      setWalletAddress(userSession.eoa)
+      loadWalletData(userSession.eoa)
+    }
+  }, [connected, publicKey, userSession])
 
   const fetchWithRateLimit = async (url: string, options: RequestInit, responseKey: string) => {
     return rateLimitManager.addRequest(async () => {
@@ -186,17 +199,7 @@ export default function MyTransactionsPage() {
 
   const connectWallet = async () => {
     try {
-      if (typeof window.ethereum !== "undefined") {
-        const accounts = await window.ethereum.request({
-          method: "eth_requestAccounts",
-        })
-        setWalletAddress(accounts[0])
-        
-        // Fetch data for the connected wallet
-        await loadWalletData(accounts[0])
-      } else {
-        alert("MetaMask is not installed. Please install MetaMask to continue.")
-      }
+      await walletConnect()
     } catch (error) {
       console.error("Error connecting wallet:", error)
     }

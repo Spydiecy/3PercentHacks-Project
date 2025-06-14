@@ -1,7 +1,14 @@
-import type { Metadata } from "next";
+"use client"
+
+import { useState, useEffect } from "react"
+import { usePathname } from "next/navigation"
+import { DashboardSidebar } from "@/components/dashboard/sidebar"
+import { ConnectWalletButton } from "@/components/ui/connect-wallet-button"
+import { cn } from "@/lib/utils"
+import { WalletProvider } from "@/contexts/WalletContext"
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/ui/theme-provider";
-import { WalletProvider } from "@/contexts/WalletContext";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -14,31 +21,30 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "Astra - AI-Powered DeFi Trading on TRN | The Apex of Skills: TRN Labs Hackathon",
-  description: "Astra harnesses AI and TRN (The Root Network) blockchain for intelligent DeFi trading with Futurepass wallet integration and custom smart contracts. Built for The Apex of Skills: TRN Labs Hackathon.",
-};
+const queryClient = new QueryClient()
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: {
+  children: React.ReactNode
+}) {
   return (
     <html lang="en" suppressHydrationWarning className="scroll-smooth">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <WalletProvider>
-            {children}
-          </WalletProvider>
-        </ThemeProvider>
+        <QueryClientProvider client={queryClient}>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <WalletProvider>
+              {children}
+            </WalletProvider>
+          </ThemeProvider>
+        </QueryClientProvider>
       </body>
     </html>
   );

@@ -26,49 +26,45 @@ const WalletContext = createContext<WalletContextType>({
 
 export const useWallet = () => useContext(WalletContext)
 
-// Create auth client
 const authClient = new FutureverseAuthClient({
   clientId: process.env.NEXT_PUBLIC_FUTUREVERSE_CLIENT_ID || '2qC_LOMj3oHhri4XpJL2X',
-  environment: 'development',
-  redirectUri: typeof window !== 'undefined' ? `${window.location.origin}/dashboard/` : 'http://localhost:3000/dashboard/',
-  responseType: 'code'
+  environment: (process.env.NEXT_PUBLIC_FUTUREVERSE_ENVIRONMENT as any) || 'development',
+  redirectUri: typeof window !== 'undefined' ? `${window.location.origin}/dashboard/` : 'http://localhost:3000/dashboard/'
 })
 
-// Inner provider that uses the useAuth hook
 const WalletProviderInner: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [wallet, setWallet] = useState<any | null>(null)
   const [connecting, setConnecting] = useState(false)
   const [connected, setConnected] = useState(false)
   const [publicKey, setPublicKey] = useState<string | null>(null)
-  
-  // Get auth hooks from Futureverse
   const { signIn, signOut, userSession } = useAuth()
 
   useEffect(() => {
-    // Check if user is already authenticated
-    if (userSession) {
-      setConnected(true)
-      // Try to get EOA address if available
-      setPublicKey(userSession.eoa || userSession.futurepass || null)
-      console.log("User session found:", userSession)
-    } else {
-      setConnected(false)
-      setPublicKey(null)
+    const checkAuthStatus = async () => {
+      try {
+        if (userSession) {
+          setConnected(true)
+          setPublicKey(userSession.eoa || null)
+        } else {
+          setConnected(false)
+          setPublicKey(null)
+        }
+      } catch (error) {
+        console.error("Error checking auth status:", error)
+        setConnected(false)
+        setPublicKey(null)
+      }
     }
+    
+    checkAuthStatus()
   }, [userSession])
 
   const connectWallet = async () => {
     try {
       setConnecting(true)
-      
-      // Use Futureverse Auth sign in with default options
-      await signIn({})
-      
-      console.log("Futureverse Auth sign in initiated")
+      await signIn({ type: 'eoa' })
     } catch (error) {
       console.error("Error connecting wallet:", error)
-      // For development, you might want to show a more user-friendly error
-      alert("Failed to connect wallet. Please try again.")
     } finally {
       setConnecting(false)
     }
@@ -82,7 +78,6 @@ const WalletProviderInner: React.FC<{ children: React.ReactNode }> = ({ children
       setConnected(false)
       setPublicKey(null)
       setWallet(null)
-      console.log("Wallet disconnected")
     } catch (error) {
       console.error("Error disconnecting wallet:", error)
     }
@@ -105,7 +100,6 @@ const WalletProviderInner: React.FC<{ children: React.ReactNode }> = ({ children
   )
 }
 
-// Main provider that wraps with FutureverseAuthProvider
 export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
     <FutureverseAuthProvider authClient={authClient}>

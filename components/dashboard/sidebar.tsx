@@ -11,7 +11,9 @@ import {
   Home,
   ArrowLeft,
   History,
-  Search
+  Search,
+  Wallet,
+  TestTube
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useEffect } from "react"
@@ -55,6 +57,16 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
       label: "Swap",
       icon: ArrowLeftRight,
       href: "/dashboard/swap"
+    },
+    {
+      label: "Futureverse Demo",
+      icon: Wallet,
+      href: "/dashboard/futureverse-demo"
+    },
+    {
+      label: "Wallet Test",
+      icon: TestTube,
+      href: "/dashboard/wallet-test"
     },
     {
       label: "Settings",
