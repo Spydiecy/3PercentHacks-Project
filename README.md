@@ -35,6 +35,7 @@ Astra is an intelligent trading assistant that harnesses the power of artificial
 - Minimize fees through smart transaction batching
 - Real-time gas price monitoring and optimization
 
+
 ### 🔗 Cross-Chain Compatibility
 - Seamless operation across Solana and compatible blockchain networks
 - Cross-chain swap information and routing
