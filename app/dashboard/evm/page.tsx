@@ -178,7 +178,7 @@ export default function EVMExplorer() {
       }
       const data = await response.json()
 
-      setApiResponses((prev) => ({
+      setApiResponses((prev:any) => ({
         ...prev,
         [responseKey]: {
           url,
@@ -680,7 +680,7 @@ export default function EVMExplorer() {
                 />
                 <Legend />
                 <Bar dataKey="value" name="Transactions">
-                  {statusData.map((entry, index) => (
+                  {statusData.map((entry:any, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Bar>

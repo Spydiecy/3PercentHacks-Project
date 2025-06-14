@@ -14,7 +14,7 @@ const TOKENS = [
   {
     symbol: "btc",
     name: "Bitcoin",
-    image: "https://logowik.com/content/uploads/images/t_ethereum-eth7803.logowik.com.webp",
+    image: "https://media.istockphoto.com/id/1033874896/vector/blockchain-bitcoin-icon.jpg?s=612x612&w=0&k=20&c=yzGKzb1A0moFQFxSoMw1hXHaWKqOzdcJ1ShFWRyNaGQ=",
     color: "from-orange-500 to-yellow-500",
     network: "Bitcoin",
     decimals: 8,
@@ -30,7 +30,7 @@ const TOKENS = [
   {
     symbol: "xrp",
     name: "XRP",
-    image: "https://logowik.com/content/uploads/images/t_ethereum-eth7803.logowik.com.webp",
+    image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcStEx8l1lrrq1h7ap3moMYOl-dmeNzfi3HTOw&s",
     color: "from-blue-600 to-cyan-500",
     network: "XRP Ledger",
     decimals: 6,
@@ -38,7 +38,7 @@ const TOKENS = [
   {
     symbol: "root",
     name: "Root Network",
-    image: "https://logowik.com/content/uploads/images/t_ethereum-eth7803.logowik.com.webp",
+    image: "https://pbs.twimg.com/profile_images/1658639949246386176/6T1Tapl__400x400.jpg",
     color: "from-green-500 to-teal-500",
     network: "Root Network",
     decimals: 6,
@@ -46,7 +46,7 @@ const TOKENS = [
   {
     symbol: "usdt",
     name: "Tether USD",
-    image: "https://logowik.com/content/uploads/images/t_ethereum-eth7803.logowik.com.webp",
+    image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS2cQbJSNv4fI-SWqstYLsPgh8LrkNycKw6xA&s",
     color: "from-green-600 to-green-400",
     network: "Multiple",
     decimals: 6,
@@ -54,7 +54,7 @@ const TOKENS = [
   {
     symbol: "bnb",
     name: "BNB",
-    image: "https://logowik.com/content/uploads/images/t_ethereum-eth7803.logowik.com.webp",
+    image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQP9cUvoCvmCXO4pNHvnREHBCKW30U-BVxKfg&s",
     color: "from-yellow-500 to-orange-500",
     network: "BSC",
     decimals: 18,
@@ -62,7 +62,7 @@ const TOKENS = [
   {
     symbol: "ada",
     name: "Cardano",
-    image: "https://logowik.com/content/uploads/images/t_ethereum-eth7803.logowik.com.webp",
+    image: "https://cdn.freelogovectors.net/wp-content/uploads/2023/03/ada-logo-freelogovectors.net_.png",
     color: "from-blue-600 to-indigo-500",
     network: "Cardano",
     decimals: 6,
@@ -70,7 +70,7 @@ const TOKENS = [
   {
     symbol: "sol",
     name: "Solana",
-    image: "https://logowik.com/content/uploads/images/t_ethereum-eth7803.logowik.com.webp",
+    image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTsIsJL3zRgUrkD3yE3lD7LK0wZWSiRyY1GVg&s",
     color: "from-purple-600 to-pink-500",
     network: "Solana",
     decimals: 9,
